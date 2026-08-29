@@ -12,6 +12,7 @@ All notable changes will be documented in this file.
 - Rule and policy JSON Schema contracts, tests, PHPStan, coding-style checks, and CI matrix.
 - Static GitHub Pages overview and initial architecture decision records.
 - Public README and Pages project surface with explicit M0 capability boundaries, trust model, and M1 handoff roadmap.
+- Guarded GitHub Release workflow that publishes only when a `main` commit message starts with `release:`.
 
 ### Not included
 
