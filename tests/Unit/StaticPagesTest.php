@@ -23,11 +23,7 @@ final class StaticPagesTest extends TestCase
         self::assertStringContainsString('role="list"', $html);
 
         preg_match_all('/href="#([^"]+)"/', $html, $anchorMatches);
-        foreach ($anchorMatches[1] ?? [] as $anchor) {
-            if (!is_string($anchor)) {
-                self::fail('Encountered a malformed internal anchor.');
-            }
-
+        foreach ($anchorMatches[1] as $anchor) {
             self::assertStringContainsString('id="' . $anchor . '"', $html);
         }
 
