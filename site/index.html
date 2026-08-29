@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Modern PHP Guidelines is a foundation for version-aware, read-only PHP guidance for coding agents.">
+    <title>Modern PHP Guidelines — Foundation</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="./" aria-label="Modern PHP Guidelines home"><span aria-hidden="true">&lt;/&gt;</span> Modern PHP Guidelines</a>
+        <div class="nav-links">
+          <a href="#scope">Scope</a><a href="#roadmap">Roadmap</a><a href="#trust">Trust</a>
+          <a class="github-link" href="https://github.com/trionnemesis/php-modern-guidelines">GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero container">
+        <p class="eyebrow">PHP 8.2+ · M0 foundation</p>
+        <div class="hero-grid">
+          <div>
+            <h1>Modern PHP guidance that respects the whole version range.</h1>
+            <p class="lede">A foundation for coding agents to consult declared PHP compatibility policy before they write code—not a framework modernizer, analyzer, or auto-fixer.</p>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/trionnemesis/php-modern-guidelines">View repository <span aria-hidden="true">→</span></a>
+              <a class="button secondary" href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/README.md">Read the README</a>
+            </div>
+          </div>
+          <aside class="version-card" aria-label="Current release status">
+            <span class="status-dot" aria-hidden="true"></span><span>Foundation / alpha</span>
+            <strong>v0.0.1</strong>
+            <p>CLI skeleton and schemas are available. Policy resolution and guidance are planned next.</p>
+          </aside>
+        </div>
+      </section>
+      <section class="container section" id="scope">
+        <div class="section-heading"><p class="eyebrow">The point</p><h2>Two axes, one honest policy.</h2></div>
+        <div class="axis-grid">
+          <article class="axis feature"><span>01</span><h3>Feature ceiling</h3><p>The lowest allowed PHP minor. Generated syntax must run across the project’s declared range.</p></article>
+          <article class="axis lifecycle"><span>02</span><h3>Lifecycle ceiling</h3><p>The highest known allowed minor. Newer deprecations and removals still matter.</p></article>
+        </div>
+        <p class="caption">For a future policy such as <code>^8.2</code>, the two ceilings are intentionally not collapsed into one runtime value.</p>
+      </section>
+      <section class="container section">
+        <div class="section-heading"><p class="eyebrow">M0 status</p><h2>A deliberately small foundation.</h2></div>
+        <div class="cards">
+          <article class="card"><h3>Available now</h3><ul><li><code>php-modern-guidelines version</code></li><li>Rule and policy JSON Schema contracts</li><li>PHP 8.2–8.5 CI configuration</li></ul></article>
+          <article class="card"><h3>Planned next</h3><ul><li>Composer Semver policy resolver</li><li>Read-only <code>resolve</code>, <code>list</code>, and <code>explain</code></li><li>Official-source rule registry</li></ul></article>
+          <article class="card muted"><h3>Not M0</h3><ul><li>PHP modernization rules</li><li>Framework packs and analyzers</li><li>Auto-fixing or marketplace manifests</li></ul></article>
+        </div>
+      </section>
+      <section class="container section" id="roadmap">
+        <div class="section-heading"><p class="eyebrow">Roadmap</p><h2>Small, reviewable steps.</h2></div>
+        <ol class="roadmap" role="list">
+          <li class="current"><strong>M0 · v0.0.1</strong><span>Repository contracts, CLI skeleton, CI, and this site.</span></li>
+          <li><strong>M1 · v0.1.0</strong><span>Policy resolver, rule registry, and verified PHP guidance.</span></li>
+          <li><strong>M2 · v0.2.0</strong><span>Agent skill, PHAR direction, and local wrappers.</span></li>
+          <li><strong>M3 · v0.3.0</strong><span>Explicit opt-in verification adapters.</span></li>
+        </ol>
+      </section>
+      <section class="container section trust" id="trust">
+        <div class="section-heading"><p class="eyebrow">Trust boundary</p><h2>Designed to advise, not to act on your project.</h2></div>
+        <p>Future core commands are intended to be deterministic and read-only: no target PHP execution, no analyzed-project <code>vendor/autoload.php</code>, no Composer scripts or plugins, no network access, and no writes to the analyzed repository.</p>
+        <p class="attribution">This is an independent implementation inspired by <a href="https://github.com/JetBrains/go-modern-guidelines">JetBrains/go-modern-guidelines</a>. It is not affiliated with or endorsed by JetBrains. Its narrow planned scope is distinct from <a href="https://github.com/netresearch/php-modernization-skill">netresearch/php-modernization-skill</a>.</p>
+      </section>
+    </main>
+    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
+  </body>
+</html>
