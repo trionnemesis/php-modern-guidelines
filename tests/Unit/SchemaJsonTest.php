@@ -47,9 +47,12 @@ final class SchemaJsonTest extends TestCase
         self::assertIsArray($example);
         $branches = $example['oneOf'] ?? null;
         self::assertIsArray($branches);
+        $replacementBranch = $branches[0] ?? null;
+        self::assertIsArray($replacementBranch);
         $markerBranch = $branches[1] ?? null;
         self::assertIsArray($markerBranch);
 
+        self::assertSame(['required' => ['no_automatic_replacement']], $replacementBranch['not'] ?? null);
         self::assertSame(
             ['anyOf' => [['required' => ['before']], ['required' => ['after']]]],
             $markerBranch['not'] ?? null,
