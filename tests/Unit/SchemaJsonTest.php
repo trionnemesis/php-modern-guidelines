@@ -31,6 +31,31 @@ final class SchemaJsonTest extends TestCase
         self::assertArrayHasKey('properties', $schema);
     }
 
+    public function testNoAutomaticReplacementExamplesCannotContainReplacementCode(): void
+    {
+        $path = dirname(__DIR__, 2) . '/schemas/rule.schema.json';
+        $json = file_get_contents($path);
+        if (!is_string($json)) {
+            self::fail('Could not read the rule schema.');
+        }
+
+        $schema = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($schema);
+        $definitions = $schema['$defs'] ?? null;
+        self::assertIsArray($definitions);
+        $example = $definitions['example'] ?? null;
+        self::assertIsArray($example);
+        $branches = $example['oneOf'] ?? null;
+        self::assertIsArray($branches);
+        $markerBranch = $branches[1] ?? null;
+        self::assertIsArray($markerBranch);
+
+        self::assertSame(
+            ['anyOf' => [['required' => ['before']], ['required' => ['after']]]],
+            $markerBranch['not'] ?? null,
+        );
+    }
+
     /** @return iterable<string, array{string}> */
     public static function schemaPaths(): iterable
     {
