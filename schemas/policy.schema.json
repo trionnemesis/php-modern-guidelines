@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trionnemesis.github.io/php-modern-guidelines/schemas/policy.schema.json",
+  "title": "Resolved PHP compatibility policy",
+  "description": "Output contract planned for the read-only resolver in PR B; M0 does not implement policy resolution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "project_root", "declared_constraint", "allowed_minors", "feature_ceiling", "lifecycle_ceiling", "platform_override", "observed_runtime", "coverage", "confidence", "sources", "warnings"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "mode": {"type": "string", "enum": ["range-safe", "single-target", "runtime-observed"]},
+    "project_root": {"type": "string", "minLength": 1},
+    "declared_constraint": {"type": ["string", "null"]},
+    "allowed_minors": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/phpMinor"}},
+    "feature_ceiling": {"$ref": "#/$defs/phpMinor"},
+    "lifecycle_ceiling": {"$ref": "#/$defs/phpMinor"},
+    "platform_override": {"type": ["string", "null"], "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"},
+    "observed_runtime": {"type": ["string", "null"], "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"},
+    "coverage": {"type": "object", "additionalProperties": false, "required": ["status", "known_min", "known_max", "open_upper_bound"], "properties": {"status": {"type": "string", "enum": ["complete", "coverage_gap", "unknown"]}, "known_min": {"$ref": "#/$defs/phpMinor"}, "known_max": {"$ref": "#/$defs/phpMinor"}, "open_upper_bound": {"type": "boolean"}}},
+    "confidence": {"type": "string", "enum": ["explicit", "declared", "observed", "unresolved"]},
+    "sources": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source"}},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  },
+  "allOf": [
+    {"if": {"properties": {"mode": {"const": "single-target"}}}, "then": {"properties": {"allowed_minors": {"maxItems": 1}}}}
+  ],
+  "$defs": {
+    "phpMinor": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "source": {"type": "object", "additionalProperties": false, "required": ["type", "path", "value"], "properties": {"type": {"type": "string", "enum": ["cli.php_version", "project.config", "composer.require.php", "composer.platform.php", "composer.lock", "runtime"]}, "path": {"type": ["string", "null"]}, "value": {"type": ["string", "null"]}}}
+  }
+}
