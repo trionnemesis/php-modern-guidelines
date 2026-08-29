@@ -7,7 +7,7 @@ $finder = PhpCsFixer\Finder::create()
     ->exclude(['vendor', 'var']);
 
 return (new PhpCsFixer\Config())
-    ->setRiskyAllowed(false)
+    ->setRiskyAllowed(true)
     ->setRules([
         '@PER-CS2.0' => true,
         'declare_strict_types' => true,
