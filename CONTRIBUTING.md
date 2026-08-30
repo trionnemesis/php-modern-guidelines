@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering a contribution. This repository is at M1 (`0.1.0`): the Composer Semver policy resolver, the two-axis rule registry, and the `resolve` / `list-rules` / `explain` commands are implemented. Keep changes aligned with the active milestone and avoid bringing forward later framework-pack, analyzer/adapter, auto-fix, PHAR, or marketplace work into an M1 change.
+Thank you for considering a contribution. This repository is at M2 (`0.2.0`): the Composer Semver policy resolver, the two-axis rule registry, the `resolve` / `list-rules` / `explain` / `doctor` commands, the CI-built PHAR release asset, and the agent-distribution surfaces in `skills/` are implemented. Keep changes aligned with the active milestone and avoid bringing forward later framework-pack, analyzer/adapter, auto-fix, or marketplace work into an M2 change.
 
 ## Development checks
 
@@ -11,7 +11,7 @@ composer install
 composer check
 ```
 
-`composer check` runs PHPUnit, PHPStan, and the coding-style check.
+`composer check` runs PHPUnit, PHPStan, and the coding-style check. It must stay green with no PHAR build tool installed — the build tool (`humbug/box`) is never a Composer dependency (ADR-007). After editing anything under `skills/`, also run the skill test suite named in `AGENTS.md`.
 
 ## Contribution rules
 

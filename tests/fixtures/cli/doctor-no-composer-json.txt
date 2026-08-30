@@ -1,0 +1,56 @@
+Doctor: warn
+
+  [ok]      cli.build                php-modern-guidelines @VERSION@, source distribution
+  [ok]      project.root             @PROJECT_ROOT@
+  [warn]    project.composer_json    composer.json absent
+  [ok]      project.composer_lock    composer.lock absent
+  [ok]      project.php_declarations declared PHP values read, no input warnings
+  [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage unknown (known 8.2-8.5), 1 warning(s)
+  [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
+  [ok]      rules.directory          bundled rules directory, 16 rule file(s)
+  [ok]      rules.load               16 rule(s) loaded
+
+Details
+  cli.build
+    version                 @VERSION@
+    distribution            source
+  project.root
+    path                    @PROJECT_ROOT@
+    is_directory            yes
+  project.composer_json
+    path                    composer.json
+    present                 no
+    readable                no
+    json                    -
+  project.composer_lock
+    path                    composer.lock
+    present                 no
+    readable                no
+    json                    -
+  project.php_declarations
+    require_php             -
+    conflict_php            -
+    config_platform_php     -
+    platform_overrides_php  -
+    input_warnings          -
+    error                   -
+  policy.resolution
+    mode                    range-safe
+    allowed_minors          8.2, 8.3, 8.4, 8.5
+    feature_ceiling         8.2
+    lifecycle_ceiling       8.5
+    platform_override       -
+    observed_runtime        -
+    coverage                unknown (known 8.2-8.5)
+    confidence              unresolved
+    warnings                policy.no_php_constraint_declared
+    error                   -
+  schemas.available
+    rule_schema             ok
+    policy_schema           ok
+  rules.directory
+    source                  bundled
+    file_count              16
+  rules.load
+    loaded                  16
+    error                   -

@@ -4,13 +4,13 @@
 [![Deploy Pages](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml/badge.svg)](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml)
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777bb4)](https://www.php.net/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![M1 core parity](https://img.shields.io/badge/status-M1%20core%20parity-5b4b8a)](CHANGELOG.md)
+[![M2 agent distribution](https://img.shields.io/badge/status-M2%20agent%20distribution-5b4b8a)](CHANGELOG.md)
 
 > Give AI coding agents the project's real PHP version range, deprecated APIs, and modern alternatives before they generate code—avoiding code that runs locally but violates the project's minimum PHP version.
 
-🌐 **[GitHub Pages overview](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md)** ・ [Quick start](#quick-start) ・ [Current capabilities](#current-capabilities) ・ [Policy flow](#policy-flow) ・ [Trust boundary](#trust-boundary) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
+🌐 **[GitHub Pages overview](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md)** ・ [Quick start](#quick-start) ・ [Current capabilities](#current-capabilities) ・ [Agent distribution](#agent-distribution) ・ [Policy flow](#policy-flow) ・ [Trust boundary](#trust-boundary) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**M1 / alpha · v0.1.0.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, and `explain`.
+**M2 / alpha · v0.2.0.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, and a CI-built, checksum-verified PHAR release asset.
 
 ## Why
 
@@ -27,7 +27,7 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 
 ## Current capabilities
 
-| Slice | Implemented in M1 | Key boundary |
+| Slice | Implemented | Key boundary |
 |---|---|---|
 | Policy resolver | Resolves `require.php`, `conflict.php`, `config.platform.php`, Composer lock platform overrides, and `--php` | Reads target-project inputs without executing the target project |
 | Two-axis policy | Separates `feature_ceiling` and `lifecycle_ceiling`; outputs `coverage`, `confidence`, and `warnings` | Known PHP coverage is 8.2–8.5 |
@@ -35,16 +35,55 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 | Agent query surface | `resolve`, `list-rules`, and `explain` with human and JSON output | `resolve --json` must satisfy `policy.schema.json` |
 | CLI foundation | `version` and a consistent exit-code contract | Never writes to the target repository |
 | Verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, and PHP 8.2–8.5 CI | Verifies this repository; it does not scan the target project |
+| Agent distribution | A Claude Agent Skill in `skills/php-modern-guidelines/` and a Codex-compatible `AGENTS.md` snippet in `skills/agents-md/` | Instructions only; no marketplace or plugin manifest, and no agent-runtime registration |
+| PHAR distribution | A single-file archive built and smoke-tested in CI, attached to each release with a SHA-256 checksum | Built in CI only; the build tool is not a Composer dependency |
+| Diagnostics | `doctor` reports what this tool found, read and loaded, in human and JSON form | Diagnoses this tool's inputs and installation; never inspects or executes the target project |
 
 ### Not implemented yet
 
-- `doctor`: deferred to M2. M1 `resolve` already emits machine-readable `sources[]`, `confidence`, `coverage`, `warnings[]`, and distinguishable failure modes.
-- A project-local configuration file. `policy.schema.json` reserves `project.config`, but M1 does not read such a file.
+- A project-local configuration file. `policy.schema.json` reserves `project.config`, but M2 does not read such a file.
 - Laravel, Symfony, or other framework rule packs.
 - PHPCompatibility, PHPStan deprecation, or Rector target-project adapters.
-- Auto-fixes, target-project writes, PHAR distribution, agent marketplace manifests, or network rule fetching.
+- Auto-fixes, target-project writes, agent marketplace manifests, or network rule fetching.
 
 `composer.json` `conflict.php` constraints are supported. A known PHP minor is removed only when the conflict covers that minor's complete interval; a patch-level conflict such as `8.3.5` does not remove all of PHP 8.3. An explicit override—`--php`, `config.platform.php`, a Composer lock platform override, or `runtime-observed` mode—directly determines the effective version and bypasses range inference from `require.php` and `conflict.php`.
+
+## Agent distribution
+
+M2 makes the M1 engine consumable by coding agents that do not vendor this repository: a distributable Claude Agent Skill, a plain-Markdown `AGENTS.md` wrapper for Codex-compatible agents, and a CI-built PHAR attached to each release.
+
+Install the skill personally:
+
+```bash
+mkdir -p ~/.claude/skills
+cp -R skills/php-modern-guidelines ~/.claude/skills/
+```
+
+Or inside a consuming project:
+
+```bash
+mkdir -p .claude/skills
+cp -R skills/php-modern-guidelines .claude/skills/
+```
+
+For agents that read `AGENTS.md` by convention instead of a skill mechanism, paste the block from [`skills/agents-md/SNIPPET.md`](skills/agents-md/SNIPPET.md) into the consuming project's own `AGENTS.md`.
+
+Install the released PHAR and verify it before running it:
+
+```bash
+curl -fsSL -o php-modern-guidelines.phar \
+  https://github.com/trionnemesis/php-modern-guidelines/releases/latest/download/php-modern-guidelines.phar
+curl -fsSL -o php-modern-guidelines.phar.sha256 \
+  https://github.com/trionnemesis/php-modern-guidelines/releases/latest/download/php-modern-guidelines.phar.sha256
+sha256sum -c php-modern-guidelines.phar.sha256
+php php-modern-guidelines.phar version
+```
+
+The package is not published on Packagist yet, so there is no `composer require` install path; the [Quick start](#quick-start) git checkout below and this PHAR are the two supported installs.
+
+The skill and `AGENTS.md` text are contract-tested against the real CLI, not review-tested: every command, option, exit code and rule id they name must exist in the real CLI, and every worked example is executed and compared byte-for-byte, so the instructions cannot silently drift from the tool.
+
+The PHAR is built and smoke-tested in CI on the PHP 8.2 floor and published with a SHA-256 checksum; see [ADR-007](docs/adr/ADR-007-phar-build-and-distribution.md) for exactly what "reproducible" does and does not mean here—it is not a claim of byte-identical archives or pinned dependency versions across builds.
 
 ## Policy flow
 
@@ -85,16 +124,17 @@ php bin/php-modern-guidelines version
 Expected output:
 
 ```text
-php-modern-guidelines 0.1.0
+php-modern-guidelines 0.2.0
 ```
 
-Resolve a target-project policy, list applicable rules, and explain one rule:
+Resolve a target-project policy, list applicable rules, explain one rule, and diagnose the tool's own inputs:
 
 ```bash
 php bin/php-modern-guidelines resolve --project-root=/path/to/app
 php bin/php-modern-guidelines resolve --project-root=/path/to/app --json
 php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 php bin/php-modern-guidelines explain language.property_hooks --project-root=/path/to/app
+php bin/php-modern-guidelines doctor --project-root=/path/to/app
 ```
 
 For a target project declaring `require.php: ^8.2`, representative `resolve` output is:
@@ -138,13 +178,17 @@ composer check
 | `4` | A valid PHP constraint contains none of the PHP minors known to this tool, so policy resolution cannot proceed |
 | `5` | Invalid rule data, such as a malformed rule, duplicate id, or filename/id mismatch |
 
-For any non-zero exit, human-readable output is written to stderr. In `--json` mode, stdout remains byte-empty so JSON consumers never receive a partial document.
+For any non-zero exit from `resolve`, `list-rules` or `explain`, human-readable output is written to stderr, and in `--json` mode stdout remains byte-empty so JSON consumers never receive a partial document. `doctor` is the one documented exception: its report *is* the diagnosis, so it prints the complete report on stdout and leaves stderr empty even when it exits non-zero—except for a mistake in `doctor`'s own options, which is rejected before any check runs and still prints nothing on stdout.
 
 ### `list-rules`
 
 `list-rules` implements the original plan's `list` query, but Symfony Console reserves `list` for its built-in command index. This project therefore uses `list-rules` and provides `rules` as an alias.
 
 By default, it hides rules with `not_in_range` status. Use `--all` to show every rule. `--kind`, `--category`, `--priority`, and `--status` are repeatable and can be combined with `--extension` and `--minor`. `-r` and `-m` are shorthand for `--project-root` and `--mode`.
+
+### `doctor`
+
+`doctor` runs nine fixed, ordered, read-only checks over this tool's own inputs and installation for a target project: the running build (version, and whether it runs from a PHAR or from source), the project root, `composer.json` and `composer.lock` presence/readability/JSON validity, the declared PHP values, the resolved policy summary, both bundled schemas, and the effective rules directory and its load. Each check reports a status (`ok` / `warn` / `fail` / `skipped`), a fixed one-line summary and a fixed set of detail keys, in both human-readable and `--json` form; the JSON form carries `output_version` like `list-rules` and `explain`. It introduces no new exit code—the process exit code is whichever of `1` / `2` / `4` / `5` the first failing check would already produce today. As noted above, `doctor` prints its complete report on stdout even when it exits non-zero, because the report is the diagnosis; a mistake in `doctor`'s own options is the one case that still prints nothing.
 
 ## PHP coverage and fail-safe behavior
 
@@ -208,8 +252,8 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 |---|---|---|---|
 | **M0 Foundation** | `v0.0.1` | ✅ Complete: repository contracts, CLI skeleton, schemas, CI, and static Pages | Foundation contract established |
 | **M1 Core parity** | `v0.1.0` | ✅ Complete: Composer Semver resolver, two-axis policy, rule registry, `resolve` / `list-rules` / `explain`, and 16 seed rules | Framework packs and target analyzers do not enter M1 |
-| **M2 Agent distribution** | `v0.2.0` | Next: Agent Skill, PHAR packaging direction, and Codex/Claude-compatible wrapper | Depends on the stable M1 CLI and JSON contract |
-| **M3 Verification adapters** | `v0.3.0` | Planned: PHPCompatibility, PHPStan deprecation, and Rector advisory integration | Advisory and read-only by default |
+| **M2 Agent distribution** | `v0.2.0` | ✅ Complete: Agent Skill, Codex/AGENTS.md wrapper, CI-built PHAR attached to releases, and bounded `doctor` | Depends on the stable M1 CLI and JSON contract |
+| **M3 Verification adapters** | `v0.3.0` | Next: PHPCompatibility, PHPStan deprecation, and Rector advisory integration | Advisory and read-only by default |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
 ## Repository structure
@@ -223,6 +267,9 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | `tests/` | CLI, schema, and static-page verification |
 | `site/` | Dependency-free GitHub Pages overview |
 | `.github/workflows/` | CI, Pages, and release workflows |
+| `skills/` | Distributable Agent Skill and Codex-compatible `AGENTS.md` snippet |
+| `box.json.dist` | Committed PHAR build configuration; the build tool is installed in CI only |
+| `tools/` | CI-only build helper scripts |
 
 ## Inspiration and attribution
 

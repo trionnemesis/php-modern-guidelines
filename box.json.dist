@@ -1,0 +1,10 @@
+{
+    "output": "build/php-modern-guidelines.phar",
+    "alias": "php-modern-guidelines.phar",
+    "banner": "Modern PHP Guidelines - version-aware PHP policy and rule-query CLI.\nApache-2.0. https://github.com/trionnemesis/php-modern-guidelines",
+    "force-autodiscovery": true,
+    "directories": [
+        "resources/rules",
+        "schemas"
+    ]
+}

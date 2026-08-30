@@ -2,6 +2,59 @@
 
 All notable changes will be documented in this file.
 
+## [0.2.0] - 2026-08-30
+
+### Added
+
+- Reproducible PHAR packaging: a committed `box.json.dist`, a CI job that builds the archive on the PHP
+  8.2 floor and smoke-tests it against a project fixture, and a release step that attaches
+  `php-modern-guidelines.phar` and `php-modern-guidelines.phar.sha256` to the guarded GitHub release.
+- CI proof that the build is content-deterministic (two builds in one job, compared by sorted archive
+  entries and a SHA-256 hash per entry) and that the archive's `resolve --json` output is byte-identical
+  to the source checkout's for the same fixture.
+- A distributable Claude Agent Skill in `skills/php-modern-guidelines/` and a Codex-compatible
+  `AGENTS.md` snippet in `skills/agents-md/`, teaching an agent to resolve the project policy and query
+  the rules before writing PHP, and to keep the feature and lifecycle ceilings separate.
+- Tests that keep the agent-facing text truthful: every command, option, exit code and rule id the skill
+  names must exist in the real CLI, every documented example is executed and compared byte-for-byte, and
+  a command or option that exists but is undocumented fails the suite too.
+- `doctor`: a read-only diagnostic of this tool's own inputs and installation — the running build, the
+  project root, `composer.json` / `composer.lock` readability and JSON validity, the declared PHP values,
+  the resolved policy summary, both bundled schemas, and the rules directory and its load — in human and
+  JSON form.
+- ADR-007, recording the PHAR build tool, its CI-only placement, the reproducibility definition, and the
+  measured reason for rejecting a Composer dev dependency.
+
+### Changed
+
+- `doctor` was listed as "not included" in 0.1.0 and is now implemented. The 0.1.0 reasoning — that
+  `resolve` already reports every readable input and every failure mode — held for a repository-local
+  tool. Shipping a PHAR and third-party agent instructions added two questions `resolve` structurally
+  cannot answer: whether a distribution's bundled rules and schemas are intact, and why the tool declined
+  to answer, given that `resolve` fails closed with byte-empty stdout.
+- `doctor` is the only command that prints its complete report when it exits non-zero, because the report
+  is the diagnosis. It never prints a partial document, and a mistake in `doctor`'s own options is still
+  rejected with byte-empty stdout like every other command. No new exit code was introduced.
+- The build tool is pinned to an exact version and installed in CI only; `composer.json` gained no new
+  `require` or `require-dev` entry, so `composer check` stays green without any PHAR toolchain.
+
+### Not included
+
+- PHPCompatibility, PHPStan-deprecation and Rector target-project adapters (M3), and framework rule packs
+  (M4).
+- New PHP rules or PHP lifecycle facts: the sixteen seed rules are unchanged.
+- Agent marketplace manifests, plugin manifests, and any agent-runtime registration beyond the skill files
+  and the `AGENTS.md` snippet.
+- Auto-fixes, target-project writes, project-local configuration files, and network-based rule fetching.
+- Byte-identical PHAR reproducibility: a PHAR embeds per-entry modification times and an archive
+  signature, so ADR-007 claims and tests content-determinism instead.
+- Packagist publication. The package is not registered on Packagist, so there is no
+  `composer require` install path in `0.2.0`. The documented install paths are a git checkout and the
+  released PHAR verified with its `.sha256` file.
+- Pinned dependency resolution for the PHAR build. No `composer.lock` is committed, so each build resolves
+  `symfony/console`, `opis/json-schema` and `composer/semver` fresh within the ranges `composer.json`
+  declares. Content-determinism is proven within a single build job, not across jobs or across releases.
+
 ## [0.1.0] - 2026-08-30
 
 ### Added

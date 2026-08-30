@@ -93,3 +93,12 @@ a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-r
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+.hero-facts { list-style: none; margin: 1.1rem 0 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; color: var(--muted); font-size: .85rem; }
+.hero-facts li + li::before { content: "·"; margin-right: .55rem; color: var(--violet); }
+
+.version-card .meta { text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; color: var(--muted); margin: .8rem 0 0; }
+
+@media (max-width: 720px) {
+  .hero-facts { gap: .4rem .55rem; }
+}
