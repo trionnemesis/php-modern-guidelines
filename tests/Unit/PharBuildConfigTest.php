@@ -33,11 +33,16 @@ final class PharBuildConfigTest extends TestCase
         self::assertNotSame([], $config);
     }
 
-    public function testMainEntryPoint(): void
+    public function testMainEntryPointComesFromComposerBin(): void
     {
+        // "main" is omitted from box.json.dist: box 4.7.0 derives it from composer.json's
+        // "bin" entry, and setting it explicitly to that same value makes `box validate`
+        // exit 1 with a "can be omitted" recommendation (CI run 33321877654).
         $config = $this->boxConfig();
+        self::assertArrayNotHasKey('main', $config);
 
-        self::assertSame('bin/php-modern-guidelines', $config['main']);
+        $composer = JsonFile::readArray($this->root() . '/composer.json', 'composer.json');
+        self::assertSame(['bin/php-modern-guidelines'], $composer['bin']);
         self::assertFileExists($this->root() . '/bin/php-modern-guidelines');
     }
 
@@ -56,22 +61,34 @@ final class PharBuildConfigTest extends TestCase
         self::assertStringEndsWith('.phar', $config['alias']);
     }
 
-    public function testAlgorithmAndCompressionAndChmod(): void
+    public function testDefaultValuedKeysAreOmittedSoBoxValidateStaysClean(): void
     {
+        // box 4.7.0's `box validate` exits 1 when a setting is explicitly set to its default
+        // value ("passed the validation with recommendations", CI run 33321877654). The build
+        // therefore relies on box's defaults for these settings — main from composer.json bin,
+        // check-requirements on, dev files and composer files excluded, autoload dumped,
+        // compression NONE, chmod 0755, algorithm SHA512 — and this guard keeps the config
+        // recommendation-free.
         $config = $this->boxConfig();
 
-        self::assertSame('NONE', $config['compression']);
-        self::assertSame('SHA512', $config['algorithm']);
-        self::assertSame('0755', $config['chmod']);
-    }
+        $defaultValued = [
+            'main',
+            'chmod',
+            'algorithm',
+            'compression',
+            'check-requirements',
+            'dump-autoload',
+            'exclude-composer-files',
+            'exclude-dev-files',
+        ];
 
-    public function testExcludeAndAutoloadFlags(): void
-    {
-        $config = $this->boxConfig();
-
-        self::assertTrue($config['exclude-dev-files']);
-        self::assertTrue($config['exclude-composer-files']);
-        self::assertTrue($config['dump-autoload']);
+        foreach ($defaultValued as $key) {
+            self::assertArrayNotHasKey(
+                $key,
+                $config,
+                sprintf('box.json.dist must omit default-valued key "%s" or `box validate` exits 1.', $key),
+            );
+        }
     }
 
     public function testDirectoriesAreBundledAndExist(): void
