@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering a contribution. M0 is intentionally narrow: keep changes aligned with the active milestone and avoid bringing later resolver, rule, adapter, framework, auto-fix, PHAR, or marketplace work into a foundation change.
+Thank you for considering a contribution. This repository is at M1 (`0.1.0`): the Composer Semver policy resolver, the two-axis rule registry, and the `resolve` / `list-rules` / `explain` commands are implemented. Keep changes aligned with the active milestone and avoid bringing forward later framework-pack, analyzer/adapter, auto-fix, PHAR, or marketplace work into an M1 change.
 
 ## Development checks
 
@@ -22,4 +22,4 @@ composer check
 - Preserve the two-axis policy: feature and lifecycle ceilings are distinct.
 - Add or update tests for every behavior change.
 
-See the ADRs in `docs/adr/` for the binding M0 decisions.
+See the ADRs in `docs/adr/` for the binding architecture decisions.

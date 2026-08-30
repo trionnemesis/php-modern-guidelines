@@ -31,9 +31,9 @@
             </div>
           </div>
           <aside class="version-card" aria-label="Current release status">
-            <span class="status-dot" aria-hidden="true"></span><span>M0 foundation / alpha</span>
-            <strong>v0.0.1</strong>
-            <p>CLI skeleton, schemas, CI, ADRs, and this static documentation site are available. Composer policy resolution and factual PHP rules are the next milestone.</p>
+            <span class="status-dot" aria-hidden="true"></span><span>M1 core parity / alpha</span>
+            <strong>v0.1.0</strong>
+            <p>Composer Semver policy resolution, a two-axis rule registry, and the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands are implemented with 16 source-backed PHP 8.2–8.5 rules. Framework packs and analyzer adapters remain out of scope.</p>
           </aside>
         </div>
       </section>
@@ -44,15 +44,15 @@
           <article class="axis feature"><span>01</span><h3>Feature ceiling</h3><p>The lowest PHP minor that must remain supported. New syntax or APIs cannot silently raise the project's minimum requirement.</p></article>
           <article class="axis lifecycle"><span>02</span><h3>Lifecycle ceiling</h3><p>The highest known PHP minor still inside the supported range. Newer deprecations and removals must not be ignored.</p></article>
         </div>
-        <p class="caption">The planned M1 resolver keeps these values separate instead of treating the developer's local runtime as the project's compatibility policy.</p>
+        <p class="caption">The resolver keeps these values separate instead of treating the developer's local runtime as the project's compatibility policy.</p>
       </section>
 
       <section class="container section">
-        <div class="section-heading"><p class="eyebrow">M0 capability</p><h2>Small enough to verify, explicit about what is missing.</h2></div>
+        <div class="section-heading"><p class="eyebrow">M1 capability</p><h2>Small enough to verify, explicit about what is missing.</h2></div>
         <div class="cards">
-          <article class="card"><h3>Available now</h3><ul><li><code>php-modern-guidelines version</code></li><li>Rule and policy JSON Schema contracts</li><li>PHP 8.2–8.5 CI matrix</li><li>Six architecture decision records</li></ul></article>
-          <article class="card"><h3>Next: M1</h3><ul><li>Composer Semver compatibility resolver</li><li>Two-axis policy output</li><li><code>resolve</code>, <code>list</code>, and <code>explain</code></li><li>Official-source PHP seed rules</li></ul></article>
-          <article class="card muted"><h3>Deliberately later</h3><ul><li>Framework-specific rule packs</li><li>Target-project analyzer adapters</li><li>Rector advisory integration</li><li>Auto-fixing or target-project writes</li></ul></article>
+          <article class="card"><h3>Available now</h3><ul><li><code>php-modern-guidelines resolve</code> / <code>list-rules</code> / <code>explain</code></li><li>Deterministic <code>policy.schema.json</code> JSON</li><li>16 source-backed PHP 8.2–8.5 rules</li><li>PHP 8.2–8.5 CI matrix</li></ul></article>
+          <article class="card"><h3>Next: M2</h3><ul><li>Agent Skill packaging</li><li>PHAR packaging direction</li><li>Codex/Claude-compatible wrappers</li></ul></article>
+          <article class="card muted"><h3>Deliberately later</h3><ul><li><code>doctor</code></li><li>Framework-specific rule packs</li><li>Target-project analyzer adapters</li><li>Rector advisory integration</li><li>Auto-fixing or target-project writes</li></ul></article>
         </div>
       </section>
 
@@ -63,14 +63,14 @@
           <article class="card"><h3>2 · Query</h3><ul><li>Filter rules by applicable PHP versions</li><li>Keep rule IDs and JSON output stable</li><li>Use authoritative PHP provenance</li></ul></article>
           <article class="card"><h3>3 · Advise</h3><ul><li>Return small agent-readable guidance</li><li>Do not execute the target project</li><li>Do not modify target code by default</li></ul></article>
         </div>
-        <p class="caption">Resolve and query behavior shown here is the approved roadmap direction. M0 currently exposes only the foundation contracts and <code>version</code> command.</p>
+        <p class="caption">This resolve / query / advise flow is implemented and read-only: it reads <code>composer.json</code> and <code>composer.lock</code> only, and never executes or writes to the analyzed project.</p>
       </section>
 
       <section class="container section" id="roadmap">
         <div class="section-heading"><p class="eyebrow">Roadmap</p><h2>Small, reviewable milestones with explicit boundaries.</h2></div>
         <ol class="roadmap" role="list">
-          <li class="current"><strong>M0 · v0.0.1</strong><span>Repository contracts, CLI skeleton, schemas, CI, ADRs, and static Pages source.</span></li>
-          <li><strong>M1 · v0.1.0</strong><span>Composer Semver resolver, two-axis policy, rule registry, query commands, and verified PHP seed rules.</span></li>
+          <li><strong>M0 · v0.0.1 (complete)</strong><span>Repository contracts, CLI skeleton, schemas, CI, ADRs, and static Pages source.</span></li>
+          <li class="current"><strong>M1 · v0.1.0</strong><span>Implemented: Composer Semver resolver, two-axis policy, rule registry, the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands, and 16 verified PHP seed rules.</span></li>
           <li><strong>M2 · v0.2.0</strong><span>Agent Skill, PHAR packaging direction, and Codex/Claude-compatible wrappers after M1 contracts stabilize.</span></li>
           <li><strong>M3 · v0.3.0</strong><span>Explicit opt-in PHPCompatibility, PHPStan-deprecation, and Rector advisory adapters.</span></li>
           <li><strong>M4 · v0.4.x</strong><span>Isolated framework rule packs without mixing framework conventions into PHP Core policy.</span></li>
@@ -79,11 +79,11 @@
 
       <section class="container section trust" id="trust">
         <div class="section-heading"><p class="eyebrow">Trust boundary</p><h2>Designed to advise, not to act on your project.</h2></div>
-        <p>Future core commands are required to remain deterministic and read-only: no target PHP execution, no analyzed-project <code>vendor/autoload.php</code>, no Composer scripts or plugins, no network requirement for core resolution, and no writes to the analyzed repository.</p>
+        <p>Core commands are deterministic and read-only: no target PHP execution, no analyzed-project <code>vendor/autoload.php</code>, no Composer scripts or plugins, no network requirement for core resolution, and no writes to the analyzed repository.</p>
         <p>PHP language, Core, and bundled-extension facts must be backed by authoritative PHP sources and a review date. If a fact cannot be established, the project should leave the rule absent or explicitly uncertain rather than guess.</p>
         <p class="attribution">Primary inspiration: <a href="https://github.com/JetBrains/go-modern-guidelines">JetBrains/go-modern-guidelines</a>. Modern PHP Guidelines is an independent implementation and is not affiliated with or endorsed by JetBrains. Its narrow version-policy focus is also distinct from <a href="https://github.com/netresearch/php-modernization-skill">netresearch/php-modernization-skill</a>.</p>
       </section>
     </main>
-    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M0 v0.0.1</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
+    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M1 v0.1.0</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
   </body>
 </html>
