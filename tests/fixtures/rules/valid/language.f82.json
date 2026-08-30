@@ -1,0 +1,37 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.f82",
+    "title": "Fixture: language.f82",
+    "summary": "Synthetic fixture rule for ApplicabilityEvaluatorTest; not a real guideline.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P2",
+    "introduced_in": "8.2",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Fixture only; not real guidance.",
+    "existing_code_policy": "Fixture only; not real guidance.",
+    "guideline": "Fixture only; not real guidance.",
+    "details": "Synthetic rule used solely by ApplicabilityEvaluatorTest.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": []
+}

@@ -1,0 +1,37 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.removed_without_removed_in",
+    "title": "Fixture: language.removed_without_removed_in",
+    "summary": "Synthetic invalid fixture rule for RuleLoaderTest; not a real guideline.",
+    "category": "language",
+    "kind": "removed",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Fixture only; not real guidance.",
+    "existing_code_policy": "Fixture only; not real guidance.",
+    "guideline": "Fixture only; not real guidance.",
+    "details": "Synthetic rule used solely by RuleLoaderTest.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": []
+}
