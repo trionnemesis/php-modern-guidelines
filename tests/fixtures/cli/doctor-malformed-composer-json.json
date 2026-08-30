@@ -1,0 +1,104 @@
+{
+    "output_version": "1.0.0",
+    "status": "fail",
+    "exit_code": 2,
+    "checks": [
+        {
+            "id": "cli.build",
+            "status": "ok",
+            "summary": "php-modern-guidelines @VERSION@, source distribution",
+            "details": {
+                "version": "@VERSION@",
+                "distribution": "source"
+            }
+        },
+        {
+            "id": "project.root",
+            "status": "ok",
+            "summary": "@PROJECT_ROOT@",
+            "details": {
+                "path": "@PROJECT_ROOT@",
+                "is_directory": "yes"
+            }
+        },
+        {
+            "id": "project.composer_json",
+            "status": "fail",
+            "summary": "composer.json present but not a JSON object",
+            "details": {
+                "path": "composer.json",
+                "present": "yes",
+                "readable": "yes",
+                "json": "invalid"
+            }
+        },
+        {
+            "id": "project.composer_lock",
+            "status": "ok",
+            "summary": "composer.lock absent",
+            "details": {
+                "path": "composer.lock",
+                "present": "no",
+                "readable": "no",
+                "json": null
+            }
+        },
+        {
+            "id": "project.php_declarations",
+            "status": "skipped",
+            "summary": "skipped after project.composer_json failed",
+            "details": {
+                "require_php": null,
+                "conflict_php": null,
+                "config_platform_php": null,
+                "platform_overrides_php": null,
+                "input_warnings": null,
+                "error": null
+            }
+        },
+        {
+            "id": "policy.resolution",
+            "status": "skipped",
+            "summary": "skipped after project.composer_json failed",
+            "details": {
+                "mode": null,
+                "allowed_minors": null,
+                "feature_ceiling": null,
+                "lifecycle_ceiling": null,
+                "platform_override": null,
+                "observed_runtime": null,
+                "coverage": null,
+                "confidence": null,
+                "warnings": null,
+                "error": null
+            }
+        },
+        {
+            "id": "schemas.available",
+            "status": "ok",
+            "summary": "rule.schema.json ok, policy.schema.json ok",
+            "details": {
+                "rule_schema": "ok",
+                "policy_schema": "ok"
+            }
+        },
+        {
+            "id": "rules.directory",
+            "status": "ok",
+            "summary": "bundled rules directory, 16 rule file(s)",
+            "details": {
+                "source": "bundled",
+                "file_count": "16"
+            }
+        },
+        {
+            "id": "rules.load",
+            "status": "ok",
+            "summary": "16 rule(s) loaded",
+            "details": {
+                "loaded": "16",
+                "error": null
+            }
+        }
+    ]
+}

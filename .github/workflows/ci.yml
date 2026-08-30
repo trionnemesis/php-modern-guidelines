@@ -69,7 +69,7 @@ jobs:
           fi
           php "$phar" list-rules --project-root="$fixture" --kind=deprecated
           php "$phar" explain language.property_hooks --project-root="$fixture" --json > /dev/null
-          # Slice G replaces this line with: php "$phar" doctor --project-root="$fixture" --json > /dev/null
+          php "$phar" doctor --project-root="$fixture" --json > /dev/null
 
       - name: Compare PHAR output with the source checkout
         shell: bash

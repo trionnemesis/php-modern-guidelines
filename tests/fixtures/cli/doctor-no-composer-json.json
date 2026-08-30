@@ -1,0 +1,104 @@
+{
+    "output_version": "1.0.0",
+    "status": "warn",
+    "exit_code": 0,
+    "checks": [
+        {
+            "id": "cli.build",
+            "status": "ok",
+            "summary": "php-modern-guidelines @VERSION@, source distribution",
+            "details": {
+                "version": "@VERSION@",
+                "distribution": "source"
+            }
+        },
+        {
+            "id": "project.root",
+            "status": "ok",
+            "summary": "@PROJECT_ROOT@",
+            "details": {
+                "path": "@PROJECT_ROOT@",
+                "is_directory": "yes"
+            }
+        },
+        {
+            "id": "project.composer_json",
+            "status": "warn",
+            "summary": "composer.json absent",
+            "details": {
+                "path": "composer.json",
+                "present": "no",
+                "readable": "no",
+                "json": null
+            }
+        },
+        {
+            "id": "project.composer_lock",
+            "status": "ok",
+            "summary": "composer.lock absent",
+            "details": {
+                "path": "composer.lock",
+                "present": "no",
+                "readable": "no",
+                "json": null
+            }
+        },
+        {
+            "id": "project.php_declarations",
+            "status": "ok",
+            "summary": "declared PHP values read, no input warnings",
+            "details": {
+                "require_php": null,
+                "conflict_php": null,
+                "config_platform_php": null,
+                "platform_overrides_php": null,
+                "input_warnings": null,
+                "error": null
+            }
+        },
+        {
+            "id": "policy.resolution",
+            "status": "warn",
+            "summary": "range-safe: feature 8.2, lifecycle 8.5, coverage unknown (known 8.2-8.5), 1 warning(s)",
+            "details": {
+                "mode": "range-safe",
+                "allowed_minors": "8.2, 8.3, 8.4, 8.5",
+                "feature_ceiling": "8.2",
+                "lifecycle_ceiling": "8.5",
+                "platform_override": null,
+                "observed_runtime": null,
+                "coverage": "unknown (known 8.2-8.5)",
+                "confidence": "unresolved",
+                "warnings": "policy.no_php_constraint_declared",
+                "error": null
+            }
+        },
+        {
+            "id": "schemas.available",
+            "status": "ok",
+            "summary": "rule.schema.json ok, policy.schema.json ok",
+            "details": {
+                "rule_schema": "ok",
+                "policy_schema": "ok"
+            }
+        },
+        {
+            "id": "rules.directory",
+            "status": "ok",
+            "summary": "bundled rules directory, 16 rule file(s)",
+            "details": {
+                "source": "bundled",
+                "file_count": "16"
+            }
+        },
+        {
+            "id": "rules.load",
+            "status": "ok",
+            "summary": "16 rule(s) loaded",
+            "details": {
+                "loaded": "16",
+                "error": null
+            }
+        }
+    ]
+}
