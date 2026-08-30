@@ -1,0 +1,18 @@
+PHP policy
+  mode                 single-target
+  project root         @PROJECT_ROOT@
+  declared constraint  ^8.2
+  allowed minors       8.2
+  feature ceiling      8.2
+  lifecycle ceiling    8.2
+  platform override    -
+  observed runtime     -
+  coverage             coverage_gap (known 8.2-8.5, open upper bound)
+  confidence           declared
+
+Sources
+  composer.require.php  composer.json  ^8.2
+
+Warnings
+  coverage.open_upper_bound_bounded: The constraint "^8.2" allows PHP minors newer than 8.5, which this tool does not know. Lifecycle guidance stops at 8.5.
+  mode.single_target_narrowed: single-target mode narrowed 4 allowed minors (8.2, 8.3, 8.4, 8.5) to the lowest, 8.2. Both ceilings collapse to 8.2, so lifecycle guidance is narrowed too: deprecations and removals that only take effect on the dropped minors are reported as applicable rather than as deprecations. This is the mode's semantics, not a two-axis collapse. Use --php to choose a different target explicitly.

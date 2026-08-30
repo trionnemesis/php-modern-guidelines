@@ -1,0 +1,41 @@
+{
+    "schema_version": "1.0.0",
+    "id": "extension.mysqli_driver_reconnect",
+    "title": "`mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed",
+    "summary": "PHP 8.2 removed the `reconnect` property of `mysqli_driver` (it only ever worked when mysqli was linked against the legacy libmysql client library) and removed the companion `mysqli.reconnect` php.ini directive in the same release.",
+    "category": "extension",
+    "kind": "removed",
+    "priority": "P0",
+    "introduced_in": null,
+    "deprecated_in": null,
+    "removed_in": "8.2",
+    "extension": "mysqli",
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "Never assign to `mysqli_driver::$reconnect` and never set `mysqli.reconnect` in php.ini on a PHP 8.2+ target; neither exists anymore. Write connection handling that detects a lost connection explicitly (for example, catching the failure of a query with a \"MySQL server has gone away\"-style error) and reopens the connection with a fresh `mysqli_connect()` / `new mysqli(...)` call.",
+    "existing_code_policy": "Search for `->reconnect =` assignments on a `mysqli_driver` instance and for `mysqli.reconnect` in php.ini files, `.htaccess`, `ini_set()` calls or container/pool configuration. Once the project's floor reaches PHP 8.2, remove both: they no longer have any effect, and leaving them in place gives a false impression that automatic reconnection is configured. Replace the removed behavior with explicit reconnect-on-failure handling at the call sites that actually need resilience to a dropped connection.",
+    "guideline": "Do not depend on mysqli's built-in automatic reconnection. Both `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed in PHP 8.2; detect a lost connection and reconnect explicitly in application code instead.",
+    "details": "PHP 8.2 removed the `reconnect` property of `mysqli_driver` (UPGRADING-8.2.0.txt, '9. Other Changes to Extensions' -> mysqli: \"The reconnect property of mysqli_driver has been removed\"). That property only worked when the mysqli extension was compiled against the legacy libmysql client library; it had no effect under the mysqlnd driver PHP has bundled by default since 5.4, so on most modern installs it was already inert before removal. The companion `mysqli.reconnect` php.ini directive was removed in the same release and is separately listed among PHP 8.2's enumerated removed INI directives. No PHP 8.2 UPGRADING text, and no later 8.3, 8.4 or 8.5 UPGRADING file, documents an earlier deprecation minor for either the property or the directive: PHP 8.2 is the only lifecycle event on record for this feature, so `deprecated_in` stays null rather than guessing one. This rule does not assert the exact runtime symptom of code that still references the removed property or directive after upgrading (whether that surfaces as a warning, a silent no-op, or an ignored ini line) because that has not been verified against the php-src source used here; what is established is that automatic reconnection itself no longer happens, so any remaining reliance on it must be replaced with explicit application-level reconnect handling.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "No automatic replacement is offered because there is no mechanical substitute for automatic reconnection: the correct fix is application-specific connection-loss detection and an explicit reconnect, which only a human reviewing the call site can design correctly.",
+        "This is a removed-across-range case: PHP 8.2 is the lowest minor this catalogue knows about, so the removal is already in effect for every known PHP 8.2-8.5 minor with no range in which the feature is still present.",
+        "Evidence: UPGRADING-8.2.0.txt, '9. Other Changes to Extensions' -> mysqli, line 289: \"The reconnect property of mysqli_driver has been removed. It was supported only by libmysql.\" The `mysqli.reconnect` INI directive is separately listed among 8.2's removed INI directives. Grepping the 8.3, 8.4 and 8.5 UPGRADING files for \"mysqli\" and \"reconnect\" found no further mention, so nothing beyond this 8.2 removal is on record."
+    ]
+}

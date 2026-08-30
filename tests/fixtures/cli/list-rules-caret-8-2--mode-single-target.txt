@@ -1,0 +1,21 @@
+PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
+Rules: 9 of 16 shown
+
+  [deprecated_across_range]          P2  deprecated           core.dynamic_properties
+      Creation of dynamic properties is deprecated
+  [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
+      `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
+  [applicable]                       P2  deprecated           extension.curl_close
+      curl_close() is deprecated
+  [applicable]                       P0  removed              extension.imap_unbundled
+      The IMAP extension was unbundled from php-src
+  [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
+      `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
+  [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
+      "${var}"/"${expr}" string interpolation is deprecated
+  [applicable]                       P1  compatibility_guard  language.feature_ceiling_guard
+      Never emit syntax or APIs newer than the feature ceiling
+  [applicable]                       P2  deprecated           language.implicitly_nullable_parameter_types
+      Implicitly nullable parameter types are deprecated
+  [applicable]                       P1  feature              language.readonly_classes
+      Readonly classes

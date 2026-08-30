@@ -1,0 +1,55 @@
+{
+    "schema_version": "1.0.0",
+    "id": "core.array_first_last",
+    "title": "Prefer array_first() and array_last()",
+    "summary": "PHP 8.5 added array_first() and array_last(), which read an array's first and last values without touching its internal pointer, replacing the older reset()/end() and array_key_first()/array_key_last() indexing idioms for that purpose.",
+    "category": "core",
+    "kind": "modern_preference",
+    "priority": "P3",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.5 or above, prefer array_first($array) / array_last($array) over reset($array)/end($array) or array_key_first()/array_key_last()-based indexing when the goal is only to read the first or last value.",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.5, existing reset()/end() or array_key_first()/array_key_last()-indexing calls that merely read the first/last value can be replaced incrementally with array_first()/array_last(); leave alone any call site where the code also relies on reset()/end() moving the array's internal pointer for a later next()/current()/key() call, or on the false-vs-empty-value return of reset()/end() on an empty array, since array_first()/array_last() do neither.",
+    "guideline": "Use array_first($array) / array_last($array) to read the first or last element of an array instead of reset()/end() or $array[array_key_first($array)] / $array[array_key_last($array)] indexing, unless the code specifically needs the array-pointer side effect that reset()/end() also produce.",
+    "details": "PHP 8.5 added array_first($array) and array_last($array) to the Standard extension (RFC array_first_last): each returns the first or last value of $array, or null when $array is empty, and neither touches the array's internal pointer. Before 8.5, the idiomatic ways to read the first or last value were reset($array)/end($array) -- which move the internal pointer as a side effect and return false, not null, on an empty array -- or index-based access such as $array[array_key_first($array)] ?? null. 8.5 is the minor array_first()/array_last() became available, not a claim about the older reset()/end() idiom this rule replaces.",
+    "examples": [
+        {
+            "before": [
+                "$first = reset($items);",
+                "// or: $first = $items[array_key_first($items)] ?? null;"
+            ],
+            "after": [
+                "$first = array_first($items);"
+            ]
+        },
+        {
+            "before": [
+                "$last = end($items);",
+                "// or: $last = $items[array_key_last($items)] ?? null;"
+            ],
+            "after": [
+                "$last = array_last($items);"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "array_first()/array_last() return null for an empty array and never move the array's internal pointer, unlike reset()/end(), which return false on an empty array and move the pointer to the first/last element as a side effect -- a blind replacement is unsafe wherever that pointer movement or the false return value is relied upon elsewhere.",
+        "array_key_first($array) !== null / array_key_last($array) !== null remain the correct way to check whether an array has any elements at all when the key itself is also needed; array_first()/array_last() only ever hand back the value."
+    ]
+}

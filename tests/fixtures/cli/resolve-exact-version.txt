@@ -1,0 +1,14 @@
+PHP policy
+  mode                 range-safe
+  project root         @PROJECT_ROOT@
+  declared constraint  8.3.7
+  allowed minors       8.3
+  feature ceiling      8.3
+  lifecycle ceiling    8.3
+  platform override    -
+  observed runtime     -
+  coverage             complete (known 8.2-8.5)
+  confidence           declared
+
+Sources
+  composer.require.php  composer.json  8.3.7

@@ -1,0 +1,35 @@
+{
+    "schema_version": "1.0.0",
+    "mode": "range-safe",
+    "project_root": "@PROJECT_ROOT@",
+    "declared_constraint": ">=8.2 <8.4",
+    "allowed_minors": [
+        "8.5"
+    ],
+    "feature_ceiling": "8.5",
+    "lifecycle_ceiling": "8.5",
+    "platform_override": "8.5.0",
+    "observed_runtime": null,
+    "coverage": {
+        "status": "complete",
+        "known_min": "8.2",
+        "known_max": "8.5",
+        "open_upper_bound": false
+    },
+    "confidence": "declared",
+    "sources": [
+        {
+            "type": "composer.lock",
+            "path": "composer.lock",
+            "value": "8.5.0"
+        },
+        {
+            "type": "composer.require.php",
+            "path": "composer.json",
+            "value": ">=8.2 <8.4"
+        }
+    ],
+    "warnings": [
+        "policy.platform_override_outside_declared_constraint: The platform override \"8.5.0\" is not satisfied by the declared constraint \">=8.2 <8.4\"; the override still determines the policy."
+    ]
+}

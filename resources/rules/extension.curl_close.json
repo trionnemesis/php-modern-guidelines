@@ -1,0 +1,52 @@
+{
+    "schema_version": "1.0.0",
+    "id": "extension.curl_close",
+    "title": "curl_close() is deprecated",
+    "summary": "PHP 8.5 deprecates curl_close() because CurlHandle objects are freed automatically once nothing references them, making the explicit close call unnecessary.",
+    "category": "extension",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": "curl",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Do not call curl_close() on a cURL handle. Let the $ch variable go out of scope, or unset($ch) if you need to release it sooner; PHP frees the underlying CurlHandle object automatically.",
+    "existing_code_policy": "On PHP 8.5+, curl_close() calls raise a deprecation notice; remove them once the codebase no longer needs to run on PHP 8.2-8.4, where the call remains valid and non-deprecated.",
+    "guideline": "Stop calling curl_close() on cURL handles returned by curl_init(). Since PHP 8.0, curl_init() returns a CurlHandle object rather than a resource, and PHP's normal object lifecycle already frees it once it is no longer referenced, so the explicit close call is redundant and, on PHP 8.5+, deprecated.",
+    "details": "PHP 8.5 deprecates curl_close(). The official PHP 8.5 UPGRADING notes state the reason plainly: \"The curl_close() function has been deprecated, as CurlHandle objects are freed automatically\", and link the deprecations_php_8_5 RFC for the rationale; CurlHandle objects are released through PHP's object lifecycle once they go out of scope or are unset. curl_close() is not removed by this change: on every currently known minor it stays callable with its prior behavior, and it only starts emitting an E_DEPRECATED diagnostic once code runs under PHP 8.5. This rule makes no feature-availability claim, so introduced_in stays null; it is gated purely on the lifecycle axis through deprecated_in.",
+    "examples": [
+        {
+            "before": [
+                "$ch = curl_init($url);",
+                "curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);",
+                "$response = curl_exec($ch);",
+                "curl_close($ch);"
+            ],
+            "after": [
+                "$ch = curl_init($url);",
+                "curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);",
+                "$response = curl_exec($ch);",
+                "// curl_close($ch) removed: PHP frees the CurlHandle automatically once $ch goes out of scope."
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "The same UPGRADING-8.5.0 Curl section deprecates curl_share_close() for the identical reason (CurlShareHandle objects are also freed automatically); that function is a separate rule candidate and out of this rule's scope.",
+        "Removing a curl_close() call changes only when the underlying handle is released, from immediately to whenever PHP's garbage collector frees the CurlHandle object. That is usually inconsequential, but worth reviewing in code that opens many handles in a tight loop without reusing or unsetting them, which is why behavior_change_risk is \"low\" rather than \"none\".",
+        "curl_close() remains valid, callable and non-deprecated on PHP 8.2-8.4; only code that must also run on PHP 8.5+ needs to stop calling it."
+    ]
+}

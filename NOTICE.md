@@ -7,8 +7,8 @@ Copyright 2026 trionnemesis.
 whose repository is distributed under the Apache License 2.0:
 https://github.com/JetBrains/go-modern-guidelines/blob/main/LICENSE
 
-No source files from that repository have been copied or modified in this M0
-foundation. This notice records attribution and does not imply affiliation,
+No source files from that repository have been copied or modified in this
+repository. This notice records attribution and does not imply affiliation,
 endorsement, or a derivative-work claim.
 
 JetBrains and GoLand are trademarks of their respective owners. This project is

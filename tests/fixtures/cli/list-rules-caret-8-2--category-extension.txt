@@ -1,0 +1,9 @@
+PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
+Rules: 3 of 16 shown
+
+  [deprecated_in_range]              P2  deprecated           extension.curl_close
+      curl_close() is deprecated
+  [removed_in_range]                 P0  removed              extension.imap_unbundled
+      The IMAP extension was unbundled from php-src
+  [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
+      `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed

@@ -1,0 +1,33 @@
+{
+    "schema_version": "1.0.0",
+    "mode": "range-safe",
+    "project_root": "@PROJECT_ROOT@",
+    "declared_constraint": "^8.2",
+    "allowed_minors": [
+        "8.4"
+    ],
+    "feature_ceiling": "8.4",
+    "lifecycle_ceiling": "8.4",
+    "platform_override": null,
+    "observed_runtime": null,
+    "coverage": {
+        "status": "complete",
+        "known_min": "8.2",
+        "known_max": "8.5",
+        "open_upper_bound": false
+    },
+    "confidence": "explicit",
+    "sources": [
+        {
+            "type": "cli.php_version",
+            "path": null,
+            "value": "8.4"
+        },
+        {
+            "type": "composer.require.php",
+            "path": "composer.json",
+            "value": "^8.2"
+        }
+    ],
+    "warnings": []
+}

@@ -1,0 +1,1 @@
+{"name": "fixture/no-php-constraint", "require": {"ext-json": "*"}}

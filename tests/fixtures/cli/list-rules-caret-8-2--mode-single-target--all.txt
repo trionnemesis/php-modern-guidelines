@@ -1,0 +1,35 @@
+PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
+Rules: 16 of 16 shown
+
+  [not_in_range]                     P1  feature              core.array_find_functions
+      array_find(), array_find_key(), array_any() and array_all()
+  [not_in_range]                     P3  modern_preference    core.array_first_last
+      Prefer array_first() and array_last()
+  [deprecated_across_range]          P2  deprecated           core.dynamic_properties
+      Creation of dynamic properties is deprecated
+  [not_in_range]                     P3  modern_preference    core.json_validate
+      Prefer `json_validate()` over decode-and-check
+  [not_in_range]                     P1  feature              core.override_attribute
+      #[\Override] attribute
+  [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
+      `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
+  [applicable]                       P2  deprecated           extension.curl_close
+      curl_close() is deprecated
+  [applicable]                       P0  removed              extension.imap_unbundled
+      The IMAP extension was unbundled from php-src
+  [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
+      `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
+  [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
+      "${var}"/"${expr}" string interpolation is deprecated
+  [applicable]                       P1  compatibility_guard  language.feature_ceiling_guard
+      Never emit syntax or APIs newer than the feature ceiling
+  [applicable]                       P2  deprecated           language.implicitly_nullable_parameter_types
+      Implicitly nullable parameter types are deprecated
+  [not_in_range]                     P1  feature              language.pipe_operator
+      Pipe operator (`|>`)
+  [not_in_range]                     P1  feature              language.property_hooks
+      Property hooks
+  [applicable]                       P1  feature              language.readonly_classes
+      Readonly classes
+  [not_in_range]                     P1  feature              language.typed_class_constants
+      Typed class, interface, trait and enum constants

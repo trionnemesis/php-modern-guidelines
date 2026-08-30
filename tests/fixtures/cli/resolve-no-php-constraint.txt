@@ -1,0 +1,17 @@
+PHP policy
+  mode                 range-safe
+  project root         @PROJECT_ROOT@
+  declared constraint  -
+  allowed minors       8.2, 8.3, 8.4, 8.5
+  feature ceiling      8.2
+  lifecycle ceiling    8.5
+  platform override    -
+  observed runtime     -
+  coverage             unknown (known 8.2-8.5)
+  confidence           unresolved
+
+Sources
+  composer.require.php  composer.json  -
+
+Warnings
+  policy.no_php_constraint_declared: No PHP constraint could be determined for this project (composer.json is missing, or declares no require.php); the policy falls back to every PHP minor known to this tool (8.2-8.5) with unresolved confidence.

@@ -1,0 +1,18 @@
+PHP policy
+  mode                 range-safe
+  project root         @PROJECT_ROOT@
+  declared constraint  >=8.2 <8.4
+  allowed minors       8.5
+  feature ceiling      8.5
+  lifecycle ceiling    8.5
+  platform override    8.5.0
+  observed runtime     -
+  coverage             complete (known 8.2-8.5)
+  confidence           declared
+
+Sources
+  composer.lock         composer.lock  8.5.0
+  composer.require.php  composer.json  >=8.2 <8.4
+
+Warnings
+  policy.platform_override_outside_declared_constraint: The platform override "8.5.0" is not satisfied by the declared constraint ">=8.2 <8.4"; the override still determines the policy.

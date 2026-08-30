@@ -5,8 +5,10 @@
   "license": "Apache-2.0",
   "keywords": ["php", "composer", "guidelines", "coding-agents"],
   "require": {
-    "composer-runtime-api": "^2.2",
     "php": ">=8.2",
+    "composer-runtime-api": "^2.2",
+    "composer/semver": "^3.4",
+    "opis/json-schema": "^2.4",
     "symfony/console": "^6.4 || ^7.0"
   },
   "require-dev": {

@@ -1,0 +1,14 @@
+PHP policy
+  mode                 single-target
+  project root         @PROJECT_ROOT@
+  declared constraint  ~8.2.0
+  allowed minors       8.2
+  feature ceiling      8.2
+  lifecycle ceiling    8.2
+  platform override    -
+  observed runtime     -
+  coverage             complete (known 8.2-8.5)
+  confidence           declared
+
+Sources
+  composer.require.php  composer.json  ~8.2.0

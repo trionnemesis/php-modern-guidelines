@@ -1,0 +1,40 @@
+{
+    "schema_version": "1.0.0",
+    "mode": "range-safe",
+    "project_root": "@PROJECT_ROOT@",
+    "declared_constraint": "^8.2",
+    "allowed_minors": [
+        "8.2"
+    ],
+    "feature_ceiling": "8.2",
+    "lifecycle_ceiling": "8.2",
+    "platform_override": "8.2.0",
+    "observed_runtime": null,
+    "coverage": {
+        "status": "complete",
+        "known_min": "8.2",
+        "known_max": "8.5",
+        "open_upper_bound": false
+    },
+    "confidence": "declared",
+    "sources": [
+        {
+            "type": "composer.platform.php",
+            "path": "composer.json",
+            "value": "8.2.0"
+        },
+        {
+            "type": "composer.lock",
+            "path": "composer.lock",
+            "value": "8.3.0"
+        },
+        {
+            "type": "composer.require.php",
+            "path": "composer.json",
+            "value": "^8.2"
+        }
+    ],
+    "warnings": [
+        "input.composer_lock_platform_mismatch: composer.lock platform-overrides.php is \"8.3.0\" but composer.json config.platform.php is \"8.2.0\"; composer.json wins. Run \"composer update --lock\" in the project to re-sync."
+    ]
+}
