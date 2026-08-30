@@ -1,0 +1,42 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.pipe_operator",
+    "title": "Pipe operator (`|>`)",
+    "summary": "PHP 8.5 adds a pipe operator: `$value |> callable` invokes `callable` with `$value` as its only argument, so a chain of single-argument transformations can be written left-to-right instead of nesting function calls.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.5 or above, prefer a `|>` pipe chain over deeply nested single-argument function calls when the value being transformed is the only thing changing from step to step; pair it with first-class callable syntax (`strtoupper(...)`) rather than wrapping each step in a closure.",
+    "existing_code_policy": "Do not bulk-convert nested function calls to pipe chains. Nesting and piping are only equivalent when every intermediate call takes exactly the piped value as its sole argument; a call that also needs extra arguments (e.g. `array_map($fn, $list)`) requires wrapping in a closure or first-class-callable partial before it can sit in a chain, which changes the line rather than merely reordering it. Migrate a call chain only where it is already being touched for another reason and the rewrite is a clear readability win.",
+    "guideline": "Prefer `$value |> f(...) |> g(...)` over `g(f($value))` once the feature ceiling reaches PHP 8.5, for chains of single-argument transformations.",
+    "details": "PHP 8.5 added the pipe (`|>`) operator (RFC pipe-operator-v3): `$value |> $callable` calls `$callable` with `$value` as its sole argument, and the operator is left-associative, so `$value |> f(...) |> g(...)` evaluates as `g(f($value))` but reads top-to-bottom in the order the transformations happen. This is purely additive syntax; it introduces no new runtime semantics beyond ordinary function invocation and changes no existing construct. No PHP 8.2, 8.3 or 8.4 UPGRADING file mentions a pipe operator (the only pre-8.5 hits are unrelated: the `POSIX_PC_PIPE_BUF` constant in 8.3 and the `SO_NOSIGPIPE` constant in 8.4), and no later UPGRADING file records a deprecation or removal.",
+    "examples": [
+        {
+            "before": [
+                "$slug = strtolower(trim($title));"
+            ],
+            "after": [
+                "$slug = $title |> trim(...) |> strtolower(...);"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": []
+}

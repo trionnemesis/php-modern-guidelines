@@ -1,0 +1,58 @@
+{
+    "schema_version": "1.0.0",
+    "id": "core.override_attribute",
+    "title": "#[\\Override] attribute",
+    "summary": "PHP 8.3 added the #[\\Override] attribute, which marks a method as intentionally overriding a method declared by a parent class or an implemented interface.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a PHP 8.3+ floor, add #[\\Override] to every method that is meant to override a parent class or interface method, so the engine can verify the relationship at compile time.",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.3, add #[\\Override] to existing overriding methods incrementally; a genuinely mismatched \"override\" (typo, renamed or removed parent method) then surfaces as a fatal compile-time error instead of silently defining an unrelated new method.",
+    "guideline": "Mark every method that overrides a parent class or interface method with #[\\Override].",
+    "details": "PHP 8.3 introduced the #[\\Override] attribute (RFC marking_overriden_methods). Applying it to a method declares that the method is expected to override a method from a parent class, an abstract parent, or an interface it implements. If no such ancestor method exists, PHP raises a compile-time fatal error instead of silently letting the method stand as an unrelated addition. This turns a class of refactor-time drift bugs — a parent method renamed, narrowed in visibility, or removed while a subclass still assumes it exists — into an error the engine catches immediately rather than a bug found later at runtime.",
+    "examples": [
+        {
+            "before": [
+                "class FileCache extends AbstractCache",
+                "{",
+                "    public function fetch(string $key): mixed",
+                "    {",
+                "        // ...",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "class FileCache extends AbstractCache",
+                "{",
+                "    #[\\Override]",
+                "    public function fetch(string $key): mixed",
+                "    {",
+                "        // ...",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "PHP 8.5 extended #[\\Override]'s allowed targets to properties (RFC override_properties). This is a scope extension of the same attribute for an already-covered construct, not a second introduction: it does not change introduced_in and is not a second sources[] entry.",
+        "behavior_change_risk is \"low\", not \"none\": adding the attribute to a method that is not actually an override (e.g. because the parent method was already gone) converts previously-silent drift into a fatal compile-time error — a deliberate and desirable behavior change, but a real one for a blind mechanical addition."
+    ]
+}

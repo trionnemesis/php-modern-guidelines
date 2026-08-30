@@ -1,0 +1,17 @@
+PHP policy
+  mode                 range-safe
+  project root         @PROJECT_ROOT@
+  declared constraint  ^8.4
+  allowed minors       8.4, 8.5
+  feature ceiling      8.4
+  lifecycle ceiling    8.5
+  platform override    -
+  observed runtime     -
+  coverage             coverage_gap (known 8.2-8.5, open upper bound)
+  confidence           declared
+
+Sources
+  composer.require.php  composer.json  ^8.4
+
+Warnings
+  coverage.open_upper_bound_bounded: The constraint "^8.4" allows PHP minors newer than 8.5, which this tool does not know. Lifecycle guidance stops at 8.5.

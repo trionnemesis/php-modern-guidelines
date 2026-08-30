@@ -1,0 +1,42 @@
+{
+    "schema_version": "1.0.0",
+    "id": "core.strtolower_locale_insensitive",
+    "title": "`strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive",
+    "summary": "As of PHP 8.2, `strtolower()`, `strtoupper()`, and a family of related case-conversion and case-insensitive functions no longer consult the current locale; they always perform ASCII-only case conversion as if the locale were \"C\", so previously locale-dependent behavior on non-ASCII bytes changes silently.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.2",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.2+ floor, do not write code that expects strtolower()/strtoupper() (or the related functions listed in details) to case-convert non-ASCII bytes based on the process locale; they only ever touch ASCII A-Z/a-z now. When locale- or encoding-aware case folding is genuinely required, call mb_strtolower()/mb_strtoupper() with an explicit, known encoding.",
+    "existing_code_policy": "Audit call sites that feed non-ASCII input to strtolower(), strtoupper(), or the related functions under the old assumption that a non-\"C\" locale would case-convert it; on PHP 8.2+ those bytes now pass through unchanged. Do not mechanically replace every call with mb_strtolower()/mb_strtoupper() - first confirm the call site's actual input encoding and whether locale-based conversion was ever the intended behavior, since the multibyte functions require a known encoding and can themselves change output if applied blindly.",
+    "guideline": "Do not rely on strtolower()/strtoupper() or the related case-conversion/case-insensitive functions being locale-sensitive; they now always perform ASCII-only case conversion regardless of the process locale. Reach for mb_strtolower()/mb_strtoupper() with an explicit encoding when locale- or multibyte-aware case folding is actually needed.",
+    "details": "Before PHP 8.2, strtolower() and strtoupper() consulted the locale set via setlocale(LC_CTYPE, ...), so under a non-\"C\" locale they could case-convert non-ASCII bytes (for example accented Latin-1 characters) as a side effect of whatever locale happened to be active process-wide - behavior that was also process-global and easy to get wrong across threads or requests. As of PHP 8.2, both functions always behave as if the locale were \"C\": they convert only ASCII A-Z/a-z and leave every other byte untouched, no matter the active locale. The same ASCII-only treatment now applies to stristr(), stripos(), strripos(), lcfirst(), ucfirst(), ucwords(), str_ireplace(), array_change_key_case(), and SORT_FLAG_CASE-based sorting, since each relies on the same underlying case-folding primitive. mb_strtolower()/mb_strtoupper() are unaffected by this change and remain the correct tool for locale- or multibyte-aware case conversion. Here introduced_in is set to 8.2 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.2 introduced strtolower()/strtoupper() themselves, which have existed since PHP's earliest versions.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "The same ASCII-only case-folding change also applies to stristr(), stripos(), strripos(), lcfirst(), ucfirst(), ucwords(), str_ireplace(), array_change_key_case(), and SORT_FLAG_CASE-based sorting, not only to strtolower()/strtoupper().",
+        "No automatic replacement is offered because swapping in mb_strtolower()/mb_strtoupper() is not a safe mechanical substitution: the multibyte functions require a known text encoding and behave differently on multibyte input, so whether a rewrite is correct, and which encoding to pass, depends on the call site's actual data rather than on the function name alone.",
+        "This is a silent behavior change, not a deprecation: no warning or notice is raised, so code that depended on locale-based non-ASCII case conversion silently produces different output on an affected PHP 8.2+ runtime, with no diagnostic pointing at the cause.",
+        "Evidence: UPGRADING-8.2.0.txt, '1. Backward Incompatible Changes' -> Standard: strtolower()/strtoupper() (and the related functions listed above) are no longer locale-sensitive and now perform ASCII-only case conversion as if the locale were \"C\"; mb_strtolower() remains available for locale-aware conversion. No PHP 8.3, 8.4 or 8.5 UPGRADING file revisits this behavior, so it persists unchanged through PHP 8.5."
+    ]
+}

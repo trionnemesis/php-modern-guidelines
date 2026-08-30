@@ -1,0 +1,50 @@
+{
+    "schema_version": "1.0.0",
+    "id": "core.json_validate",
+    "title": "Prefer `json_validate()` over decode-and-check",
+    "summary": "`json_validate()`, added in PHP 8.3, reports whether a string is syntactically valid JSON without building the decoded value, replacing the common `json_decode()` plus `json_last_error()` validity check.",
+    "category": "core",
+    "kind": "modern_preference",
+    "priority": "P3",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "When new code only needs to know whether a string is valid JSON, call `json_validate($json, $depth, $flags)` instead of decoding it and inspecting `json_last_error()`.",
+    "existing_code_policy": "When touching an existing decode-and-check validity test, replace it with `json_validate()` using the same `$depth`/`$flags` the old `json_decode()` call used; leave the code alone when the decoded value itself is used for anything beyond the validity check.",
+    "guideline": "Use `json_validate()` to test whether a string is valid JSON; keep `json_decode()` for call sites that also need the decoded value.",
+    "details": "PHP 8.3 added `json_validate(string $json, int $depth = 512, int $flags = 0): bool`, which parses just far enough to report whether `$json` is syntactically valid JSON and never builds the resulting PHP value. The pre-8.3 idiom for the same yes/no question is `json_decode($json)` followed by `json_last_error() === JSON_ERROR_NONE`, which always constructs (and then discards) the full decoded value just to test validity. Here `introduced_in` is set to `8.3` because that is the minor `json_validate()` itself became available in - the field exists so this modern_preference rule can be range-gated on the feature axis, not because PHP 8.3 introduced JSON validation as a concept, and it is not a lifecycle claim about the older decode-and-check idiom this rule prefers away from. `json_validate()` shares `json_decode()`'s default `$depth` of 512, so a plain rewrite with no explicit depth/flags preserves the original depth behavior; a call site that passed a custom `$depth` or decode options to `json_decode()` must carry the equivalent `$depth`/`$flags` into `json_validate()` to keep the same validity semantics.",
+    "examples": [
+        {
+            "before": [
+                "json_decode($json);",
+                "$isValidJson = json_last_error() === JSON_ERROR_NONE;"
+            ],
+            "after": [
+                "$isValidJson = json_validate($json);"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "This rule applies only when the decoded value is discarded after the validity check; when the code also uses the decoded value, `json_decode()` remains correct and the second, no-automatic-replacement example applies instead.",
+        "`json_validate()` and `json_decode()` accept the same `$depth`/flags shape, so a custom `$depth` or decode option on the original `json_decode()` call must be reproduced on `json_validate()` to keep identical validity behavior.",
+        "Evidence: UPGRADING-8.3.0.txt, '6. New Functions' -> JSON: 'Added json_validate(), which returns whether the json is valid for the given $depth and $options.' No mention of json_validate() in the 8.2, 8.4 or 8.5 UPGRADING files, so no deprecation or removal is on record."
+    ]
+}

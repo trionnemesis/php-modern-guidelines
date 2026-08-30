@@ -1,0 +1,42 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.dynamic_properties",
+    "title": "Creation of dynamic properties is deprecated",
+    "summary": "PHP 8.2 deprecates writing to a property that a class never declared, unless the class opts in with `#[AllowDynamicProperties]`; `stdClass` still allows dynamic properties, and `__get()`/`__set()` magic methods are unaffected.",
+    "category": "language",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.2",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Declare every property a class uses instead of letting an assignment implicitly create one. Reserve `#[AllowDynamicProperties]` for a class that intentionally acts as an open bag of properties (e.g. a legacy-interop DTO), and use a `WeakMap` keyed by the object when extra per-object data must be attached to a class this codebase does not own.",
+    "existing_code_policy": "Treat each `E_DEPRECATED` dynamic-property warning as a case-by-case decision rather than a single mechanical fix: declare the property with its real type when the object's property set is stable and known; add `#[AllowDynamicProperties]` to the class only when it is genuinely meant to hold arbitrary properties (this also permits dynamic properties on every subclass); switch to a `WeakMap` when the class being extended belongs to a dependency, not this codebase. Do not add `#[AllowDynamicProperties]` everywhere just to silence the warning without checking which fix actually applies.",
+    "guideline": "Do not rely on implicitly created object properties; declare properties explicitly, or opt a genuinely dynamic class in with `#[AllowDynamicProperties]`, or use a `WeakMap` for data attached to objects this codebase does not own.",
+    "details": "As of PHP 8.2, writing to a property a class did not declare raises a deprecation notice unless the class (or an ancestor) carries the `#[AllowDynamicProperties]` attribute. `stdClass` is exempt and keeps allowing dynamic properties unconditionally, and classes that define `__get()`/`__set()` are unaffected because those calls never go through the dynamic-property-creation path this deprecation targets. The deprecation fires only for classes with a declared property list that a write falls outside of; it does not change what value gets stored or how it is later read, so the immediate runtime behavior of correctly-written code stays the same and the visible effect is the new deprecation warning itself. No PHP 8.3, 8.4 or 8.5 UPGRADING file mentions dynamic property creation, so nothing beyond this 8.2 deprecation is on record: it has not been escalated to a removal as of PHP 8.5.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "`#[AllowDynamicProperties]` is inherited: applying it to a parent class also allows dynamic properties on every child class, so it should not be added to a shared base class purely to silence a warning from one subclass.",
+        "`stdClass` and any class using `__get()`/`__set()` magic methods are exempt from this deprecation and need no change.",
+        "No automatic replacement is offered because the correct fix depends on intent: declaring the property, adding `#[AllowDynamicProperties]`, and switching to a `WeakMap` are three genuinely different remedies, and only a human reading the call site can tell which one applies.",
+        "Evidence: UPGRADING-8.2.0.txt, '4. Deprecated Functionality' -> Core: creation of dynamic properties is deprecated unless the class opts in via #[AllowDynamicProperties]; stdClass still allows them; __get()/__set() usage is unaffected. Grepping the 8.3, 8.4 and 8.5 UPGRADING files for \"dynamic propert\" found no matches, so no later escalation to removal is recorded."
+    ]
+}

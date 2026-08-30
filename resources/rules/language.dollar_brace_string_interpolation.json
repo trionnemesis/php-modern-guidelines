@@ -1,0 +1,59 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.dollar_brace_string_interpolation",
+    "title": "\"${var}\"/\"${expr}\" string interpolation is deprecated",
+    "summary": "PHP 8.2 deprecates the \"${var}\" and \"${expr}\" curly-brace string interpolation syntaxes in favor of \"$var\"/\"{$var}\" and \"{${expr}}\".",
+    "category": "language",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.2",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never write \"${var}\" or \"${expr}\" interpolation in double-quoted strings or heredocs; use \"$var\"/\"{$var}\" for a plain variable and \"{${expr}}\" for the general expression form (most commonly variable variables).",
+    "existing_code_policy": "Rewrite \"${var}\"/\"${expr}\" occurrences opportunistically to their replacement forms. Each occurrence still parses and runs on every currently known minor (8.2-8.5), but emits a deprecation notice on 8.2 and later, so leaving it in place is a growing source of deprecation noise rather than an immediate break.",
+    "guideline": "Prefer \"$var\" (or \"{$var}\" when the following characters would otherwise be parsed as part of the variable name) for a simple variable, and \"{${expr}}\" when the interpolated part is an arbitrary expression such as a variable variable (\"${$name}\"). Do not use the bare \"${...}\" curly-brace form inside double-quoted strings or heredocs.",
+    "details": "PHP 8.2 deprecated the curly-brace string interpolation forms \"${name}\" (a plain variable) and \"${expr}\" (an arbitrary expression, most often a variable variable such as \"${$name}\") when used inside double-quoted strings and heredocs, per the accepted RFC deprecate_dollar_brace_string_interpolation. The unaffected, recommended replacements are \"$name\"/\"{$name}\" for the simple case and \"{${expr}}\" for the expression case. This is a syntax-level deprecation only: it changes which interpolation spelling the parser accepts without a deprecation notice, not what a correctly rewritten program does at runtime.",
+    "examples": [
+        {
+            "before": [
+                "$name = 'World';",
+                "echo \"Hello, ${name}!\";"
+            ],
+            "after": [
+                "$name = 'World';",
+                "echo \"Hello, $name!\";"
+            ]
+        },
+        {
+            "before": [
+                "$field = 'age';",
+                "$age = 42;",
+                "echo \"Value: ${$field}\";"
+            ],
+            "after": [
+                "$field = 'age';",
+                "$age = 42;",
+                "echo \"Value: {${$field}}\";"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "The 8.2 UPGRADING notes state that removal is planned for PHP 9, but an announced future removal is not yet an established fact (ADR-005), so removed_in stays null here until a released PHP 9 UPGRADING file actually states it; this note exists to record the plan without treating it as a lifecycle fact.",
+        "The \"${expr}\" form is most commonly seen as variable-variable interpolation, e.g. \"${$name}\"; its direct replacement is \"{${$name}}\", not \"{$name}\", because the inner \"$name\" must still be evaluated as an expression rather than read literally."
+    ]
+}

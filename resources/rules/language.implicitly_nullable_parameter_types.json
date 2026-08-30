@@ -1,0 +1,70 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.implicitly_nullable_parameter_types",
+    "title": "Implicitly nullable parameter types are deprecated",
+    "summary": "PHP 8.4 deprecates giving a typed parameter a default value of null without also marking the type itself nullable (\"?Type\" or \"Type|null\"); the parameter still accepts null, but omitting the explicit nullable marker now raises a deprecation notice.",
+    "category": "language",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never write a typed parameter's nullability implicitly through a \"= null\" default; write it in the type itself, e.g. \"function f(?int $x = null)\" or \"function f(int|null $x = null)\", including for constructor-promoted parameters.",
+    "existing_code_policy": "Add the missing \"?\"/\"|null\" to each declaration as E_DEPRECATED notices surface. This only makes the parameter's existing nullability explicit in its type; it does not change what values the parameter accepts or how the function body behaves, so it is safe to apply broadly rather than case by case.",
+    "guideline": "Always spell a nullable parameter type explicitly (\"?Type\" or \"Type|null\") instead of relying on a \"null\" default to make an otherwise non-nullable type implicitly nullable.",
+    "details": "Since long before PHP 8, a scalar, class, or compound parameter type followed by a default value of exactly null (e.g. \"function f(int $x = null)\") has been silently treated as if the type were nullable (\"?int $x = null\"), even though the \"?\" was never written. PHP 8.4 deprecates that implicit behavior: the parameter is still nullable and the default is still null, but the declaration itself must now say so, or an E_DEPRECATED notice fires (RFC deprecate-implicitly-nullable-types). This applies to ordinary and constructor-promoted parameters alike, and only to declarations whose default value is literally null; it does not apply to \"mixed\" (already nullable), to a union type that already lists null explicitly, or to properties or return types, which this deprecation does not cover. No later UPGRADING file records an escalation to removal: the one PHP 8.5 UPGRADING hit for \"nullable\" is an unrelated change to SplFileObject::fwrite(), so as of 8.5 this remains a deprecation notice only.",
+    "examples": [
+        {
+            "before": [
+                "function greet(string $name = null): string",
+                "{",
+                "    return $name ?? 'World';",
+                "}"
+            ],
+            "after": [
+                "function greet(?string $name = null): string",
+                "{",
+                "    return $name ?? 'World';",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class UserFilter",
+                "{",
+                "    public function __construct(private Status $status = null)",
+                "    {",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class UserFilter",
+                "{",
+                "    public function __construct(private ?Status $status = null)",
+                "    {",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "The rewrite is purely additive to the type declaration (adding \"?\" or \"|null\"); it changes no runtime behavior, so it can be applied mechanically to every occurrence rather than needing case-by-case judgment.",
+        "Only a default value of exactly null triggers this; \"mixed $x = null\" is unaffected because \"mixed\" already includes null, and a union type that already spells out \"|null\" is unaffected because the nullability is already explicit.",
+        "Evidence: UPGRADING-8.4.0.txt, '4. Deprecated Functionality' -> Core: \"Implicitly nullable parameter types are now deprecated.\" (RFC deprecate-implicitly-nullable-types). Grepping the 8.5 UPGRADING file for \"nullable\" found only an unrelated SplFileObject::fwrite() change, and no PHP 8.2, 8.3 or 8.5 UPGRADING file records a removal, so this remains a deprecation-only fact as of PHP 8.5."
+    ]
+}

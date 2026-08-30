@@ -1,0 +1,59 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.readonly_classes",
+    "title": "Readonly classes",
+    "summary": "PHP 8.2 lets a whole class be declared readonly, so every declared property is readonly without repeating the modifier on each one.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.2",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.2 or above, when every property a class declares is (or will be) readonly, declare the class itself `readonly` instead of writing `readonly` on each property or promoted constructor parameter.",
+    "existing_code_policy": "When every property on an existing class is already individually marked `readonly` and the class has no mutable property, collapsing to a class-level `readonly` modifier is a safe, purely cosmetic simplification. Do not apply it to a class that mixes readonly and mutable properties, or that relies on `#[AllowDynamicProperties]` or dynamic property creation, since a readonly class forbids both.",
+    "guideline": "Prefer `final readonly class Foo { ... }` over repeating the `readonly` modifier on every property or promoted parameter once a class's properties are uniformly readonly.",
+    "details": "PHP 8.2 added readonly classes (RFC readonly_classes): prefixing a class declaration with `readonly` marks every typed property it declares as readonly, and is only valid when all such properties can legally be readonly (no untyped or static properties). This is purely a declaration-site shorthand for what individually-marked readonly properties already expressed; it changes no runtime behavior. PHP 8.3 extended the same modifier to anonymous classes and, separately, allowed readonly properties to be reinitialized while cloning inside `__clone()` — both are expansions of the surrounding readonly-property feature, not changes to readonly classes themselves. PHP 8.4 narrowed that clone-time reinitialization behavior slightly. Neither PHP 8.4 nor PHP 8.5 UPGRADING mentions any deprecation or removal of readonly classes.",
+    "examples": [
+        {
+            "before": [
+                "final class Point",
+                "{",
+                "    public function __construct(",
+                "        public readonly float $x,",
+                "        public readonly float $y,",
+                "    ) {",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final readonly class Point",
+                "{",
+                "    public function __construct(",
+                "        public float $x,",
+                "        public float $y,",
+                "    ) {",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "PHP 8.3 allowed anonymous classes to be declared readonly and allowed readonly properties to be reinitialized during cloning inside __clone() — both extend the readonly-property feature rather than changing readonly classes as introduced in 8.2.",
+        "PHP 8.4 applied a narrow behavior tightening around that clone-time reinitialization. No PHP 8.2-8.5 UPGRADING file records a deprecation or removal of readonly classes."
+    ]
+}

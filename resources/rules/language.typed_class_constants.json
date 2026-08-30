@@ -1,0 +1,66 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.typed_class_constants",
+    "title": "Typed class, interface, trait and enum constants",
+    "summary": "PHP 8.3 lets constants declared on classes, interfaces, traits and enums carry an explicit type, checked at declaration and for covariance on override.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "When the project's feature ceiling is PHP 8.3 or newer, declare an explicit type on every new class, interface, trait or enum constant instead of leaving it untyped.",
+    "existing_code_policy": "Do not bulk-retrofit types onto constants that predate this rule's ceiling; add a type only when a constant is already being touched for another reason, since each addition needs its own check that overriding declarations in subclasses or implementors stay covariant.",
+    "guideline": "Prefer typed class, interface, trait and enum constants once the feature ceiling reaches PHP 8.3; leave already-shipped untyped constants alone unless you are revising them anyway.",
+    "details": "PHP 8.3 (RFC typed_class_constants) added optional type declarations to constants declared in classes, interfaces, traits and enums. The engine enforces the declared type at the point of declaration and requires an overriding declaration in a subclass or implementing class to use a covariant type. This is purely additive: untyped constants remain valid PHP, and giving a new constant a type changes no runtime behavior for code that does not declare or override it. A separate PHP 8.4 change made a number of built-in extension classes' own constants typed; that is extensions adopting this language feature for their internal constants, not a further change to the feature itself (see notes).",
+    "examples": [
+        {
+            "before": [
+                "class HttpStatus",
+                "{",
+                "    public const OK = 200;",
+                "    public const NOT_FOUND = 404;",
+                "}"
+            ],
+            "after": [
+                "class HttpStatus",
+                "{",
+                "    public const int OK = 200;",
+                "    public const int NOT_FOUND = 404;",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "interface HasLimit",
+                "{",
+                "    public const LIMIT = 100;",
+                "}"
+            ],
+            "after": [
+                "interface HasLimit",
+                "{",
+                "    public const int LIMIT = 100;",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "PHP 8.4 made a number of built-in extension classes' own constants typed, applying this language feature to internal classes; that is extensions adopting the feature, not a further extension of typed class constants itself."
+    ]
+}

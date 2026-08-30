@@ -1,0 +1,87 @@
+{
+    "schema_version": "1.0.0",
+    "id": "core.array_find_functions",
+    "title": "array_find(), array_find_key(), array_any() and array_all()",
+    "summary": "PHP 8.4 added four short-circuiting array-search functions: array_find(), array_find_key(), array_any() and array_all().",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, prefer array_find()/array_find_key() over a hand-written foreach-with-break when searching for the first matching element or key, and prefer array_any()/array_all() over an array_filter()-plus-count() or manual-loop predicate check.",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.4, existing foreach-with-break searches and array_filter()-plus-count()/count()-comparison predicate checks over a plain callback can be replaced incrementally with the matching new function; verify the callback has no side effects relied upon for elements past the first match, since the new functions short-circuit and array_filter() does not.",
+    "guideline": "Use array_find() / array_find_key() to locate the first matching element or key, and array_any() / array_all() to test a predicate across an array, instead of a manual foreach loop or an array_filter()-based workaround.",
+    "details": "PHP 8.4 added four functions to the Standard extension (RFC array_find): array_find($array, $callback) returns the first element for which $callback returns true, or null if none match; array_find_key($array, $callback) returns the first matching key, or null; array_any($array, $callback) returns true as soon as one element satisfies $callback; array_all($array, $callback) returns true only if every element satisfies $callback. All four short-circuit: they stop iterating at the first element that decides the result, unlike array_filter(), which always evaluates every element and returns an array of matches that then has to be measured or indexed into. $callback receives (value, key) in that order for all four functions.",
+    "examples": [
+        {
+            "before": [
+                "$firstAdmin = null;",
+                "foreach ($users as $user) {",
+                "    if ($user->isAdmin()) {",
+                "        $firstAdmin = $user;",
+                "        break;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "$firstAdmin = array_find($users, static fn (User $user): bool => $user->isAdmin());"
+            ]
+        },
+        {
+            "before": [
+                "$adminKey = null;",
+                "foreach ($users as $key => $user) {",
+                "    if ($user->isAdmin()) {",
+                "        $adminKey = $key;",
+                "        break;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "$adminKey = array_find_key($users, static fn (User $user): bool => $user->isAdmin());"
+            ]
+        },
+        {
+            "before": [
+                "$hasAdmin = count(array_filter($users, static fn (User $user): bool => $user->isAdmin())) > 0;"
+            ],
+            "after": [
+                "$hasAdmin = array_any($users, static fn (User $user): bool => $user->isAdmin());"
+            ]
+        },
+        {
+            "before": [
+                "$allActive = true;",
+                "foreach ($users as $user) {",
+                "    if (!$user->isActive()) {",
+                "        $allActive = false;",
+                "        break;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "$allActive = array_all($users, static fn (User $user): bool => $user->isActive());"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "All four functions short-circuit on the deciding element instead of evaluating the whole array, which is the main behavioral advantage over an array_filter()-based workaround and the reason a callback with side effects meant to run over every element must not be migrated blindly.",
+        "array_find() and array_find_key() return null when nothing matches, so callers searching for a value that can itself legitimately be null need an explicit array_find_key() !== null check rather than testing the found value for null."
+    ]
+}

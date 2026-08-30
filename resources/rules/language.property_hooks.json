@@ -1,0 +1,111 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.property_hooks",
+    "title": "Property hooks",
+    "summary": "PHP 8.4 lets a property declare `get`/`set` hooks directly on its declaration, replacing a hand-written getter/setter pair (and, for a computed value, needing no backing storage at all).",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, prefer a `get`/`set` hook on the property declaration itself over a hand-written getXxx()/setXxx() method pair backed by a private property; use a get-only hook with no backing property at all for a value that is purely computed from other state.",
+    "existing_code_policy": "Do not bulk-convert existing getter/setter method pairs to property hooks. Converting changes the class's public surface from methods to a plain property access, so every call site (`$obj->getFoo()` / `$obj->setFoo($v)`) must be updated to `$obj->foo` / `$obj->foo = $v`, and any interface the class implements would need updating too. Migrate a class only when it is already being revised for another reason, and only once the whole call-site graph can be updated in the same change.",
+    "guideline": "Prefer property hooks (`get`/`set` blocks on a property declaration) over a manual getter/setter method pair, and over a private backing property plus a read-only computed getter, once the feature ceiling reaches PHP 8.4.",
+    "details": "PHP 8.4 implemented property hooks (RFC property-hooks): a property declaration may carry a `get` block, a `set` block, or both, which run when the property is read or written in place of a separate getter/setter method pair. A property whose hook only computes a value from other properties needs no backing storage at all, giving a genuine virtual/computed property; a `set` hook can validate or transform an incoming value before it is stored. Inside a hook body, `$this->propName` refers to the property's own backing storage rather than re-entering the hook, so a straightforward `set` hook that assigns `$this->propName = $value` does not recurse. Property hooks may also be declared on an interface property, which implementing classes must then satisfy. This is additive syntax: a property with no hooks behaves exactly as before, and existing getter/setter methods keep working unchanged. No PHP 8.2, 8.3 or 8.5 UPGRADING file mentions property hooks, so the feature has no earlier introduction and no recorded deprecation or removal.",
+    "examples": [
+        {
+            "before": [
+                "final class TemperatureReading",
+                "{",
+                "    private float $celsius;",
+                "",
+                "    public function __construct(float $celsius)",
+                "    {",
+                "        $this->setCelsius($celsius);",
+                "    }",
+                "",
+                "    public function getCelsius(): float",
+                "    {",
+                "        return $this->celsius;",
+                "    }",
+                "",
+                "    public function setCelsius(float $celsius): void",
+                "    {",
+                "        if ($celsius < -273.15) {",
+                "            throw new \\InvalidArgumentException('Below absolute zero.');",
+                "        }",
+                "",
+                "        $this->celsius = $celsius;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class TemperatureReading",
+                "{",
+                "    public float $celsius {",
+                "        set(float $value) {",
+                "            if ($value < -273.15) {",
+                "                throw new \\InvalidArgumentException('Below absolute zero.');",
+                "            }",
+                "",
+                "            $this->celsius = $value;",
+                "        }",
+                "    }",
+                "",
+                "    public function __construct(float $celsius)",
+                "    {",
+                "        $this->celsius = $celsius;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class Rectangle",
+                "{",
+                "    public function __construct(",
+                "        private float $width,",
+                "        private float $height,",
+                "    ) {",
+                "    }",
+                "",
+                "    public function getArea(): float",
+                "    {",
+                "        return $this->width * $this->height;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class Rectangle",
+                "{",
+                "    public float $area {",
+                "        get => $this->width * $this->height;",
+                "    }",
+                "",
+                "    public function __construct(",
+                "        private float $width,",
+                "        private float $height,",
+                "    ) {",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": []
+}

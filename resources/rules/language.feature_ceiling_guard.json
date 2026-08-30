@@ -1,0 +1,41 @@
+{
+    "schema_version": "1.0.0",
+    "id": "language.feature_ceiling_guard",
+    "title": "Never emit syntax or APIs newer than the feature ceiling",
+    "summary": "A cross-cutting compatibility guard: new code must never use a PHP language construct, function, class, attribute or constant whose `introduced_in` minor is newer than the resolved policy's feature ceiling, because PHP minor releases routinely introduce syntax an older, still-supported minor cannot parse at all.",
+    "category": "language",
+    "kind": "compatibility_guard",
+    "priority": "P1",
+    "introduced_in": null,
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Before generating or recommending any construct, check its own rule's `introduced_in` (or, for extension-gated constructs, that the extension is available) against the resolved policy's `feature_ceiling` - the lowest minor the project's PHP constraint allows - never against `lifecycle_ceiling`, which is the highest known minor and only governs whether deprecation/removal guidance still applies. A construct whose `introduced_in` exceeds `feature_ceiling` must not be emitted for new code, no matter how high `lifecycle_ceiling` is.",
+    "existing_code_policy": "This guard makes no claim about code that already exists and already runs. It constrains only what may be newly generated or newly recommended; whether a piece of existing code is itself still applicable, deprecated or removed on the resolved range is decided by that construct's own feature/deprecated/removed/behavior_change rule, not by this guard.",
+    "guideline": "Never generate, suggest or approve PHP syntax or APIs whose `introduced_in` minor is newer than the resolved policy's `feature_ceiling`, even when the same policy's `lifecycle_ceiling` is much higher and would make the construct look safe if the two ceilings were collapsed into one.",
+    "details": "This rule is a `compatibility_guard` and, unlike the other fifteen seed rules, makes no PHP lifecycle claim of its own: `introduced_in`, `deprecated_in` and `removed_in` are all null, which the schema permits for this kind precisely because a guard is timeless advice meant to hold under every resolved policy rather than a fact about one construct's history. The reasoning this rule enforces comes from ADR-004 (two-axis range-safe policy), not from the PHP source cited below: ADR-004 decides that a project supporting a PHP range gets two separate ceilings - a feature ceiling computed from the lowest allowed minor, and a lifecycle ceiling computed from the highest known allowed minor - specifically so that newly generated syntax stays compatible with the lowest supported minor while lifecycle (deprecation/removal) guidance is still allowed to reflect newer minors the project also supports. This rule is the enforcement half of that decision on the feature axis: it is the standing instruction not to let a high lifecycle ceiling excuse emitting a construct the feature ceiling cannot run. The one fact attributed to this rule's own PHP-source citation, and nothing more, is that PHP minor releases do add language syntax an earlier minor cannot parse at all - UPGRADING-8.2.0's '2. New Features' section alone introduces standalone `null`/`false`/`true` parameter and return types, readonly classes, disjunctive normal form (DNF) types, enum cases usable in constant expressions, constants declared inside traits, and the `#[\\SensitiveParameter]` attribute, none of which exist on PHP 8.1 or earlier. Every other claim above - why two ceilings exist and why the feature ceiling must gate new code - is ADR-004's reasoning, not a claim made by the cited PHP source.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "All three lifecycle fields are intentionally null: this rule is a standing policy guard, not a claim that some construct was introduced, deprecated or removed in a specific PHP minor, so it evaluates to `applicable` under every resolved policy rather than being range-gated on either axis.",
+        "This is not the same check as any single feature/deprecated/removed rule's own applicability: those rules answer 'is this specific construct usable on this policy'; this guard states the general principle - consulted for every construct the tool or a coding agent might generate - that the feature ceiling, not the lifecycle ceiling, is what bounds new code.",
+        "Evidence for the one PHP-source fact cited above: UPGRADING-8.2.0.txt, '2. New Features' (Core), lists multiple constructs introduced in that single minor - standalone null/false/true types, readonly classes, true type, DNF types, enum properties in constant expressions, constants in traits, and #[\\SensitiveParameter] - which is sufficient on its own to demonstrate that a PHP minor release can add language syntax absent from every earlier minor."
+    ]
+}

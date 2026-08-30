@@ -1,0 +1,19 @@
+PHP policy
+  mode                 range-safe
+  project root         @PROJECT_ROOT@
+  declared constraint  ^8.2
+  allowed minors       8.2
+  feature ceiling      8.2
+  lifecycle ceiling    8.2
+  platform override    8.2.0
+  observed runtime     -
+  coverage             complete (known 8.2-8.5)
+  confidence           declared
+
+Sources
+  composer.platform.php  composer.json  8.2.0
+  composer.lock          composer.lock  8.3.0
+  composer.require.php   composer.json  ^8.2
+
+Warnings
+  input.composer_lock_platform_mismatch: composer.lock platform-overrides.php is "8.3.0" but composer.json config.platform.php is "8.2.0"; composer.json wins. Run "composer update --lock" in the project to re-sync.

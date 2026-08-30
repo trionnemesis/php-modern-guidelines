@@ -1,0 +1,41 @@
+{
+    "schema_version": "1.0.0",
+    "id": "extension.imap_unbundled",
+    "title": "The IMAP extension was unbundled from php-src",
+    "summary": "PHP 8.4 unbundled the IMAP extension from php-src and moved it to PECL, so a PHP 8.4+ build no longer ships `ext-imap` by default; it must be installed separately from PECL to keep using `imap_*` functions.",
+    "category": "extension",
+    "kind": "removed",
+    "priority": "P0",
+    "introduced_in": null,
+    "deprecated_in": null,
+    "removed_in": "8.4",
+    "extension": "imap",
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "Do not assume `ext-imap` is available on PHP 8.4+ just because it used to ship by default. Declare `ext-imap` explicitly in `composer.json` `require`, and for new work prefer a maintained userland IMAP client library (or a protocol-appropriate alternative) so the project does not depend on a PECL extension that must be separately compiled or packaged for every target environment.",
+    "existing_code_policy": "Search for `imap_open()`, other `imap_*` calls and any `IMAP\\Connection` type usage. Once the project's floor reaches PHP 8.4, confirm the deployment environment (containers, CI images, hosting provider) installs the PECL `imap` extension explicitly; a build that previously worked only because IMAP was bundled will fail with undefined-function errors otherwise. There is no code-level substitute: the functions are unchanged, only their packaging is, so no rewrite is needed once the extension is present.",
+    "guideline": "Treat `ext-imap` as an optional, separately-installed PECL extension on PHP 8.4 and later, not as a bundled default. Declare it explicitly as a Composer platform requirement and verify it is installed wherever the application runs.",
+    "details": "PHP 8.4's UPGRADING file lists the IMAP extension under '8. Removed Extensions and SAPIs': \"The IMAP extension has been unbundled and moved to PECL\" (RFC unbundle_imap_pspell_oci8). This is a packaging change, not a functional removal of the API: the `imap_*` functions themselves are not deleted, but a stock PHP 8.4+ build no longer compiles or ships the extension, so any code calling `imap_open()` or related functions will fail with undefined-function errors unless the PECL `imap` package is installed and enabled separately. No PHP 8.2, 8.3 or 8.5 UPGRADING file mentions IMAP, so there is no earlier deprecation notice and nothing further changes in 8.5; PHP 8.4 is the only lifecycle event on record.",
+    "examples": [
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": null,
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-08-30"
+        }
+    ],
+    "notes": [
+        "No automatic replacement is offered because this is a packaging/deployment change, not a mechanical code substitution: the fix is installing the PECL extension (or migrating to a userland IMAP client) in the target environment, which only a human reviewing the deployment can decide.",
+        "This is a removed-in-range case, not removed-across-range: under the tool's known PHP 8.2-8.5 minors, `imap` is still bundled on 8.2 and 8.3 and only unbundled starting at 8.4, so the affected minors are 8.4 and 8.5 while 8.2 and 8.3 remain unaffected.",
+        "Evidence: UPGRADING-8.4.0.txt, '8. Removed Extensions and SAPIs' -> IMAP: \"The IMAP extension has been unbundled and moved to PECL.\" Grepping the 8.2, 8.3 and 8.5 UPGRADING files for \"IMAP\" found no further mention."
+    ]
+}

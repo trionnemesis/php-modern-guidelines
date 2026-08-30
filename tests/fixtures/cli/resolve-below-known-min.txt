@@ -1,0 +1,18 @@
+PHP policy
+  mode                 range-safe
+  project root         @PROJECT_ROOT@
+  declared constraint  >=8.0
+  allowed minors       8.2, 8.3, 8.4, 8.5
+  feature ceiling      8.2
+  lifecycle ceiling    8.5
+  platform override    -
+  observed runtime     -
+  coverage             coverage_gap (known 8.2-8.5, open upper bound)
+  confidence           declared
+
+Sources
+  composer.require.php  composer.json  >=8.0
+
+Warnings
+  coverage.below_known_min: The constraint ">=8.0" allows PHP minors below 8.2, which this tool does not know. feature_ceiling 8.2 is a knowledge-limited ceiling and generated code may still exceed the project's real minimum.
+  coverage.open_upper_bound_unbounded: The constraint ">=8.0" has no upper bound. Lifecycle guidance stops at 8.5; deprecations introduced in later PHP minors are not covered.
