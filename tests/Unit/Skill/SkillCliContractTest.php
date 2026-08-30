@@ -632,7 +632,9 @@ final class SkillCliContractTest extends TestCase
             // Tier 3: policy-schema key path, computed from a live resolve --json. The first segment
             // must be a top-level policy key whose value is an associative object (not a list), and
             // the second segment one of that object's own keys.
-            [$key, $subkey] = array_pad(explode('.', $token, 2), 2, null);
+            $segments = explode('.', $token, 2);
+            $key = $segments[0];
+            $subkey = $segments[1] ?? null;
             $value = $policy[$key] ?? null;
             if ($subkey !== null && is_array($value) && !array_is_list($value) && array_key_exists($subkey, $value)) {
                 continue;
