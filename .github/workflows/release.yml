@@ -45,6 +45,40 @@ jobs:
             exit 1
           fi
 
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          ini-values: phar.readonly=0
+          tools: box:4.7.0
+
+      - name: Build the release PHAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress --prefer-dist --no-plugins --no-scripts --no-dev
+          box validate box.json.dist
+          box compile --config=box.json.dist --no-parallel
+
+      - name: Verify and checksum the release PHAR
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          phar=build/php-modern-guidelines.phar
+          fixture=tests/fixtures/projects/caret-8-2
+          actual="$(php "$phar" version)"
+          if [[ "$actual" != "php-modern-guidelines $VERSION" ]]; then
+            echo "PHAR reports \"$actual\", expected \"php-modern-guidelines $VERSION\"" >&2
+            exit 1
+          fi
+          php "$phar" resolve --project-root="$fixture" --json > /dev/null
+          php "$phar" list-rules --project-root="$fixture" --kind=deprecated > /dev/null
+          php "$phar" explain language.property_hooks --project-root="$fixture" --json > /dev/null
+          php "$phar" doctor --project-root="$fixture" --json > /dev/null
+          ( cd build && sha256sum php-modern-guidelines.phar > php-modern-guidelines.phar.sha256 )
+
       - name: Publish GitHub release
         shell: bash
         env:
@@ -59,4 +93,6 @@ jobs:
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "$TAG" \
-            --notes-file release-notes.md
+            --notes-file release-notes.md \
+            build/php-modern-guidelines.phar \
+            build/php-modern-guidelines.phar.sha256

@@ -1,0 +1,18 @@
+{
+    "main": "bin/php-modern-guidelines",
+    "output": "build/php-modern-guidelines.phar",
+    "alias": "php-modern-guidelines.phar",
+    "banner": "Modern PHP Guidelines - version-aware PHP policy and rule-query CLI.\nApache-2.0. https://github.com/trionnemesis/php-modern-guidelines",
+    "chmod": "0755",
+    "algorithm": "SHA512",
+    "compression": "NONE",
+    "check-requirements": true,
+    "dump-autoload": true,
+    "exclude-composer-files": true,
+    "exclude-dev-files": true,
+    "force-autodiscovery": true,
+    "directories": [
+        "resources/rules",
+        "schemas"
+    ]
+}

@@ -26,3 +26,56 @@ jobs:
       - run: composer validate --strict
       - run: composer install --no-interaction --no-progress --prefer-dist --no-plugins --no-scripts
       - run: composer check
+
+  phar:
+    name: PHAR build and smoke test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          ini-values: phar.readonly=0
+          tools: box:4.7.0
+      - run: composer install --no-interaction --no-progress --prefer-dist --no-plugins --no-scripts --no-dev
+      - run: box validate box.json.dist
+
+      - name: Build the PHAR twice and compare archive contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          box compile --config=box.json.dist --no-parallel
+          mv build/php-modern-guidelines.phar build/first.phar
+          box compile --config=box.json.dist --no-parallel
+          php tools/phar-content-digest.php build/first.phar > build/first.digest
+          php tools/phar-content-digest.php build/php-modern-guidelines.phar > build/second.digest
+          diff -u build/first.digest build/second.digest
+          rm build/first.phar build/first.digest build/second.digest
+
+      - name: Smoke-test the PHAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          phar=build/php-modern-guidelines.phar
+          fixture=tests/fixtures/projects/caret-8-2
+          version="$(sed -n "s/.*public const VERSION = '\([^']*\)';.*/\1/p" src/ApplicationFactory.php)"
+          actual="$(php "$phar" version)"
+          if [[ "$actual" != "php-modern-guidelines $version" ]]; then
+            echo "PHAR reports \"$actual\", expected \"php-modern-guidelines $version\"" >&2
+            exit 1
+          fi
+          php "$phar" list-rules --project-root="$fixture" --kind=deprecated
+          php "$phar" explain language.property_hooks --project-root="$fixture" --json > /dev/null
+          # Slice G replaces this line with: php "$phar" doctor --project-root="$fixture" --json > /dev/null
+
+      - name: Compare PHAR output with the source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture=tests/fixtures/projects/caret-8-2
+          php build/php-modern-guidelines.phar resolve --project-root="$fixture" --json > build/phar-policy.json
+          php bin/php-modern-guidelines resolve --project-root="$fixture" --json > build/source-policy.json
+          diff -u build/source-policy.json build/phar-policy.json
