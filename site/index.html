@@ -20,20 +20,22 @@
     </header>
     <main id="main">
       <section class="hero container">
-        <p class="eyebrow">PHP 8.2+ · VERSION-AWARE · READ-ONLY</p>
+        <p class="eyebrow">PHP 8.2+ · VERSION-AWARE · READ-ONLY · AGENT-READY</p>
         <div class="hero-grid">
           <div>
             <h1>Modern PHP guidance that respects the whole version range.</h1>
             <p class="lede">A policy and rule-query foundation for coding agents: understand the project's declared PHP compatibility before choosing newer syntax, APIs, deprecations, or replacements.</p>
+            <ul class="hero-facts" role="list"><li>16 source-backed rules</li><li>PHP 8.2–8.5 coverage</li><li>Skill · AGENTS.md · PHAR</li></ul>
             <div class="actions">
               <a class="button primary" href="https://github.com/trionnemesis/php-modern-guidelines">View repository <span aria-hidden="true">→</span></a>
               <a class="button secondary" href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/README.md">Read the README</a>
             </div>
           </div>
           <aside class="version-card" aria-label="Current release status">
-            <span class="status-dot" aria-hidden="true"></span><span>M1 core parity / alpha</span>
-            <strong>v0.1.0</strong>
-            <p>Composer Semver policy resolution, a two-axis rule registry, and the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands are implemented with 16 source-backed PHP 8.2–8.5 rules. Framework packs and analyzer adapters remain out of scope.</p>
+            <span class="status-dot" aria-hidden="true"></span><span>M2 agent distribution / alpha</span>
+            <strong>v0.2.0</strong>
+            <p>The M1 engine is now distributable: a Claude Agent Skill, a Codex-compatible <code>AGENTS.md</code> snippet, a CI-built PHAR attached to each release, and a read-only <code>doctor</code> diagnostic. Framework packs and analyzer adapters remain out of scope.</p>
+            <p class="meta">Skill · AGENTS.md snippet · PHAR + SHA-256</p>
           </aside>
         </div>
       </section>
@@ -48,11 +50,11 @@
       </section>
 
       <section class="container section">
-        <div class="section-heading"><p class="eyebrow">M1 capability</p><h2>Small enough to verify, explicit about what is missing.</h2></div>
+        <div class="section-heading"><p class="eyebrow">M2 capability</p><h2>Small enough to verify, explicit about what is missing.</h2></div>
         <div class="cards">
-          <article class="card"><h3>Available now</h3><ul><li><code>php-modern-guidelines resolve</code> / <code>list-rules</code> / <code>explain</code></li><li>Deterministic <code>policy.schema.json</code> JSON</li><li>16 source-backed PHP 8.2–8.5 rules</li><li>PHP 8.2–8.5 CI matrix</li></ul></article>
-          <article class="card"><h3>Next: M2</h3><ul><li>Agent Skill packaging</li><li>PHAR packaging direction</li><li>Codex/Claude-compatible wrappers</li></ul></article>
-          <article class="card muted"><h3>Deliberately later</h3><ul><li><code>doctor</code></li><li>Framework-specific rule packs</li><li>Target-project analyzer adapters</li><li>Rector advisory integration</li><li>Auto-fixing or target-project writes</li></ul></article>
+          <article class="card"><h3>Available now</h3><ul><li><code>php-modern-guidelines resolve</code> / <code>list-rules</code> / <code>explain</code></li><li>Deterministic <code>policy.schema.json</code> JSON</li><li>16 source-backed PHP 8.2–8.5 rules</li><li>PHP 8.2–8.5 CI matrix</li><li>Agent Skill + <code>AGENTS.md</code> wrapper</li><li>PHAR release asset + SHA-256</li><li><code>doctor</code> diagnostics</li></ul></article>
+          <article class="card"><h3>Next: M3</h3><ul><li>PHPCompatibility adapter</li><li>PHPStan deprecation adapter</li><li>Rector advisory adapter</li></ul></article>
+          <article class="card muted"><h3>Deliberately later</h3><ul><li>Framework-specific rule packs</li><li>Target-project analyzer adapters</li><li>Rector advisory integration</li><li>Auto-fixing or target-project writes</li></ul></article>
         </div>
       </section>
 
@@ -70,8 +72,8 @@
         <div class="section-heading"><p class="eyebrow">Roadmap</p><h2>Small, reviewable milestones with explicit boundaries.</h2></div>
         <ol class="roadmap" role="list">
           <li><strong>M0 · v0.0.1 (complete)</strong><span>Repository contracts, CLI skeleton, schemas, CI, ADRs, and static Pages source.</span></li>
-          <li class="current"><strong>M1 · v0.1.0</strong><span>Implemented: Composer Semver resolver, two-axis policy, rule registry, the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands, and 16 verified PHP seed rules.</span></li>
-          <li><strong>M2 · v0.2.0</strong><span>Agent Skill, PHAR packaging direction, and Codex/Claude-compatible wrappers after M1 contracts stabilize.</span></li>
+          <li><strong>M1 · v0.1.0 (complete)</strong><span>Implemented: Composer Semver resolver, two-axis policy, rule registry, the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands, and 16 verified PHP seed rules.</span></li>
+          <li class="current"><strong>M2 · v0.2.0</strong><span>Implemented: a Claude Agent Skill, a Codex-compatible <code>AGENTS.md</code> snippet, a CI-built PHAR attached to each release, and a bounded, read-only <code>doctor</code> diagnostic.</span></li>
           <li><strong>M3 · v0.3.0</strong><span>Explicit opt-in PHPCompatibility, PHPStan-deprecation, and Rector advisory adapters.</span></li>
           <li><strong>M4 · v0.4.x</strong><span>Isolated framework rule packs without mixing framework conventions into PHP Core policy.</span></li>
         </ol>
@@ -84,6 +86,6 @@
         <p class="attribution">Primary inspiration: <a href="https://github.com/JetBrains/go-modern-guidelines">JetBrains/go-modern-guidelines</a>. Modern PHP Guidelines is an independent implementation and is not affiliated with or endorsed by JetBrains. Its narrow version-policy focus is also distinct from <a href="https://github.com/netresearch/php-modernization-skill">netresearch/php-modernization-skill</a>.</p>
       </section>
     </main>
-    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M1 v0.1.0</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
+    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M2 v0.2.0</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
   </body>
 </html>

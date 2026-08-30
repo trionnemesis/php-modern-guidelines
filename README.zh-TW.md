@@ -4,13 +4,13 @@
 [![Deploy Pages](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml/badge.svg)](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml)
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777bb4)](https://www.php.net/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![M1 core parity](https://img.shields.io/badge/status-M1%20core%20parity-5b4b8a)](CHANGELOG.md)
+[![M2 agent distribution](https://img.shields.io/badge/status-M2%20agent%20distribution-5b4b8a)](CHANGELOG.md)
 
 > 讓 AI coding agent 在產生 PHP 程式碼前，先理解專案真正允許的 PHP 版本範圍、已棄用 API 與現代替代方案，避免「本機可跑、專案最低版本卻不能跑」。
 
-🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
+🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Agent distribution](#agent-distribution) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**M1 / alpha · v0.1.0.** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain` 查詢有來源依據的 PHP 規則。
+**M2 / alpha · v0.2.0.** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet，以及 CI 建置、checksum 驗證的 PHAR release asset。
 
 ## Why
 
@@ -27,7 +27,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 
 ## 目前能力
 
-| Slice | M1 已完成能力 | 關鍵邊界 |
+| Slice | 已完成能力 | 關鍵邊界 |
 |---|---|---|
 | Policy resolver | 解析 `require.php`、`conflict.php`、`config.platform.php`、`composer.lock` platform override 與 `--php` | 只讀取目標專案輸入，不執行目標專案 |
 | Two-axis policy | 分離 `feature_ceiling` / `lifecycle_ceiling`，輸出 `coverage`、`confidence`、`warnings` | 已知 PHP coverage 為 8.2–8.5 |
@@ -35,16 +35,53 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
 | Verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
+| Agent distribution | `skills/php-modern-guidelines/` 下的 Claude Agent Skill，以及 `skills/agents-md/` 下 Codex 相容的 `AGENTS.md` snippet | 僅提供指令文字；沒有 marketplace 或 plugin manifest，也沒有 agent-runtime 註冊 |
+| PHAR distribution | 由 CI 建置並 smoke-test 的單一檔案封存，每次 release 附上 SHA-256 checksum | 只在 CI 建置；build tool 不是 Composer dependency |
+| Diagnostics | `doctor` 以 human 與 JSON 形式回報本工具實際讀到、載入的內容 | 診斷本工具自身的輸入與安裝狀態；不檢查或執行目標專案 |
 
 ### 尚未實作
 
-- `doctor`：延後到 M2。M1 的 `resolve` 已輸出 core 能讀到的 `sources[]`、無法確定的 `confidence` / `coverage` / `warnings[]` 與可區分的 failure modes。
-- Project-local configuration file；`policy.schema.json` 已保留 `project.config` 欄位，但 M1 不讀取此類設定檔。
+- Project-local configuration file；`policy.schema.json` 已保留 `project.config` 欄位，但 M2 不讀取此類設定檔。
 - Laravel、Symfony 等 framework rule pack。
 - PHPCompatibility、PHPStan deprecation、Rector target-project adapter。
-- Auto-fix、target-project write、PHAR distribution、agent marketplace manifest、network rule fetching。
+- Auto-fix、target-project write、agent marketplace manifest、network rule fetching。
 
 `composer.json` 的 `conflict.php` 已支援：只有當 conflict constraint 覆蓋某個已知 PHP minor 的完整區間時，該 minor 才會從允許範圍排除。像 `8.3.5` 這種 patch-level conflict 不會直接移除整個 PHP 8.3。顯式 override（`--php`、`config.platform.php`、`composer.lock` platform override 或 `runtime-observed` mode）則直接決定有效版本，不再套用 `require.php` / `conflict.php` 的 range 推導。
+
+## Agent distribution
+
+M2 讓 M1 engine 可以被沒有 vendor 這個 repository 的 coding agent 使用：一個可散布的 Claude Agent Skill、給 Codex 相容 agent 使用的純 Markdown `AGENTS.md` wrapper，以及每次 release 都附上的 CI-built PHAR。
+
+個人安裝 skill：
+
+```bash
+cp -R skills/php-modern-guidelines ~/.claude/skills/
+```
+
+或安裝進消費端專案：
+
+```bash
+cp -R skills/php-modern-guidelines .claude/skills/
+```
+
+若 agent 是透過慣例讀取 `AGENTS.md` 而非 skill 機制，把 [`skills/agents-md/SNIPPET.md`](skills/agents-md/SNIPPET.md) 裡的區塊貼進消費端專案自己的 `AGENTS.md`。
+
+安裝 release 出來的 PHAR 前，先驗證它：
+
+```bash
+curl -fsSL -o php-modern-guidelines.phar \
+  https://github.com/trionnemesis/php-modern-guidelines/releases/latest/download/php-modern-guidelines.phar
+curl -fsSL -o php-modern-guidelines.phar.sha256 \
+  https://github.com/trionnemesis/php-modern-guidelines/releases/latest/download/php-modern-guidelines.phar.sha256
+sha256sum -c php-modern-guidelines.phar.sha256
+php php-modern-guidelines.phar version
+```
+
+這個 package 目前還沒有發布到 Packagist，因此沒有 `composer require` 安裝路徑；下方 [快速開始](#快速開始) 的 git checkout 與這個 PHAR 是目前兩個受支援的安裝方式。
+
+Skill 與 `AGENTS.md` 文字是針對真實 CLI 做 contract-tested，而不是靠 review：文字中提到的每個 command、option、exit code 與 rule id 都必須存在於真實 CLI，每個示範也都會被實際執行並逐位元組比對輸出，所以這些說明不會偷偷跟工具本身脫節。
+
+PHAR 是在 PHP 8.2 floor 上由 CI 建置並 smoke-test，並附上 SHA-256 checksum 發布；「reproducible」精確代表什麼、不代表什麼，見 [ADR-007](docs/adr/ADR-007-phar-build-and-distribution.md)——它不是 byte-identical 封存或跨 build 固定 dependency 版本的保證。
 
 ## Policy 流程
 
@@ -85,16 +122,17 @@ php bin/php-modern-guidelines version
 預期輸出：
 
 ```text
-php-modern-guidelines 0.1.0
+php-modern-guidelines 0.2.0
 ```
 
-解析目標專案 policy、列出適用規則、解釋單一規則：
+解析目標專案 policy、列出適用規則、解釋單一規則，並診斷本工具自身的輸入：
 
 ```bash
 php bin/php-modern-guidelines resolve --project-root=/path/to/app
 php bin/php-modern-guidelines resolve --project-root=/path/to/app --json
 php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 php bin/php-modern-guidelines explain language.property_hooks --project-root=/path/to/app
+php bin/php-modern-guidelines doctor --project-root=/path/to/app
 ```
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
@@ -138,13 +176,17 @@ composer check
 | `4` | 有效 PHP constraint 沒有任何本工具已知的 PHP minor，因此無法解析 policy |
 | `5` | Rule data 無效，例如 malformed rule、duplicate id、filename/id mismatch |
 
-任何非零 exit 下，human output 會寫到 stderr；`--json` mode 的 stdout 保持 byte-empty，避免 JSON consumer 讀到半成品。
+`resolve`、`list-rules`、`explain` 任何非零 exit 下，human output 會寫到 stderr，`--json` mode 的 stdout 保持 byte-empty，避免 JSON consumer 讀到半成品。`doctor` 是唯一有記載的例外：它的報告本身就是診斷結果，所以即使 exit 非零，也會把完整報告寫到 stdout、stderr 保持空白——唯一的例外是 `doctor` 自身 option 的呼叫錯誤，這種情況仍然在任何 check 執行前就被拒絕，且 stdout 保持 byte-empty。
 
 ### `list-rules`
 
 `list-rules` 對應原始規劃中的 `list` query，但 Symfony Console 已保留 `list` 作為 built-in command index，因此本專案使用 `list-rules`，並提供 `rules` alias。
 
 預設會隱藏 `not_in_range` 規則；使用 `--all` 可查看全部規則。可重複使用 `--kind`、`--category`、`--priority`、`--status`，並搭配 `--extension`、`--minor` 篩選。`-r` 與 `-m` 分別是 `--project-root`、`--mode` 的 shorthand。
+
+### `doctor`
+
+`doctor` 對這個工具自身的輸入與安裝狀態，針對目標專案執行九個固定順序的 read-only check：執行中的 build（版本、以及是從 PHAR 還是從原始碼執行）、project root、`composer.json` 與 `composer.lock` 的存在性/可讀性/JSON 有效性、宣告的 PHP 值、resolve 出來的 policy 摘要、兩個內建 schema，以及有效的 rules 目錄與其載入結果。每個 check 都會回報一個 status（`ok` / `warn` / `fail` / `skipped`）、固定的一行 summary，以及固定的 detail key 集合，human 與 `--json` 兩種形式一一對應；JSON 形式與 `list-rules`、`explain` 一樣帶有 `output_version`。它不會引入新的 exit code——process 的 exit code 就是第一個失敗 check 原本就會產生的 `1` / `2` / `4` / `5`。如上所述，即使 exit 非零，`doctor` 仍會把完整報告寫到 stdout，因為報告本身就是診斷；`doctor` 自身 option 的呼叫錯誤是唯一仍然不印出任何內容的情況。
 
 ## PHP coverage 與 fail-safe 行為
 
@@ -208,8 +250,8 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 |---|---|---|---|
 | **M0 Foundation** | `v0.0.1` | ✅ 完成：repository contracts、CLI skeleton、schemas、CI、static Pages | Foundation contract 已建立 |
 | **M1 Core parity** | `v0.1.0` | ✅ 完成：Composer Semver resolver、two-axis policy、rule registry、`resolve` / `list-rules` / `explain`、16 條 seed rules | Framework pack 與 target analyzer 不進入 M1 |
-| **M2 Agent distribution** | `v0.2.0` | 下一階段：Agent Skill、PHAR packaging direction、Codex / Claude-compatible wrapper | 依賴穩定的 M1 CLI / JSON contract |
-| **M3 Verification adapters** | `v0.3.0` | 規劃：PHPCompatibility、PHPStan-deprecation、Rector advisory integration | 預設保持 advisory / read-only |
+| **M2 Agent distribution** | `v0.2.0` | ✅ 完成：Agent Skill、Codex/AGENTS.md wrapper、附加在 release 上的 CI-built PHAR，以及 bounded `doctor` | 依賴穩定的 M1 CLI / JSON contract |
+| **M3 Verification adapters** | `v0.3.0` | 下一階段：PHPCompatibility、PHPStan-deprecation、Rector advisory integration | 預設保持 advisory / read-only |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
@@ -223,6 +265,9 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | `tests/` | CLI、schema、static-page verification |
 | `site/` | Dependency-free GitHub Pages overview |
 | `.github/workflows/` | CI、Pages 與 release workflow |
+| `skills/` | 可散布的 Agent Skill 與 Codex 相容的 `AGENTS.md` snippet |
+| `box.json.dist` | 已提交的 PHAR build 設定；build tool 只安裝在 CI 中 |
+| `tools/` | 僅供 CI 使用的 build helper script |
 
 ## Inspiration and attribution
 
