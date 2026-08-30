@@ -1,4 +1,4 @@
-# Modern PHP Guidelines
+# Modern PHP Guidelines｜PHP 現代化規範
 
 [![CI](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/ci.yml/badge.svg)](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/ci.yml)
 [![Deploy Pages](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml/badge.svg)](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml)
@@ -6,49 +6,49 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![M1 core parity](https://img.shields.io/badge/status-M1%20core%20parity-5b4b8a)](CHANGELOG.md)
 
-> Help AI coding agents write version-aware modern PHP without silently exceeding a project's declared compatibility range.
+> 讓 AI coding agent 在產生 PHP 程式碼前，先理解專案真正允許的 PHP 版本範圍、已棄用 API 與現代替代方案，避免「本機可跑、專案最低版本卻不能跑」。
 
-**M1 / alpha · v0.1.0.** [Open GitHub Pages](https://trionnemesis.github.io/php-modern-guidelines/) · [Roadmap](#roadmap) · [Architecture decisions](docs/adr/) · [Changelog](CHANGELOG.md)
+**M1 / alpha · v0.1.0.** [開啟 GitHub Pages](https://trionnemesis.github.io/php-modern-guidelines/) · [快速開始](#快速開始) · [目前能力](#目前能力) · [Policy 流程](#policy-流程) · [信任邊界](#信任邊界) · [Roadmap](#roadmap) · [Changelog](CHANGELOG.md)
 
-Modern PHP Guidelines is an independent, read-only PHP version-aware policy and rule-query CLI. It resolves a project's declared Composer PHP compatibility range with Composer Semver, splits that range into a feature ceiling and a lifecycle ceiling, and lets a coding agent query a source-backed rule catalogue against that policy through three commands: `resolve`, `list-rules`, and `explain`.
+Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain` 查詢有來源依據的 PHP 規則。
 
 ## Why
 
-AI coding agents can produce PHP that is syntactically valid on the developer's current runtime but incompatible with the project's declared minimum version, or keep generating APIs and idioms that newer PHP releases have deprecated or replaced.
+AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」，但真正的專案常同時支援多個 PHP minor。若專案宣告 `require.php: ^8.2`，單純看到開發機是 PHP 8.5 並不足以證明可以使用 PHP 8.5-only 語法。
 
-A Composer PHP requirement is also a **range**, not necessarily one runtime. This project therefore keeps two policy axes separate:
+本專案因此把 Composer PHP range 拆成兩個 policy axis：
 
-| Axis | Meaning | Use |
-| --- | --- | --- |
-| **Feature ceiling** | Lowest PHP minor that must remain supported | Prevent generated syntax or APIs from requiring a newer PHP version. |
-| **Lifecycle ceiling** | Highest known PHP minor still inside the supported range | Surface deprecations and removals that matter on newer allowed runtimes. |
+| Axis | 代表什麼 | Agent 應如何使用 |
+|---|---|---|
+| **Feature ceiling** | 必須維持相容的最低 PHP minor | 阻止 agent 產生需要更高 PHP 版本才能執行的語法或 API |
+| **Lifecycle ceiling** | 已知且仍落在允許範圍內的最高 PHP minor | 提醒 agent 注意較新 runtime 已出現的 deprecation、removal 或 behavior change |
 
-For example, `resolve` on a project declaring `require.php: ^8.2` reports `feature_ceiling: 8.2` and `lifecycle_ceiling: 8.5` (the highest minor this tool knows), with `coverage.status: coverage_gap` and `coverage.open_upper_bound: true` — the constraint allows PHP minors above 8.5 that this tool has no lifecycle knowledge of, so it says so instead of guessing. See [ADR-004](docs/adr/ADR-004-two-axis-policy.md).
+例如 `require.php: ^8.2` 目前會得到 `feature_ceiling: 8.2`、`lifecycle_ceiling: 8.5`。若 constraint 還允許 PHP 8.5 之後的版本，工具會明確回報 `coverage_gap`，而不是假設未來版本的行為。詳細契約見 [ADR-004](docs/adr/ADR-004-two-axis-policy.md)。
 
-## Current capability
+## 目前能力
 
-| Slice | Available in M1 | Boundary |
-| --- | --- | --- |
-| Policy resolver | Composer Semver range resolution from `require.php`, `conflict.php`, `config.platform.php`, `composer.lock` platform overrides, and `--php`; three modes | Reads two files; never executes the project. |
-| Two-axis policy | Separate `feature_ceiling` and `lifecycle_ceiling`, `coverage`/`confidence`/`warnings` | Coverage is limited to PHP 8.2–8.5. |
-| Rule registry | Schema-validated, deterministically ordered, 16 source-backed PHP 8.2–8.5 rules | PHP language/Core/bundled-extension only. |
-| Query commands | `resolve`, `list-rules`, `explain`, human + JSON | `resolve --json` is a `policy.schema.json` instance. |
-| CLI foundation | `version` | unchanged from M0. |
-| Verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, PHP 8.2–8.5 CI | Verifies this repository, not a target project. |
+| Slice | M1 已完成能力 | 關鍵邊界 |
+|---|---|---|
+| Policy resolver | 解析 `require.php`、`conflict.php`、`config.platform.php`、`composer.lock` platform override 與 `--php` | 只讀取目標專案輸入，不執行目標專案 |
+| Two-axis policy | 分離 `feature_ceiling` / `lifecycle_ceiling`，輸出 `coverage`、`confidence`、`warnings` | 已知 PHP coverage 為 8.2–8.5 |
+| Rule registry | schema validation、deterministic ordering、16 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
+| Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
+| CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
+| Verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
 
-### Not implemented yet
+### 尚未實作
 
-- `doctor` — deferred to M2. `resolve` already reports every input the core is permitted to read (`sources[]`), everything it could not establish (`confidence`, `coverage`, `warnings[]`), and distinguishable failure modes (exit codes 2 and 4); a separate command would duplicate that contract without adding information, and the diagnostics it could add beyond that — inspecting the target's installed platform or running Composer — are forbidden by [ADR-006](docs/adr/ADR-006-read-only-core.md).
-- Project-local configuration files (`project.config` is reserved in `policy.schema.json` but no such file is read in M1).
-- Framework rule packs such as Laravel or Symfony.
-- PHPCompatibility, PHPStan-deprecation, or Rector target-project adapters.
-- Auto-fixing, target-project writes, PHAR packaging, agent/marketplace manifests, or network-based rule fetching.
+- `doctor`：延後到 M2。M1 的 `resolve` 已輸出 core 能讀到的 `sources[]`、無法確定的 `confidence` / `coverage` / `warnings[]` 與可區分的 failure modes。
+- Project-local configuration file；`policy.schema.json` 已保留 `project.config` 欄位，但 M1 不讀取此類設定檔。
+- Laravel、Symfony 等 framework rule pack。
+- PHPCompatibility、PHPStan deprecation、Rector target-project adapter。
+- Auto-fix、target-project write、PHAR distribution、agent marketplace manifest、network rule fetching。
 
-`composer.json` `conflict.php` **is** implemented: a known PHP minor is removed from the allowed range only when the conflict constraint covers that minor's whole interval (a patch-level conflict such as `8.3.5` removes nothing). An explicit override — `--php`, `config.platform.php`, a `composer.lock` platform override, or `runtime-observed` mode — bypasses `conflict.php` entirely, the same way it bypasses `require.php`. Because `policy.schema.json`'s `source.type` enum has no value for conflict evidence, an applied conflict is reported through the `policy.conflict_php_applied` warning instead of `sources[]`.
+`composer.json` 的 `conflict.php` 已支援：只有當 conflict constraint 覆蓋某個已知 PHP minor 的完整區間時，該 minor 才會從允許範圍排除。像 `8.3.5` 這種 patch-level conflict 不會直接移除整個 PHP 8.3。顯式 override（`--php`、`config.platform.php`、`composer.lock` platform override 或 `runtime-observed` mode）則直接決定有效版本，不再套用 `require.php` / `conflict.php` 的 range 推導。
 
-## Policy flow
+## Policy 流程
 
-The architecture is deliberately small and deterministic:
+整體資料流保持小型、deterministic、read-only：
 
 ```mermaid
 flowchart LR
@@ -58,13 +58,22 @@ flowchart LR
     R --> L[Lifecycle ceiling]
     F --> Q[Versioned rule registry]
     L --> Q
-    Q --> A[Agent guidance: resolve / list-rules / explain]
     S[Official PHP provenance] --> Q
+    Q --> A[Agent guidance]
+    A --> X[resolve / list-rules / explain]
 ```
 
-## Quick start
+Agent 的基本判斷順序是：
 
-Requires PHP 8.2+ and Composer.
+1. 先用 `resolve` 確認專案實際允許的 PHP policy。
+2. 依 `feature_ceiling` 限制可新增的 syntax / API。
+3. 依 `lifecycle_ceiling` 找出需要處理的 deprecation / removal / behavior change。
+4. 用 `list-rules` 篩選相關規則，再用 `explain` 取得具來源的完整說明。
+5. 遇到 coverage gap 或 unknown evidence 時保留警告，不自行補完不存在的 PHP 版本知識。
+
+## 快速開始
+
+需要 PHP 8.2+ 與 Composer。
 
 ```bash
 git clone https://github.com/trionnemesis/php-modern-guidelines.git
@@ -73,13 +82,13 @@ composer install
 php bin/php-modern-guidelines version
 ```
 
-Expected output:
+預期輸出：
 
 ```text
 php-modern-guidelines 0.1.0
 ```
 
-Resolve a project's PHP compatibility policy, query the rule catalogue, and explain one rule:
+解析目標專案 policy、列出適用規則、解釋單一規則：
 
 ```bash
 php bin/php-modern-guidelines resolve --project-root=/path/to/app
@@ -88,7 +97,7 @@ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=depr
 php bin/php-modern-guidelines explain language.property_hooks --project-root=/path/to/app
 ```
 
-`resolve` on a project declaring `require.php: ^8.2` (real output, `composer.json` at `<app>`):
+假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
 ```text
 PHP policy
@@ -110,101 +119,121 @@ Warnings
   coverage.open_upper_bound_bounded: The constraint "^8.2" allows PHP minors newer than 8.5, which this tool does not know. Lifecycle guidance stops at 8.5.
 ```
 
-Run repository checks with:
+驗證 repository：
 
 ```bash
 composer check
 ```
 
-## Exit codes
+## CLI 契約
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Success. |
-| `1` | Unexpected internal error (a bug, not a user-input problem). |
-| `2` | Invalid input — malformed/unreadable `composer.json` or `composer.lock`, an unparseable Composer constraint, an unknown `--mode`/`--kind`/`--category`/`--priority`/`--status` value, or an out-of-range `--minor`. |
-| `3` | `explain` was given a rule id that does not exist in the loaded rule set. |
-| `4` | The effective PHP constraint allows no PHP minor this tool knows about; no policy can be resolved. |
-| `5` | Invalid rule data — a malformed, duplicate-id, or filename-mismatched rule file (only reachable with `--rules-dir` pointed at broken data; the bundled catalogue always validates). |
+### Exit codes
 
-On any non-zero exit, human output goes to stderr and, in `--json` mode, stdout stays byte-empty — a JSON consumer never has to parse a half-written object.
+| Code | 意義 |
+|---|---|
+| `0` | 成功 |
+| `1` | 未預期的內部錯誤；屬於工具本身 bug，而不是使用者輸入問題 |
+| `2` | 輸入無效，例如 malformed/unreadable Composer JSON、無法解析的 constraint、未知 option value 或超出已知範圍的 minor |
+| `3` | `explain` 指定的 rule id 不存在 |
+| `4` | 有效 PHP constraint 沒有任何本工具已知的 PHP minor，因此無法解析 policy |
+| `5` | Rule data 無效，例如 malformed rule、duplicate id、filename/id mismatch |
 
-## Known PHP coverage
+任何非零 exit 下，human output 會寫到 stderr；`--json` mode 的 stdout 保持 byte-empty，避免 JSON consumer 讀到半成品。
 
-This tool knows PHP 8.2 through 8.5. A project's declared range can extend beyond that window in either direction, and the two directions are handled differently because their risk is different.
+### `list-rules`
 
-**Below the floor.** If a project's constraint allows a PHP minor below 8.2 (for example `>=8.0`), the tool has no knowledge of 8.0 or 8.1 and clamps `feature_ceiling` to 8.2 anyway, emitting `coverage.status: coverage_gap` with the `coverage.below_known_min` warning. This direction is **unsafe to trust blindly**: the project still supports 8.0 and 8.1, but the published `feature_ceiling` of 8.2 does not guarantee those minors, so a coding agent that trusts the ceiling as-is may emit 8.2-only syntax the project's real minimum cannot run. `policy.schema.json` requires `allowed_minors` to be a non-empty list of minors this tool actually knows, so there is no schema-representable way to also say "and two minors I know nothing about" — inventing them would be guessing. If this warning appears, pass `--php 8.0` to make the intent explicit (the policy then fails closed with exit 4 rather than silently clamping), and treat the warning as a signal to widen this tool's known minors, not to trust the ceiling as published.
+`list-rules` 對應原始規劃中的 `list` query，但 Symfony Console 已保留 `list` 作為 built-in command index，因此本專案使用 `list-rules`，並提供 `rules` alias。
 
-**Above the ceiling.** If a project's constraint allows PHP minors above 8.5 — a bounded range like `^8.2` (which desugars to `>=8.2 <9.0` and will admit future 8.x minors) or a genuinely open-ended one like `>=8.2` — `coverage.open_upper_bound` is `true` and the tool emits `coverage.open_upper_bound_bounded` or `coverage.open_upper_bound_unbounded` respectively. This direction is safe: nothing generated is unsafe to run, lifecycle guidance simply stops at 8.5, so deprecations or removals introduced in a later minor are not covered yet.
+預設會隱藏 `not_in_range` 規則；使用 `--all` 可查看全部規則。可重複使用 `--kind`、`--category`、`--priority`、`--status`，並搭配 `--extension`、`--minor` 篩選。`-r` 與 `-m` 分別是 `--project-root`、`--mode` 的 shorthand。
 
-Both directions are always warned, never invented.
+## PHP coverage 與 fail-safe 行為
 
-### Rule model
+目前已知 PHP minor 為 **8.2–8.5**。若專案 constraint 超出此窗口，工具不會虛構不存在的知識。
 
-Rules are split into three categories by D13: parser-level syntax is `language`, runtime-visible functions/classes/attributes/constants and engine behavior are `core`, and anything requiring a named, non-default-bundled extension is `extension`. On `modern_preference` and `behavior_change` rules, `introduced_in` is deliberately overloaded: it names "the minor the preferred API arrived in" or "the minor the behavior changed in", not a claim about when PHP introduced the older idiom the rule replaces — this is what lets those rules be gated on the feature axis at all, and each such rule's `details` says so for its own `introduced_in` value. `affected_minors` in an applicability result means *the allowed minors this rule's guidance applies to*, not the minor the underlying lifecycle event fired in — a `deprecated_across_range` rule's `affected_minors` is the whole allowed range, while a `deprecated_in_range` rule lists only the allowed minors at or after the deprecation (under `^8.2`, `extension.curl_close` lists just `8.5`).
+| 情境 | 行為 | 風險解讀 |
+|---|---|---|
+| Constraint 允許低於 PHP 8.2 | `feature_ceiling` 只能 clamp 到已知最低 8.2，並回報 `coverage_gap` / `coverage.below_known_min` | 不可盲目信任；真實專案仍可能需要支援 8.0 / 8.1 |
+| Constraint 允許高於 PHP 8.5 | 回報 `coverage.open_upper_bound` 與對應 warning | 既有 generated code 不因此變得不安全，但 8.5 之後的新 deprecation/removal 尚未被涵蓋 |
+| Explicit `--php` 指向未知 minor | fail closed，exit `4` | 不把未知 runtime 假裝成已支援 |
 
-`list-rules` is the command that fulfils the issue's `list` slot; it is not named `list` because Symfony Console reserves that name for its own built-in command index. `list-rules` is registered with the alias `rules`, and Symfony's own `list` command is untouched.
+低於 coverage floor 的方向尤其需要注意：如果真實專案仍支援 8.0 / 8.1，本工具目前不能證明 PHP 8.2-only feature 對它安全。這類 warning 應視為擴充 rule/coverage 的訊號，而不是忽略訊號。
 
-By default `list-rules` hides rules whose status is `not_in_range` (rules that cannot apply anywhere in the allowed range); pass `--all` to include them — under `--mode=single-target` at PHP 8.2 that is the difference between `Rules: 9 of 16 shown` and `16 of 16`. Results can be narrowed with repeatable `--kind`, `--category`, `--priority`, and `--status` filters, plus `--extension` and `--minor`; `-r` and `-m` are shorthands for `--project-root` and `--mode` on all three commands.
+## Rule model
 
-### `single-target` and the two-axis guarantee
+Rule 分成三類：
 
-The two-axis separation — feature ceiling independent from lifecycle ceiling — is a **`range-safe` guarantee**, and `range-safe` is the default mode precisely so a caller gets that separation unless they ask otherwise. `--mode=single-target` is a **caller-requested collapse** to one PHP minor: `policy.schema.json` itself caps `allowed_minors` at one item for that mode, and with exactly one allowed minor the lowest and the highest are the same value, so `feature_ceiling` and `lifecycle_ceiling` are equal — there is nothing left to separate. This is announced in the output by `mode` itself and by the `mode.single_target_narrowed` warning, which also states that lifecycle guidance is narrowed to that one minor. It is not an ADR-004 violation: ADR-004's independent-ceilings guarantee describes the default `range-safe` behavior, and `single-target` is an explicit, visible opt-out of it.
+| Category | 範圍 |
+|---|---|
+| `language` | parser-level syntax |
+| `core` | runtime-visible function / class / attribute / constant 與 engine behavior |
+| `extension` | 需要具名、非 default-bundled extension 的行為 |
+
+`modern_preference` 與 `behavior_change` 的 `introduced_in` 表示「偏好 API 出現的版本」或「行為改變的版本」，不是舊寫法最初被 PHP 引入的版本。`affected_minors` 表示這條 guidance 在目前 policy 允許的哪些 minor 上成立，而不是單純重複 lifecycle event 發生的版本。
+
+### `single-target` mode
+
+Two-axis 分離是預設 `range-safe` mode 的保證。`--mode=single-target` 是 caller 主動把範圍縮到單一 PHP minor；此時 allowed minor 只有一個，因此 `feature_ceiling` 與 `lifecycle_ceiling` 會相同，並透過 `mode.single_target_narrowed` warning 明確揭露這個收斂行為。
 
 ### Rule JSON stability
 
-`explain --json`'s `rule` object round-trips: decoding it, rebuilding a `Rule` through `Rule::fromArray()`, and re-encoding it produces **equal** JSON — the same keys in the same order with the same values, byte-identical when re-encoded with the same canonical encoder. (The claim is about equal values / identical JSON bytes, not PHP object identity: `Rule::toArray()` mints a fresh `stdClass` for `package_constraints` on every call, so `===`/`assertSame()` on two `toArray()` calls is `false` even for the same rule — the round-trip is verified with `assertEquals()` or by comparing `JsonPrinter::encode(...)` strings.)
+`explain --json` 的 `rule` object 支援 deterministic round-trip：使用相同 canonical encoder 解碼、重建 `Rule`、再編碼後，JSON value 與輸出 bytes 保持一致。這項保證是資料契約一致性，不是 PHP object identity 保證。
 
-## Trust boundary
+## 信任邊界
 
-The core is designed to advise rather than execute a target project. Core commands are deterministic and read-only unless a later ADR explicitly changes the contract.
+Core 的定位是「提供可驗證建議」，不是「執行或修改目標專案」。除非未來 ADR 明確改變契約，core commands 都必須保持 deterministic 與 read-only。
 
-They must not:
+不得：
 
-- execute target-project PHP;
-- load the analyzed project's `vendor/autoload.php`;
-- run Composer scripts or plugins;
-- require network access for core resolution;
-- write to the analyzed repository.
+- 執行 target-project PHP；
+- 載入 target project 的 `vendor/autoload.php`；
+- 執行 Composer scripts 或 plugins；
+- 為 core resolution 要求 network access；
+- 寫入被分析的 repository。
 
-See [ADR-006](docs/adr/ADR-006-read-only-core.md).
+完整設計見 [ADR-006](docs/adr/ADR-006-read-only-core.md)。
 
 ## Source provenance
 
-PHP language, Core, and bundled-extension facts must be backed by authoritative PHP sources such as official migration guides, PHP RFCs, or php-src upgrading documentation and must record a review date. If a fact cannot be established, the rule should remain absent or explicitly uncertain rather than guessed.
+PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authoritative PHP source，例如：
+
+- PHP 官方 migration guide；
+- PHP RFC；
+- php-src `UPGRADING` documentation。
+
+每條規則同時保存 review date。若事實無法建立，規則應保持 absent 或明確標記 uncertainty，不以推測補齊。
 
 ## Roadmap
 
-| Milestone | Version target | Focus | Handoff boundary |
-| --- | --- | --- | --- |
-| **M0 Foundation** | `v0.0.1` | Repository contracts, CLI skeleton, schemas, CI, static Pages site | Complete. Do not retrofit M1 behavior into the foundation contracts without review. |
-| **M1 Core parity** | `v0.1.0` | Composer Semver resolver, two-axis policy, rule registry, `resolve` / `list-rules` / `explain`, verified seed PHP rules | Complete. Keep framework packs and target analyzers out. |
-| **M2 Agent distribution** | `v0.2.0` | Agent Skill, PHAR packaging direction, Codex/Claude-compatible wrappers | Next implementation phase. Depends on the now-stable M1 CLI/JSON contracts. |
-| **M3 Verification adapters** | `v0.3.0` | Explicit opt-in PHPCompatibility, PHPStan-deprecation, and Rector advisory integration | Must remain advisory/read-only by default. |
-| **M4 Framework packs** | `v0.4.x` | Isolated framework-specific guidance, starting with a separately reviewable pack | Must not contaminate PHP Core rules. |
+| Milestone | Version | 狀態 / Focus | Handoff boundary |
+|---|---|---|---|
+| **M0 Foundation** | `v0.0.1` | ✅ 完成：repository contracts、CLI skeleton、schemas、CI、static Pages | Foundation contract 已建立 |
+| **M1 Core parity** | `v0.1.0` | ✅ 完成：Composer Semver resolver、two-axis policy、rule registry、`resolve` / `list-rules` / `explain`、16 條 seed rules | Framework pack 與 target analyzer 不進入 M1 |
+| **M2 Agent distribution** | `v0.2.0` | 下一階段：Agent Skill、PHAR packaging direction、Codex / Claude-compatible wrapper | 依賴穩定的 M1 CLI / JSON contract |
+| **M3 Verification adapters** | `v0.3.0` | 規劃：PHPCompatibility、PHPStan-deprecation、Rector advisory integration | 預設保持 advisory / read-only |
+| **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
-## Repository anatomy
+## Repository 結構
 
-| Path | Purpose |
-| --- | --- |
-| `src/` | Symfony Console application, the Composer/PHP policy resolver, and the rule registry/query engine. |
-| `resources/rules/` | The 16 source-backed seed rule JSON files, one file per rule. |
-| `schemas/` | Versioned rule and policy contracts. |
-| `docs/adr/` | Binding architecture decisions and trust boundaries. |
-| `tests/` | CLI, schema, and static-page verification. |
-| `site/` | Dependency-free GitHub Pages overview. |
-| `.github/workflows/` | CI and Pages publication workflows. |
+| Path | 用途 |
+|---|---|
+| `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine |
+| `resources/rules/` | 16 個 source-backed seed rule JSON，一條 rule 一個檔案 |
+| `schemas/` | Versioned rule / policy contracts |
+| `docs/adr/` | Binding architecture decisions 與 trust boundaries |
+| `tests/` | CLI、schema、static-page verification |
+| `site/` | Dependency-free GitHub Pages overview |
+| `.github/workflows/` | CI、Pages 與 release workflow |
 
 ## Inspiration and attribution
 
-Primary reference project: [JetBrains/go-modern-guidelines](https://github.com/JetBrains/go-modern-guidelines).
+主要參考專案：[JetBrains/go-modern-guidelines](https://github.com/JetBrains/go-modern-guidelines)。
 
-Modern PHP Guidelines is an **independent implementation** inspired by that project's version-aware guidance model. The upstream repository is Apache-2.0 licensed ([upstream license](https://github.com/JetBrains/go-modern-guidelines/blob/main/LICENSE)). No upstream source files were copied into this repository.
+Modern PHP Guidelines 是受其 version-aware guidance model 啟發的**獨立實作**。上游 repository 採 Apache-2.0 license（[upstream license](https://github.com/JetBrains/go-modern-guidelines/blob/main/LICENSE)）；本 repository 沒有複製上游 source files。
 
-JetBrains and GoLand are trademarks of their respective owners. This project is not affiliated with or endorsed by JetBrains.
+JetBrains 與 GoLand 為其各自權利人的商標。本專案與 JetBrains 無隸屬、合作或背書關係。
 
-This project also intentionally stays narrower than [netresearch/php-modernization-skill](https://github.com/netresearch/php-modernization-skill): the planned core is a version-aware PHP policy and rule-query engine rather than a broad modernization orchestrator, framework convention guide, analyzer suite, or automatic fixer.
+本專案也刻意維持比 [netresearch/php-modernization-skill](https://github.com/netresearch/php-modernization-skill) 更窄的產品邊界：核心是 version-aware PHP policy / rule-query engine，而不是廣泛的 modernization orchestrator、framework convention guide、analyzer suite 或 automatic fixer。
 
 ## Contributing and security
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes, especially the source-provenance and milestone-boundary rules. Report vulnerabilities through [SECURITY.md](SECURITY.md).
+提交變更前請先閱讀 [CONTRIBUTING.md](CONTRIBUTING.md)，特別是 source provenance 與 milestone boundary 規則。安全性問題請依 [SECURITY.md](SECURITY.md) 回報。
