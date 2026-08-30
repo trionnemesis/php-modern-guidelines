@@ -258,8 +258,9 @@ final class DoctorRunner
         $version = ApplicationFactory::VERSION;
         // The only \Phar API call permitted anywhere in src/ (§2.5, D-level ADR-006 exception). It
         // performs no I/O on the analysed project: it only reports whether this process itself is
-        // running from an archive.
-        $distribution = \Phar::running(false) !== '' ? 'phar' : 'source';
+        // running from an archive. composer.json does not require ext-phar, so a source install on
+        // a PHP built without it must fold to 'source' instead of throwing.
+        $distribution = class_exists(\Phar::class, false) && \Phar::running(false) !== '' ? 'phar' : 'source';
 
         return $this->buildCheck(
             'cli.build',

@@ -55,12 +55,14 @@ M2 讓 M1 engine 可以被沒有 vendor 這個 repository 的 coding agent 使�
 個人安裝 skill：
 
 ```bash
+mkdir -p ~/.claude/skills
 cp -R skills/php-modern-guidelines ~/.claude/skills/
 ```
 
 或安裝進消費端專案：
 
 ```bash
+mkdir -p .claude/skills
 cp -R skills/php-modern-guidelines .claude/skills/
 ```
 

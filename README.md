@@ -55,12 +55,14 @@ M2 makes the M1 engine consumable by coding agents that do not vendor this repos
 Install the skill personally:
 
 ```bash
+mkdir -p ~/.claude/skills
 cp -R skills/php-modern-guidelines ~/.claude/skills/
 ```
 
 Or inside a consuming project:
 
 ```bash
+mkdir -p .claude/skills
 cp -R skills/php-modern-guidelines .claude/skills/
 ```
 
