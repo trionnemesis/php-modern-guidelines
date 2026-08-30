@@ -95,7 +95,11 @@ final class ComposerInputReader
             throw new InputException(sprintf('Project root "%s" is not an existing directory.', $projectRoot));
         }
 
-        return rtrim($real, '/');
+        $normalized = rtrim($real, '/');
+
+        // rtrim() on the filesystem root ("/") strips everything, leaving "". Since
+        // policy.schema.json requires a non-empty project_root, restore the root itself.
+        return $normalized === '' ? '/' : $normalized;
     }
 
     /** @param array<string, mixed> $data */

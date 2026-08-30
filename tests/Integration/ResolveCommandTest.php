@@ -221,6 +221,8 @@ final class ResolveCommandTest extends TestCase
     {
         yield 'malformed-composer-json' => ['malformed-composer-json', 'composer.json'];
         yield 'malformed-composer-lock' => ['malformed-composer-lock', 'composer.lock'];
+        yield 'malformed-composer-json-array' => ['malformed-composer-json-array', 'composer.json'];
+        yield 'malformed-composer-lock-array' => ['malformed-composer-lock-array', 'composer.lock'];
         yield 'bad-platform-value' => ['bad-platform-value', 'config.platform.php'];
         yield 'unparseable-constraint' => ['unparseable-constraint', 'composer.json'];
         yield 'non-string-constraint' => ['non-string-constraint', 'require.php'];

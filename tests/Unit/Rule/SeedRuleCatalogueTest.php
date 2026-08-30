@@ -122,6 +122,7 @@ final class SeedRuleCatalogueTest extends TestCase
         $ids = [
             'core.array_find_functions',
             'core.array_first_last',
+            'core.dynamic_properties',
             'core.json_validate',
             'core.override_attribute',
             'core.strtolower_locale_insensitive',
@@ -129,7 +130,6 @@ final class SeedRuleCatalogueTest extends TestCase
             'extension.imap_unbundled',
             'extension.mysqli_driver_reconnect',
             'language.dollar_brace_string_interpolation',
-            'language.dynamic_properties',
             'language.feature_ceiling_guard',
             'language.implicitly_nullable_parameter_types',
             'language.pipe_operator',

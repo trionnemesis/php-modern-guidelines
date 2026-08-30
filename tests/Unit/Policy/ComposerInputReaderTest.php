@@ -58,6 +58,20 @@ final class ComposerInputReaderTest extends TestCase
         self::assertStringEndsNotWith('/', $inputs->projectRoot);
     }
 
+    public function testFilesystemRootIsNotErasedByNormalisation(): void
+    {
+        // rtrim(realpath('/'), '/') is '', which is not a legal policy.schema.json project_root.
+        // Guard the assertion against sandboxes/CI runners that happen to have a real /composer.json.
+        if (file_exists('/composer.json')) {
+            self::markTestSkipped('/composer.json exists on this machine; cannot exercise the no-composer-json path at "/".');
+        }
+
+        $inputs = (new ComposerInputReader())->read('/');
+
+        self::assertSame('/', $inputs->projectRoot);
+        self::assertFalse($inputs->composerJsonExists);
+    }
+
     public function testValidRequirePhpIsStoredVerbatim(): void
     {
         $dir = $this->makeProject(['composer.json' => '{"require": {"php": "^8.2"}}']);
@@ -97,6 +111,45 @@ final class ComposerInputReaderTest extends TestCase
             self::fail('Expected InputException.');
         } catch (InputException $e) {
             self::assertStringStartsWith('composer.lock is not valid JSON: ', $e->getMessage());
+        }
+    }
+
+    public function testComposerJsonTopLevelArrayThrowsPinnedMessage(): void
+    {
+        // json_decode(..., true) turns both `{}` and `[]` into a PHP array, so a top-level JSON array
+        // must be rejected explicitly instead of silently read as "no relevant settings".
+        $dir = $this->makeProject(['composer.json' => '[]']);
+
+        $reader = new ComposerInputReader();
+
+        try {
+            $reader->read($dir);
+            self::fail('Expected InputException.');
+        } catch (InputException $e) {
+            self::assertSame(
+                'composer.json is not valid JSON: top level must be a JSON object.',
+                $e->getMessage(),
+            );
+        }
+    }
+
+    public function testComposerLockTopLevelArrayThrowsPinnedMessage(): void
+    {
+        $dir = $this->makeProject([
+            'composer.json' => '{"require": {"php": "^8.2"}}',
+            'composer.lock' => '[]',
+        ]);
+
+        $reader = new ComposerInputReader();
+
+        try {
+            $reader->read($dir);
+            self::fail('Expected InputException.');
+        } catch (InputException $e) {
+            self::assertSame(
+                'composer.lock is not valid JSON: top level must be a JSON object.',
+                $e->getMessage(),
+            );
         }
     }
 

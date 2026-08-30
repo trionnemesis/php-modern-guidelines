@@ -5,6 +5,8 @@ Rules: 16 of 16 shown
       array_find(), array_find_key(), array_any() and array_all()
   [forbidden_above_feature_ceiling]  P3  modern_preference    core.array_first_last
       Prefer array_first() and array_last()
+  [deprecated_across_range]          P2  deprecated           core.dynamic_properties
+      Creation of dynamic properties is deprecated
   [forbidden_above_feature_ceiling]  P3  modern_preference    core.json_validate
       Prefer `json_validate()` over decode-and-check
   [forbidden_above_feature_ceiling]  P1  feature              core.override_attribute
@@ -19,8 +21,6 @@ Rules: 16 of 16 shown
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
       "${var}"/"${expr}" string interpolation is deprecated
-  [deprecated_across_range]          P2  deprecated           language.dynamic_properties
-      Creation of dynamic properties is deprecated
   [applicable]                       P1  compatibility_guard  language.feature_ceiling_guard
       Never emit syntax or APIs newer than the feature ceiling
   [deprecated_in_range]              P2  deprecated           language.implicitly_nullable_parameter_types

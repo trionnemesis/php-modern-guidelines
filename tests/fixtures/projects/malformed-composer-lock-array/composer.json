@@ -1,0 +1,1 @@
+{"name": "fixture/malformed-composer-lock-array", "require": {"php": "^8.2"}}

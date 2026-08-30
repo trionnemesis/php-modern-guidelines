@@ -33,13 +33,17 @@ final class JsonFile
     public static function decodeToArray(string $json, string $label): array
     {
         try {
+            // json_decode(..., true) turns both a JSON object ({}) and a JSON array ([]) into a PHP
+            // array, so is_array() alone cannot tell them apart. Decode once without assoc mode too and
+            // require \stdClass, which only a JSON object produces, before trusting the assoc decode.
+            $tree = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
             /** @var mixed $decoded */
             $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             throw new InputException(sprintf('%s is not valid JSON: %s.', $label, $e->getMessage()));
         }
 
-        if (!is_array($decoded)) {
+        if (!$tree instanceof \stdClass || !is_array($decoded)) {
             throw new InputException(sprintf('%s is not valid JSON: top level must be a JSON object.', $label));
         }
 
