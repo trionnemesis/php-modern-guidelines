@@ -1,0 +1,1 @@
+{"name": "fixture/platform-disabled", "require": {"php": "^8.2"}, "config": {"platform": {"php": false}}}

@@ -1,0 +1,1 @@
+{"name": "fixture/unparseable-conflict", "require": {"php": "^8.2"}, "conflict": {"php": "not a constraint"}}

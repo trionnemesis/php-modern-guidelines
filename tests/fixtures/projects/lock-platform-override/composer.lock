@@ -1,0 +1,1 @@
+{"_readme": ["This is a deliberately reduced fixture lock file: only platform-overrides.php is read by this tool in M1 (see WORK-ORDER.md §3.4(6)); packages/platform are intentionally omitted."], "platform-overrides": {"php": "8.3.0"}}

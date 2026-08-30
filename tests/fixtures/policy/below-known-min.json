@@ -1,0 +1,34 @@
+{
+    "schema_version": "1.0.0",
+    "mode": "range-safe",
+    "project_root": "@PROJECT_ROOT@",
+    "declared_constraint": ">=8.0",
+    "allowed_minors": [
+        "8.2",
+        "8.3",
+        "8.4",
+        "8.5"
+    ],
+    "feature_ceiling": "8.2",
+    "lifecycle_ceiling": "8.5",
+    "platform_override": null,
+    "observed_runtime": null,
+    "coverage": {
+        "status": "coverage_gap",
+        "known_min": "8.2",
+        "known_max": "8.5",
+        "open_upper_bound": true
+    },
+    "confidence": "declared",
+    "sources": [
+        {
+            "type": "composer.require.php",
+            "path": "composer.json",
+            "value": ">=8.0"
+        }
+    ],
+    "warnings": [
+        "coverage.below_known_min: The constraint \">=8.0\" allows PHP minors below 8.2, which this tool does not know. feature_ceiling 8.2 is a knowledge-limited ceiling and generated code may still exceed the project's real minimum.",
+        "coverage.open_upper_bound_unbounded: The constraint \">=8.0\" has no upper bound. Lifecycle guidance stops at 8.5; deprecations introduced in later PHP minors are not covered."
+    ]
+}

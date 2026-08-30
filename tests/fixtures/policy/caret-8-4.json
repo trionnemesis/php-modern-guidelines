@@ -1,0 +1,31 @@
+{
+    "schema_version": "1.0.0",
+    "mode": "range-safe",
+    "project_root": "@PROJECT_ROOT@",
+    "declared_constraint": "^8.4",
+    "allowed_minors": [
+        "8.4",
+        "8.5"
+    ],
+    "feature_ceiling": "8.4",
+    "lifecycle_ceiling": "8.5",
+    "platform_override": null,
+    "observed_runtime": null,
+    "coverage": {
+        "status": "coverage_gap",
+        "known_min": "8.2",
+        "known_max": "8.5",
+        "open_upper_bound": true
+    },
+    "confidence": "declared",
+    "sources": [
+        {
+            "type": "composer.require.php",
+            "path": "composer.json",
+            "value": "^8.4"
+        }
+    ],
+    "warnings": [
+        "coverage.open_upper_bound_bounded: The constraint \"^8.4\" allows PHP minors newer than 8.5, which this tool does not know. Lifecycle guidance stops at 8.5."
+    ]
+}
