@@ -10,5 +10,6 @@ enum ProcessState: string
     case Exited = 'exited';
     case Signaled = 'signaled';
     case TimedOut = 'timed_out';
+    case OutputLimitExceeded = 'output_limit_exceeded';
     case StartFailed = 'start_failed';
 }

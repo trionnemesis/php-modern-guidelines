@@ -196,6 +196,7 @@ final class VerificationSchemaContractTest extends TestCase
         yield 'start failure' => ['start_failed', null, null];
         yield 'timeout' => ['timed_out', null, null];
         yield 'signal' => ['signaled', null, 15];
+        yield 'output limit' => ['output_limit_exceeded', null, null];
     }
 
     private function goldenObject(): \stdClass

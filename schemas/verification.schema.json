@@ -120,7 +120,7 @@
           "type": "object",
           "properties": {
             "code": {
-              "enum": ["adapter.process_start_failed", "adapter.process_timed_out", "adapter.process_exit_failed", "adapter.process_signaled", "adapter.output_invalid"]
+              "enum": ["adapter.process_start_failed", "adapter.process_timed_out", "adapter.process_exit_failed", "adapter.process_signaled", "adapter.output_limit_exceeded", "adapter.output_invalid"]
             }
           }
         },
@@ -143,6 +143,10 @@
         {
           "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.process_signaled"}}}}},
           "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "signaled"}, "signal": {"type": "integer", "minimum": 1}}, "required": ["status", "signal"]}}}}
+        },
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.output_limit_exceeded"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "output_limit_exceeded"}}, "required": ["status"]}}}}
         },
         {
           "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.output_invalid"}}}}},
@@ -260,7 +264,7 @@
         "working_directory": {"const": "project_root"},
         "timeout_milliseconds": {"type": "integer", "minimum": 1, "maximum": 3600000},
         "environment": {"const": "sanitized"},
-        "status": {"type": "string", "enum": ["exited", "signaled", "start_failed", "timed_out"]},
+        "status": {"type": "string", "enum": ["exited", "signaled", "start_failed", "timed_out", "output_limit_exceeded"]},
         "exit_code": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
         "signal": {"type": ["integer", "null"], "minimum": 1}
       },
@@ -275,7 +279,7 @@
           "oneOf": [
             {"properties": {"status": {"const": "exited"}, "exit_code": {"type": "integer"}, "signal": {"type": "null"}}},
             {"properties": {"status": {"const": "signaled"}, "exit_code": {"type": "null"}, "signal": {"type": "integer", "minimum": 1}}},
-            {"properties": {"status": {"enum": ["start_failed", "timed_out"]}, "exit_code": {"type": "null"}, "signal": {"type": "null"}}}
+            {"properties": {"status": {"enum": ["start_failed", "timed_out", "output_limit_exceeded"]}, "exit_code": {"type": "null"}, "signal": {"type": "null"}}}
           ]
         }
       ]

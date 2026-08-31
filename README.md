@@ -230,7 +230,7 @@ policy fingerprint and projection status, the prevalidated invocation plan, actu
 deterministic counts, reason, mapped
 source-backed rule contexts, and mapped or unmapped external findings. It emits no timestamp.
 Plans distinguish non-partitioning tool probes from policy-partitioned analysis, and record the fixed
-`project_root` working-directory role, bounded timeout, and sanitized environment role. Machine-specific
+`project_root` working-directory role, bounded timeout, capped output, and sanitized environment role. Machine-specific
 executable prefixes are normalized out of report evidence.
 
 This is an explicit adapter boundary, not an arbitrary-command interface: the caller cannot supply raw

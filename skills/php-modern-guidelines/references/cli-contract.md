@@ -177,6 +177,9 @@ The `planned_invocations` member of `policy` records the complete plan validated
 Each entry distinguishes a `tool_probe` from `analysis`, uses the `project_root` working-directory role,
 and records its bounded timeout and `sanitized` environment role. Executable paths in evidence are
 project-relative or reduced to a stable external basename so machine-specific prefixes are not disclosed.
+The native runner caps stdout and stderr separately. Exceeding either limit terminates the process group,
+records `output_limit_exceeded`, and uses the stable failure reason `adapter.output_limit_exceeded`; partial
+output never becomes partial findings.
 External findings retain their external ids and use `mapped` or `unmapped` mapping status; exact mapped
 project rule ids are arrays, never comma-separated strings. No timestamp is emitted.
 

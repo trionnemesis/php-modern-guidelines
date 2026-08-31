@@ -181,6 +181,7 @@ final class AdapterResult
                     && $invocation->exitCode !== null
                     && $invocation->exitCode !== 0,
                 VerificationReason::PROCESS_SIGNALED => $invocation->status === ProcessState::Signaled,
+                VerificationReason::OUTPUT_LIMIT_EXCEEDED => $invocation->status === ProcessState::OutputLimitExceeded,
                 VerificationReason::OUTPUT_INVALID => $invocation->status === ProcessState::Exited,
                 default => false,
             };

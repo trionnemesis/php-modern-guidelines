@@ -230,7 +230,7 @@ policy fingerprint 與 projection status、預先驗證的 invocation plan、實
 deterministic counts、reason、
 mapped source-backed rule context，以及 mapped/unmapped external finding；不輸出 timestamp。
 Plan 會區分不參與 policy partition 的 tool probe 與 policy-partitioned analysis，並記錄固定的
-`project_root` working-directory role、bounded timeout 與 sanitized environment role；report evidence
+`project_root` working-directory role、bounded timeout、capped output 與 sanitized environment role；report evidence
 不會洩漏 machine-specific executable path prefix。
 
 這是 explicit adapter boundary，不是 arbitrary-command interface；caller 無法傳入 raw analyzer

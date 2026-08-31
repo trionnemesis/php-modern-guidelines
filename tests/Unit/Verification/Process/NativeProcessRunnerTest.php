@@ -8,6 +8,7 @@ use ModernPhpGuidelines\Verification\Process\NativeProcessRunner;
 use ModernPhpGuidelines\Verification\Process\ProcessRequest;
 use ModernPhpGuidelines\Verification\Process\ProcessResult;
 use ModernPhpGuidelines\Verification\Process\ProcessState;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class NativeProcessRunnerTest extends TestCase
@@ -124,6 +125,35 @@ final class NativeProcessRunnerTest extends TestCase
         self::assertSame($bytes, strlen($result->stderr));
         self::assertSame(str_repeat('O', $bytes), $result->stdout);
         self::assertSame(str_repeat('E', $bytes), $result->stderr);
+    }
+
+    #[DataProvider('unboundedOutputStreams')]
+    public function testOutputCaptureLimitTerminatesTheProcessGroup(string $stream): void
+    {
+        $startedAt = $this->monotonicNanoseconds();
+
+        $result = $this->runner()->run($this->request(['flood-forever', $stream], 30_000));
+
+        $finishedAt = $this->monotonicNanoseconds();
+        self::assertSame(ProcessState::OutputLimitExceeded, $result->state);
+        self::assertNull($result->exitCode);
+        self::assertNull($result->signal);
+        self::assertSame(
+            $stream === 'stdout' ? NativeProcessRunner::MAX_CAPTURE_BYTES_PER_STREAM : 0,
+            strlen($result->stdout),
+        );
+        self::assertSame(
+            $stream === 'stderr' ? NativeProcessRunner::MAX_CAPTURE_BYTES_PER_STREAM : 0,
+            strlen($result->stderr),
+        );
+        self::assertLessThan(10.0, ($finishedAt - $startedAt) / 1_000_000_000.0);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function unboundedOutputStreams(): iterable
+    {
+        yield 'stdout' => ['stdout'];
+        yield 'stderr' => ['stderr'];
     }
 
     public function testNonZeroExitStatusIsPreservedWithBothOutputs(): void

@@ -27,6 +27,8 @@ namespace ModernPhpGuidelines\Verification\Process;
  */
 final class NativeProcessRunner
 {
+    public const MAX_CAPTURE_BYTES_PER_STREAM = 8_388_608;
+
     private const READ_CHUNK_BYTES = 8192;
     private const MAX_READS_PER_PIPE_PER_CYCLE = 8;
     private const POLL_DELAY_MICROSECONDS = 10_000;
@@ -118,13 +120,32 @@ final class NativeProcessRunner
 
         $stdout = '';
         $stderr = '';
-        $initialStatus = self::waitForIsolatedProcessGroup(
-            $process,
-            $stdoutPipe,
-            $stderrPipe,
-            $stdout,
-            $stderr,
-        );
+        try {
+            [$initialStatus, $outputLimitExceeded] = self::waitForIsolatedProcessGroup(
+                $process,
+                $stdoutPipe,
+                $stderrPipe,
+                $stdout,
+                $stderr,
+            );
+        } catch (\Throwable $e) {
+            self::terminateUnverifiedProcess($process);
+            fclose($stdoutPipe);
+            fclose($stderrPipe);
+            proc_close($process);
+
+            throw $e;
+        }
+
+        if ($outputLimitExceeded) {
+            self::terminateUnverifiedProcess($process);
+            fclose($stdoutPipe);
+            fclose($stderrPipe);
+            proc_close($process);
+
+            return new ProcessResult(ProcessState::OutputLimitExceeded, null, $stdout, $stderr);
+        }
+
         if ($initialStatus === null) {
             self::terminateUnverifiedProcess($process);
             fclose($stdoutPipe);
@@ -138,13 +159,29 @@ final class NativeProcessRunner
         /** @var NativeProcessStatus|null $terminalStatus */
         $terminalStatus = $initialStatus['running'] ? null : $initialStatus;
         $timedOut = false;
+        $outputLimitExceeded = false;
 
         try {
             while ($terminalStatus === null) {
                 [$stdoutChunk, $stdoutRead] = self::readAvailable($stdoutPipe);
                 [$stderrChunk, $stderrRead] = self::readAvailable($stderrPipe);
-                $stdout .= $stdoutChunk;
-                $stderr .= $stderrChunk;
+                $stdoutWithinLimit = self::appendCaptured($stdout, $stdoutChunk);
+                $stderrWithinLimit = self::appendCaptured($stderr, $stderrChunk);
+
+                if (!$stdoutWithinLimit || !$stderrWithinLimit) {
+                    $outputLimitExceeded = true;
+                    self::signalProcessGroup($processGroupId, self::KILL_SIGNAL);
+                    $terminalStatus = self::waitForStop(
+                        $process,
+                        $stdoutPipe,
+                        $stderrPipe,
+                        $stdout,
+                        $stderr,
+                        self::KILL_GRACE_MILLISECONDS,
+                    );
+
+                    break;
+                }
 
                 $status = proc_get_status($process);
                 if (!$status['running']) {
@@ -187,13 +224,16 @@ final class NativeProcessRunner
                 }
             }
 
-            if (!$timedOut) {
+            if (!$timedOut && !$outputLimitExceeded) {
                 // A normally exited leader must not leave a detached-in-practice worker running.
                 // SIGKILL is sent before proc_close() can release/recycle the verified group id.
                 self::signalProcessGroup($processGroupId, self::KILL_SIGNAL);
             }
 
-            self::drainAfterStop($stdoutPipe, $stderrPipe, $stdout, $stderr);
+            $drainStayedWithinLimit = self::drainAfterStop($stdoutPipe, $stderrPipe, $stdout, $stderr);
+            if (!$timedOut && !$drainStayedWithinLimit) {
+                $outputLimitExceeded = true;
+            }
         } catch (\Throwable $e) {
             self::signalProcessGroup($processGroupId, self::KILL_SIGNAL);
             fclose($stdoutPipe);
@@ -206,6 +246,10 @@ final class NativeProcessRunner
         fclose($stdoutPipe);
         fclose($stderrPipe);
         $closeExitCode = proc_close($process);
+
+        if ($outputLimitExceeded) {
+            return new ProcessResult(ProcessState::OutputLimitExceeded, null, $stdout, $stderr);
+        }
 
         if ($timedOut) {
             return new ProcessResult(ProcessState::TimedOut, null, $stdout, $stderr);
@@ -243,7 +287,7 @@ final class NativeProcessRunner
      * @param resource $process
      * @param resource $stdoutPipe
      * @param resource $stderrPipe
-     * @return NativeProcessStatus|null
+     * @return array{NativeProcessStatus|null, bool} status and whether either output limit was exceeded
      */
     private static function waitForIsolatedProcessGroup(
         $process,
@@ -251,23 +295,26 @@ final class NativeProcessRunner
         $stderrPipe,
         string &$stdout,
         string &$stderr,
-    ): ?array {
+    ): array {
         $deadline = self::monotonicNanoseconds() + (self::ISOLATION_GRACE_MILLISECONDS * 1_000_000.0);
 
         do {
             [$stdoutChunk, $stdoutRead] = self::readAvailable($stdoutPipe);
             [$stderrChunk, $stderrRead] = self::readAvailable($stderrPipe);
-            $stdout .= $stdoutChunk;
-            $stderr .= $stderrChunk;
+            $stdoutWithinLimit = self::appendCaptured($stdout, $stdoutChunk);
+            $stderrWithinLimit = self::appendCaptured($stderr, $stderrChunk);
+            if (!$stdoutWithinLimit || !$stderrWithinLimit) {
+                return [null, true];
+            }
 
             $status = proc_get_status($process);
             $pid = $status['pid'];
             if ($pid < 2) {
-                return null;
+                return [null, false];
             }
 
             if (!$status['running'] || posix_getpgid($pid) === $pid) {
-                return $status;
+                return [$status, false];
             }
 
             if (!$stdoutRead && !$stderrRead) {
@@ -275,7 +322,7 @@ final class NativeProcessRunner
             }
         } while (self::monotonicNanoseconds() < $deadline);
 
-        return null;
+        return [null, false];
     }
 
     private static function signalProcessGroup(int $processGroupId, int $signal): void
@@ -325,6 +372,28 @@ final class NativeProcessRunner
         return [$output, $output !== ''];
     }
 
+    private static function appendCaptured(string &$captured, string $chunk): bool
+    {
+        if ($chunk === '') {
+            return true;
+        }
+
+        $remaining = self::MAX_CAPTURE_BYTES_PER_STREAM - strlen($captured);
+        if ($remaining <= 0) {
+            return false;
+        }
+
+        if (strlen($chunk) <= $remaining) {
+            $captured .= $chunk;
+
+            return true;
+        }
+
+        $captured .= substr($chunk, 0, $remaining);
+
+        return false;
+    }
+
     /**
      * @param resource $process
      * @param resource $stdoutPipe
@@ -344,8 +413,8 @@ final class NativeProcessRunner
         do {
             [$stdoutChunk, $stdoutRead] = self::readAvailable($stdoutPipe);
             [$stderrChunk, $stderrRead] = self::readAvailable($stderrPipe);
-            $stdout .= $stdoutChunk;
-            $stderr .= $stderrChunk;
+            self::appendCaptured($stdout, $stdoutChunk);
+            self::appendCaptured($stderr, $stderrChunk);
 
             $status = proc_get_status($process);
             if (!$status['running']) {
@@ -364,24 +433,27 @@ final class NativeProcessRunner
      * @param resource $stdoutPipe
      * @param resource $stderrPipe
      */
-    private static function drainAfterStop($stdoutPipe, $stderrPipe, string &$stdout, string &$stderr): void
+    private static function drainAfterStop($stdoutPipe, $stderrPipe, string &$stdout, string &$stderr): bool
     {
         $deadline = self::monotonicNanoseconds() + (self::FINAL_DRAIN_MILLISECONDS * 1_000_000.0);
+        $withinLimit = true;
 
         do {
             [$stdoutChunk, $stdoutRead] = self::readAvailable($stdoutPipe);
             [$stderrChunk, $stderrRead] = self::readAvailable($stderrPipe);
-            $stdout .= $stdoutChunk;
-            $stderr .= $stderrChunk;
+            $withinLimit = self::appendCaptured($stdout, $stdoutChunk) && $withinLimit;
+            $withinLimit = self::appendCaptured($stderr, $stderrChunk) && $withinLimit;
 
             if (feof($stdoutPipe) && feof($stderrPipe)) {
-                return;
+                return $withinLimit;
             }
 
             if (!$stdoutRead && !$stderrRead) {
                 usleep(1_000);
             }
         } while (self::monotonicNanoseconds() < $deadline);
+
+        return $withinLimit;
     }
 
     private static function monotonicNanoseconds(): float

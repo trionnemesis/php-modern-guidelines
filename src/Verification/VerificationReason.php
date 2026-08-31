@@ -12,6 +12,7 @@ final class VerificationReason
     public const PROCESS_TIMED_OUT = 'adapter.process_timed_out';
     public const PROCESS_EXIT_FAILED = 'adapter.process_exit_failed';
     public const PROCESS_SIGNALED = 'adapter.process_signaled';
+    public const OUTPUT_LIMIT_EXCEEDED = 'adapter.output_limit_exceeded';
     public const OUTPUT_INVALID = 'adapter.output_invalid';
     public const POLICY_PROJECTION_UNSUPPORTED = 'policy.projection_unsupported';
 
@@ -51,6 +52,7 @@ final class VerificationReason
             self::PROCESS_TIMED_OUT,
             self::PROCESS_EXIT_FAILED,
             self::PROCESS_SIGNALED,
+            self::OUTPUT_LIMIT_EXCEEDED,
             self::OUTPUT_INVALID,
         ];
     }

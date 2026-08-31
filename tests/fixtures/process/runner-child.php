@@ -49,6 +49,17 @@ if ($mode === 'flood') {
     exit(0);
 }
 
+if ($mode === 'flood-forever') {
+    $stream = ($arguments[2] ?? '') === 'stderr' ? STDERR : STDOUT;
+    $chunk = str_repeat($stream === STDERR ? 'E' : 'O', 8192);
+
+    while (!feof($stream)) {
+        write_all($stream, $chunk);
+    }
+
+    exit(0);
+}
+
 if ($mode === 'exit') {
     write_all(STDOUT, "before exit\n");
     write_all(STDERR, "exit stderr\n");

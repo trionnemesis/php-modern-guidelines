@@ -46,6 +46,7 @@ final class AdapterResultTest extends TestCase
         yield 'start failure' => [ProcessState::StartFailed, null];
         yield 'timeout' => [ProcessState::TimedOut, null];
         yield 'signal' => [ProcessState::Signaled, 15];
+        yield 'output limit' => [ProcessState::OutputLimitExceeded, null];
     }
 
     public function testInvocationIdsAreUniqueByIdRatherThanWholeObject(): void

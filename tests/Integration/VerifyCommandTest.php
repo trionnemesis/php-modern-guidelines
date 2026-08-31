@@ -628,6 +628,49 @@ final class VerifyCommandTest extends TestCase
         self::assertSame([], (new JsonSchemaValidator(PackagePaths::verificationSchemaPath()))->validate($decoded));
     }
 
+    public function testOutputLimitIsPreservedAsFailureEvidence(): void
+    {
+        $result = new AdapterResult(
+            AdapterOutcome::Failed,
+            ProjectionStatus::Supported,
+            '1.0.0',
+            [new VerificationInvocation(
+                'verification-1',
+                ['8.2', '8.3', '8.4'],
+                'fake-analyzer',
+                ['--format=json', '.'],
+                ProcessState::OutputLimitExceeded,
+                null,
+            )],
+            [],
+            new VerificationReason(
+                VerificationReason::OUTPUT_LIMIT_EXCEEDED,
+                'The fake analyzer exceeded the bounded output capture.',
+            ),
+        );
+        $tester = $this->tester($result);
+
+        self::assertSame(ExitCode::ADAPTER_FAILED, $tester->run([
+            'command' => 'verify',
+            'adapter' => 'fake',
+            '--executable' => 'fake-analyzer',
+            '--project-root' => $this->projectRoot(),
+            '--json' => true,
+        ], ['capture_stderr_separately' => true, 'decorated' => false]));
+        self::assertSame('', $tester->getErrorOutput());
+
+        /** @var array{invocations: list<array{status: string, exit_code: mixed, signal: mixed}>, reason: array{code: string}} $report */
+        $report = json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('output_limit_exceeded', $report['invocations'][0]['status']);
+        self::assertNull($report['invocations'][0]['exit_code']);
+        self::assertNull($report['invocations'][0]['signal']);
+        self::assertSame(VerificationReason::OUTPUT_LIMIT_EXCEEDED, $report['reason']['code']);
+        /** @var mixed $decoded */
+        $decoded = json_decode($tester->getDisplay(), false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(\stdClass::class, $decoded);
+        self::assertSame([], (new JsonSchemaValidator(PackagePaths::verificationSchemaPath()))->validate($decoded));
+    }
+
     /** @param list<VerificationInvocation> $invocations */
     #[DataProvider('invalidProjectionCases')]
     public function testMultipleInvocationProjectionFailsClosed(
