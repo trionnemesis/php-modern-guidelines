@@ -848,6 +848,71 @@ final class VerifyPhpCompatibilityStubTest extends TestCase
         });
     }
 
+    public function testExplicitScopeCannotFalseCleanACheckoutUnderAVendorNamedAncestor(): void
+    {
+        $base = sys_get_temp_dir()
+            . '/php-modern-guidelines-vendor-ancestor-'
+            . bin2hex(random_bytes(12));
+        $root = $base . '/vendor/checkout';
+        self::assertTrue(mkdir($root . '/src', 0700, true));
+        self::assertTrue(mkdir($root . '/vendor/dependency', 0700, true));
+        self::assertNotFalse(file_put_contents(
+            $root . '/composer.json',
+            '{"name":"fixture/vendor-ancestor","require":{"php":">=8.2 <8.6"}}',
+        ));
+        self::assertNotFalse(file_put_contents($root . '/src/Finding.php', "<?php\narray_find([], fn (): bool => true);\n"));
+        self::assertNotFalse(file_put_contents($root . '/vendor/dependency/Noise.php', "<?php\n"));
+
+        $payload = json_encode([
+            'totals' => ['errors' => 1, 'warnings' => 0, 'fixable' => 0],
+            'files' => [
+                'src/Finding.php' => [
+                    'errors' => 1,
+                    'warnings' => 0,
+                    'messages' => [[
+                        'message' => 'The function array_find() is not present in PHP version 8.2.',
+                        'source' => 'PHPCompatibility.FunctionUse.NewFunctions.array_findFound',
+                        'severity' => 5,
+                        'type' => 'ERROR',
+                        'line' => 2,
+                        'column' => 1,
+                    ]],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        self::writeStubResponse($root, 'analysis', ['txt' => $payload, 'exit' => 2]);
+        $before = FixtureTreeSnapshot::capture($root);
+
+        try {
+            [$exitCode, $tester] = $this->runVerify($root, self::stub(), null);
+
+            self::assertSame(ExitCode::VERIFICATION_FINDINGS, $exitCode);
+            /**
+             * @var array{
+             *     policy: array{planned_invocations: list<array{arguments: list<string>}>},
+             *     invocations: list<array{arguments: list<string>}>,
+             *     findings: list<array{file: string}>,
+             * } $report
+             */
+            $report = $this->decodedReport($tester, $root);
+            $expectedOperands = ['./composer.json', './src', './stub-response'];
+            self::assertSame(
+                $expectedOperands,
+                array_slice($report['policy']['planned_invocations'][2]['arguments'], 11),
+            );
+            self::assertSame(
+                $expectedOperands,
+                array_slice($report['invocations'][2]['arguments'], 11),
+            );
+            self::assertNotContains('.', $report['invocations'][2]['arguments']);
+            self::assertNotContains('./vendor', $report['invocations'][2]['arguments']);
+            self::assertSame('src/Finding.php', $report['findings'][0]['file']);
+            self::assertSame($before, FixtureTreeSnapshot::capture($root));
+        } finally {
+            self::removeTree($base);
+        }
+    }
+
     /** @param \Closure(string): void $body */
     private function withProject(\Closure $body): void
     {
