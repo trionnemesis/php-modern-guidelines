@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
     ->in(__DIR__)
-    ->exclude(['vendor', 'var']);
+    ->exclude(['vendor', 'var', 'tests/fixtures/verification']);
 
 return (new PhpCsFixer\Config())
     ->setRiskyAllowed(true)

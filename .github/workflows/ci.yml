@@ -224,3 +224,148 @@ jobs:
           php build/php-modern-guidelines.phar resolve --project-root="$fixture" --json > build/phar-policy.json
           php bin/php-modern-guidelines resolve --project-root="$fixture" --json > build/source-policy.json
           diff -u build/source-policy.json build/phar-policy.json
+
+  verification-analyzer:
+    name: Verification boundary and PHPCompatibility adapter (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.4']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          extensions: posix, pcntl
+      - run: composer install --no-interaction --no-progress --prefer-dist --no-plugins --no-scripts
+
+      - name: Allow unprivileged user namespaces on the runner VM
+        shell: bash
+        run: |
+          set -uo pipefail
+          knob=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          if [[ -r "$knob" ]] && [[ "$(cat "$knob")" != "0" ]]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
+              || echo "Could not relax the restriction; the next step reports the consequence."
+          else
+            echo "No AppArmor user-namespace restriction to relax."
+          fi
+
+      - name: Diagnose and assert the verification process boundary
+        shell: bash
+        run: |
+          set -uo pipefail
+          for knob in \
+            /proc/sys/kernel/apparmor_restrict_unprivileged_userns \
+            /proc/sys/user/max_user_namespaces \
+            /proc/sys/kernel/unprivileged_userns_clone; do
+            if [[ -r "$knob" ]]; then
+              echo "$knob = $(cat "$knob")"
+            else
+              echo "$knob = (absent)"
+            fi
+          done
+          setsid --wait unshare --user --map-current-user --pid --fork --kill-child=KILL -- /usr/bin/true
+          echo "raw isolation launcher exit: $?"
+          php <<'PHP'
+          <?php
+
+          require 'vendor/autoload.php';
+
+          $firstUsable = static function (array $paths): string {
+              foreach ($paths as $path) {
+                  if (is_file($path) && is_executable($path)) {
+                      return $path;
+                  }
+              }
+
+              return 'MISSING';
+          };
+
+          $facts = [
+              'PHP_OS_FAMILY' => PHP_OS_FAMILY,
+              'PHP_VERSION' => PHP_VERSION,
+              'PHP_BINARY' => PHP_BINARY,
+              'PHP_BINARY is absolute' => str_starts_with(PHP_BINARY, '/') ? 'yes' : 'NO',
+              'PHP_BINARY is an executable file' => (is_file(PHP_BINARY) && is_executable(PHP_BINARY)) ? 'yes' : 'NO',
+              'extension posix loaded' => extension_loaded('posix') ? 'yes' : 'NO',
+              'posix_getpgid() exists' => function_exists('posix_getpgid') ? 'yes' : 'NO',
+              'posix_kill() exists' => function_exists('posix_kill') ? 'yes' : 'NO',
+              'session launcher' => $firstUsable(['/usr/bin/setsid', '/bin/setsid']),
+              'namespace launcher' => $firstUsable(['/usr/bin/unshare', '/bin/unshare']),
+              'probe executable' => $firstUsable(['/usr/bin/true', '/bin/true']),
+          ];
+
+          foreach ($facts as $label => $value) {
+              printf("%-36s %s\n", $label, $value);
+          }
+
+          $supported = \ModernPhpGuidelines\Verification\Process\NativeProcessRunner::isSupportedOnCurrentPlatform();
+          printf("%-36s %s\n", 'isSupportedOnCurrentPlatform()', $supported ? 'true' : 'FALSE');
+
+          exit($supported ? 0 : 1);
+          PHP
+          supported=$?
+          if [[ "$supported" -ne 0 ]]; then
+            echo "::error::This runner cannot create the user/PID namespace the verification process boundary requires. The decision-table and real-analyzer groups would skip and prove nothing, so this job fails instead. Read the diagnosis above and follow WORK-ORDER-M3B section 12.3; do not relax the boundary." >&2
+            exit 1
+          fi
+
+      - name: Run the decision-table group through the real executor
+        shell: bash
+        run: |
+          set -euo pipefail
+          vendor/bin/phpunit --no-coverage --group process-isolation \
+            --fail-on-skipped --fail-on-empty-test-suite
+
+      - name: Install the pinned analyzers in a throwaway project outside the package
+        shell: bash
+        run: |
+          set -euo pipefail
+          analyzer_dir="$RUNNER_TEMP/php-modern-guidelines-analyzers"
+          mkdir -p "$analyzer_dir"
+          cd "$analyzer_dir"
+          composer init --no-interaction --quiet --name=throwaway/verification-analyzers
+          composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer require --no-interaction --no-progress --prefer-dist \
+            squizlabs/php_codesniffer:3.13.6 \
+            phpcompatibility/php-compatibility:10.0.0-alpha2
+          "$analyzer_dir/vendor/bin/phpcs" --version
+          "$analyzer_dir/vendor/bin/phpcs" -i > "$analyzer_dir/installed-standards.txt"
+          cat "$analyzer_dir/installed-standards.txt"
+          grep PHPCompatibility "$analyzer_dir/installed-standards.txt"
+
+      - name: Prove the package still declares and installs no analyzer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- composer.json composer.lock
+          php <<'PHP'
+          <?php
+
+          require 'vendor/autoload.php';
+
+          foreach (['squizlabs/php_codesniffer', 'phpcompatibility/php-compatibility'] as $package) {
+              if (\Composer\InstalledVersions::isInstalled($package, false)) {
+                  fwrite(STDERR, sprintf("Analyzer package %s must not be installed in the package.\n", $package));
+                  exit(1);
+              }
+          }
+          PHP
+
+      - name: Run the real-analyzer verification group
+        shell: bash
+        env:
+          MODERN_PHP_GUIDELINES_PHPCS: ${{ runner.temp }}/php-modern-guidelines-analyzers/vendor/bin/phpcs
+        run: |
+          set -euo pipefail
+          vendor/bin/phpunit --no-coverage --group real-analyzer \
+            --fail-on-skipped --fail-on-empty-test-suite
+
+      - name: Prove the checkout was not modified by the analyzer run
+        shell: bash
+        run: git diff --exit-code

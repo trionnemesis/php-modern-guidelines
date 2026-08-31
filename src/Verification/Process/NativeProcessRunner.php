@@ -300,9 +300,11 @@ final class NativeProcessRunner
 
         fclose($stdoutPipe);
         fclose($stderrPipe);
-        proc_close($process);
+        // proc_close() closes the pipes proc_open() created, so the namespace status must be read
+        // while the resource is still valid.
         $namespaceStatus = stream_get_contents($statusPipe);
         fclose($statusPipe);
+        proc_close($process);
 
         if ($outputLimitExceeded) {
             return new ProcessResult(ProcessState::OutputLimitExceeded, null, $stdout, $stderr);
@@ -706,9 +708,9 @@ final class NativeProcessRunner
             return false;
         }
 
-        $closeExitCode = proc_close($process);
         $namespaceStatus = stream_get_contents($statusPipe);
         fclose($statusPipe);
+        $closeExitCode = proc_close($process);
         if ($terminalStatus['signaled'] || $terminalStatus['termsig'] > 0) {
             return false;
         }

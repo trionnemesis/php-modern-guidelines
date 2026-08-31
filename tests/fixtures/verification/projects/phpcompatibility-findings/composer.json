@@ -1,0 +1,1 @@
+{"name": "fixture/phpcompatibility-findings", "require": {"php": ">=8.2 <8.6"}}

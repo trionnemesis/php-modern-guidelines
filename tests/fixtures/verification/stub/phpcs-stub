@@ -1,0 +1,74 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Test-only PHP_CodeSniffer stand-in. Never installed with the package; it exists only under
+ * tests/fixtures/verification so the verification suite can exercise the real executor and the real
+ * process runner without a real analyzer. It never writes to its working directory — it only reads
+ * canned response files from a `stub-response/` directory relative to the current working directory
+ * (which the executor sets to the resolved project root) and prints to stdout.
+ *
+ * Stage selection:
+ *   --version          -> "version" stage (mirrors `phpcs --version`)
+ *   -i                 -> "standards" stage (mirrors `phpcs -i`)
+ *   --stub-print-cwd   -> prints getcwd() and exits 0 immediately (proves the executor resolves the
+ *                         ProjectRoot working-directory role)
+ *   anything else      -> "analysis" stage (mirrors a PHPCompatibility analysis run)
+ *
+ * For the version/standards/analysis stages, three optional canned-response files control behaviour,
+ * read from `stub-response/<stage>.*`:
+ *   .mode  -> one of "sleep" (sleep 60s), "flood" (write 9 MiB to stdout), "signal" (send this
+ *             process SIGTERM, then sleep). Takes precedence over .txt/.exit when present.
+ *   .txt   -> the exact bytes to print in place of the stage default.
+ *   .exit  -> the exit code to use in place of 0.
+ */
+
+$stage = match ($argv[1] ?? null) {
+    '--version' => 'version',
+    '-i' => 'standards',
+    '--stub-print-cwd' => 'cwd',
+    default => 'analysis',
+};
+
+if ($stage === 'cwd') {
+    fwrite(STDOUT, getcwd() . "\n");
+    exit(0);
+}
+
+$modeFile = 'stub-response/' . $stage . '.mode';
+$mode = is_file($modeFile) ? trim((string) file_get_contents($modeFile)) : null;
+
+if ($mode === 'sleep') {
+    sleep(60);
+} elseif ($mode === 'flood') {
+    $chunk = str_repeat('x', 65536);
+    $written = 0;
+    while ($written < 9 * 1024 * 1024) {
+        fwrite(STDOUT, $chunk);
+        $written += strlen($chunk);
+    }
+    exit(0);
+} elseif ($mode === 'signal') {
+    if (!function_exists('posix_kill')) {
+        exit(97);
+    }
+    posix_kill(getmypid(), 15);
+    sleep(5);
+}
+
+$defaults = [
+    'version' => "PHP_CodeSniffer version 3.13.6 (stable) by Squiz and PHPCSStandards\n",
+    'standards' => "The installed coding standards are MySource, PEAR, PHPCompatibility, PSR1, PSR2, PSR12, Squiz and Zend\n",
+    'analysis' => "{\"totals\":{\"errors\":0,\"warnings\":0,\"fixable\":0},\"files\":{}}\n",
+];
+
+$textFile = 'stub-response/' . $stage . '.txt';
+$text = is_file($textFile) ? (string) file_get_contents($textFile) : $defaults[$stage];
+
+$exitFile = 'stub-response/' . $stage . '.exit';
+$exitCode = is_file($exitFile) ? (int) trim((string) file_get_contents($exitFile)) : 0;
+
+fwrite(STDOUT, $text);
+exit($exitCode);

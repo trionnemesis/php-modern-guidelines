@@ -4,3 +4,5 @@ parameters:
         - src
         - tests
         - tools
+    excludePaths:
+        - tests/fixtures/verification

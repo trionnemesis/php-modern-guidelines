@@ -34,11 +34,10 @@ final class ReadOnlyCoreTest extends TestCase
         . '|fsockopen|pfsockopen|stream_socket_client|stream_socket_server|stream_context_create'
         . '|socket_create|curl_init|curl_setopt|curl_exec';
 
-    public function testM3AProductionAdaptersCannotReachTheNativeRunner(): void
+    public function testProductionAdaptersCannotReachTheNativeRunner(): void
     {
         $adapterDirectory = dirname(__DIR__, 3) . '/src/Verification/Adapter';
-        $paths = glob($adapterDirectory . '/*.php');
-        self::assertIsArray($paths);
+        $paths = self::collectPhpFiles($adapterDirectory);
         self::assertNotSame([], $paths);
 
         foreach ($paths as $path) {
@@ -47,6 +46,41 @@ final class ReadOnlyCoreTest extends TestCase
             self::assertStringNotContainsString('NativeProcessRunner', $source, $path);
             self::assertStringNotContainsString('ProcessRequest', $source, $path);
         }
+    }
+
+    /**
+     * ADR-008's M3-B gate, mechanically: the executor is the one and only place in src/ that may build a
+     * ProcessRequest or reference NativeProcessRunner directly. Every adapter — including the
+     * PHPCompatibility adapter — must route through VerificationExecutor instead.
+     */
+    public function testOnlyTheCoreExecutorMayReachTheProcessBoundary(): void
+    {
+        $root = dirname(__DIR__, 3) . '/src';
+        $files = self::collectPhpFiles($root);
+
+        $processRequestSites = [];
+        $nativeProcessRunnerSites = [];
+
+        foreach ($files as $file) {
+            $stripped = $this->strippedSource($file);
+            $relative = $this->relativePath($file);
+
+            if (str_contains($stripped, 'new ProcessRequest(')) {
+                $processRequestSites[] = $relative;
+            }
+            if (str_contains($stripped, 'NativeProcessRunner')) {
+                $nativeProcessRunnerSites[] = $relative;
+            }
+        }
+
+        sort($processRequestSites, SORT_STRING);
+        sort($nativeProcessRunnerSites, SORT_STRING);
+
+        self::assertSame(['Verification/VerificationExecutor.php'], $processRequestSites);
+        self::assertSame(
+            ['Verification/Process/NativeProcessRunner.php', 'Verification/VerificationExecutor.php'],
+            $nativeProcessRunnerSites,
+        );
     }
 
     #[DataProvider('phpFiles')]

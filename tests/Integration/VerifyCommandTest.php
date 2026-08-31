@@ -18,6 +18,7 @@ use ModernPhpGuidelines\Verification\EvidenceClass;
 use ModernPhpGuidelines\Verification\InvocationPurpose;
 use ModernPhpGuidelines\Verification\MappingStatus;
 use ModernPhpGuidelines\Verification\PlannedVerificationInvocation;
+use ModernPhpGuidelines\Verification\Process\NativeProcessRunner;
 use ModernPhpGuidelines\Verification\Process\ProcessState;
 use ModernPhpGuidelines\Verification\ProjectionStatus;
 use ModernPhpGuidelines\Verification\VerificationAdapterRegistry;
@@ -25,6 +26,7 @@ use ModernPhpGuidelines\Verification\VerificationFinding;
 use ModernPhpGuidelines\Verification\VerificationInvocation;
 use ModernPhpGuidelines\Verification\VerificationReason;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\ApplicationTester;
@@ -915,7 +917,7 @@ final class VerifyCommandTest extends TestCase
         yield 'reserved external path' => ['<external>/phpcs'];
     }
 
-    public function testProductionPlaceholderReportsMissingExecutableAsUnavailable(): void
+    public function testProductionAdapterReportsMissingExecutableAsUnavailable(): void
     {
         $application = ApplicationFactory::create();
         $application->setAutoExit(false);
@@ -951,17 +953,16 @@ final class VerifyCommandTest extends TestCase
         self::assertSame('adapter.executable_unavailable', $report['reason']['code']);
     }
 
-    public function testProductionPlaceholderNeverExecutesAnExistingSelectedProgram(): void
+    #[Group('process-isolation')]
+    public function testProductionAdapterProbesAnExistingSelectedProgramAndReportsItIsNotPhpCodeSniffer(): void
     {
-        if (PHP_OS_FAMILY === 'Windows') {
-            self::markTestSkipped('This non-execution sentinel uses a POSIX executable script.');
-        }
+        self::requireProcessIsolation();
 
         $temporaryDirectory = sys_get_temp_dir()
             . '/php-modern-guidelines-placeholder-'
             . bin2hex(random_bytes(12));
         self::assertTrue(mkdir($temporaryDirectory, 0700));
-        $selectedExecutable = $temporaryDirectory . '/must-not-run';
+        $selectedExecutable = $temporaryDirectory . '/must-not-be-phpcs';
         $marker = $temporaryDirectory . '/executed';
         self::assertNotFalse(file_put_contents(
             $selectedExecutable,
@@ -988,12 +989,23 @@ final class VerifyCommandTest extends TestCase
                 ['capture_stderr_separately' => true, 'decorated' => false],
             );
 
+            // M3-B's adapter legitimately executes the selected program in its version probe, unlike the
+            // M3-A placeholder this test used to cover: the sentinel writes its marker and prints nothing,
+            // so the probe genuinely runs (the marker exists) and the adapter truthfully reports that the
+            // program is not PHP_CodeSniffer, rather than fabricating a "never executed" placeholder result.
             self::assertSame(ExitCode::ADAPTER_UNAVAILABLE, $exitCode);
             self::assertSame('', $tester->getErrorOutput());
-            /** @var array{reason: array{code: string}} $report */
+            /**
+             * @var array{
+             *     reason: array{code: string},
+             *     invocations: list<array{status: string}>,
+             * } $report
+             */
             $report = json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
             self::assertSame('adapter.capability_unavailable', $report['reason']['code']);
-            self::assertFileDoesNotExist($marker);
+            self::assertCount(1, $report['invocations']);
+            self::assertSame('exited', $report['invocations'][0]['status']);
+            self::assertFileExists($marker);
             self::assertSame($before, FixtureTreeSnapshot::capture($project));
         } finally {
             if (is_file($marker)) {
@@ -1042,6 +1054,20 @@ final class VerifyCommandTest extends TestCase
         self::assertSame('', $tester->getDisplay());
         self::assertStringContainsString($errorFragment, $tester->getErrorOutput());
         self::assertSame(0, $adapter->verificationCallCount());
+    }
+
+    private static function requireProcessIsolation(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::markTestSkipped('The committed stub is a POSIX executable script.');
+        }
+
+        if (!NativeProcessRunner::isSupportedOnCurrentPlatform()) {
+            self::markTestSkipped(
+                'This case executes a child process through the core executor, which requires operational '
+                . 'Linux user/PID-namespace isolation.',
+            );
+        }
     }
 
     private function projectRoot(): string
