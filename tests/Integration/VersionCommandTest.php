@@ -12,7 +12,9 @@ final class VersionCommandTest extends TestCase
 {
     public function testVersionCommandStartsAndReportsM0Version(): void
     {
-        $tester = new ApplicationTester(ApplicationFactory::create());
+        $application = ApplicationFactory::create();
+        $application->setAutoExit(false);
+        $tester = new ApplicationTester($application);
 
         self::assertSame(0, $tester->run(['command' => 'version']));
         self::assertSame('php-modern-guidelines ' . ApplicationFactory::VERSION . "\n", $tester->getDisplay());
