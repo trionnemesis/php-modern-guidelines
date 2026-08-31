@@ -4,8 +4,8 @@ The complete, mechanically-checked reference for `php-modern-guidelines`'s comma
 codes and JSON shapes. `SKILL.md` links here instead of repeating any of it.
 
 The published `v0.2.0` release contains the M2 commands. The current source tree additionally exposes
-the unreleased M3-A `verify` contract described below. M3-A has no real analyzer adapter: its production
-`phpcompatibility` registration is a non-executing placeholder that reports `unavailable` truthfully.
+the unreleased M3-A `verify` contract described below. Its production `phpcompatibility` adapter runs
+a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard.
 
 ## Global options
 
@@ -101,10 +101,9 @@ The four shared policy options remain authoritative: the adapter consumes the re
 than the PHP runtime executing this CLI. The CLI never installs a tool, accepts arbitrary analyzer
 arguments, loads the target project's autoloader, or writes analyzer output under the project root.
 
-M3-A is an unreleased foundation, not a PHPCompatibility implementation. Its placeholder checks whether
-the selected executable exists but never starts it. A missing executable and an existing executable with
-no implemented adapter both return a complete `unavailable` report with exit `7`; they differ by the
-stable reason in that report. A real PHPCompatibility parser and invocation belong to M3-B.
+The production `phpcompatibility` adapter is a real PHPCompatibility implementation: it starts the
+caller-selected, already-installed PHP_CodeSniffer, and a tool it cannot use still returns a complete
+`unavailable` report with exit `7` carrying a stable reason.
 
 ### exit codes
 

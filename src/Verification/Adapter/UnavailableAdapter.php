@@ -13,8 +13,10 @@ use ModernPhpGuidelines\Verification\VerificationReason;
 use ModernPhpGuidelines\Verification\VerificationRequest;
 
 /**
- * M3-A's truthful production placeholder. It proves the public boundary without parsing or running
- * a real analyzer; M3-B replaces this registration with the PHPCompatibility adapter.
+ * M3-A's truthful production placeholder. It proved the public boundary without parsing or running a
+ * real analyzer; ApplicationFactory now registers PhpCompatibilityAdapter instead, so this class is
+ * retained but no longer registered — CONTEXT.md keeps it because test coverage may still use it, so it
+ * is exercised only by UnavailableAdapterTest. It has no production caller.
  */
 final class UnavailableAdapter implements VerificationAdapter
 {

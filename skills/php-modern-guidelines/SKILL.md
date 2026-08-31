@@ -13,9 +13,9 @@ deprecations or removals apply, against that range. It never edits, executes or 
 pointed at, and it needs no network access to run.
 
 The published `v0.2.0` release is M2. The current source tree also contains the unreleased M3-A
-verification contract. Its production `phpcompatibility` adapter is only a truthful unavailable
-placeholder: it checks the selected executable but never launches PHPCompatibility or any other
-analyser. Do not present M3-A output as a completed scan.
+verification contract. Its production `phpcompatibility` adapter runs a caller-selected,
+already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and
+reports advisory evidence, never an automatic fix.
 
 ## When to use it
 
@@ -41,8 +41,8 @@ resolution modes.
 3. Run `list-rules` filtered to the kind of change you are about to make.
 4. Run `explain` for any rule that applies, passing its rule id, before acting on it.
 5. Use `verify` only after policy and rule consultation, and only when a relevant real adapter is
-   implemented and available. M3-A has no such adapter, so its exit `7` is capability evidence, not a
-   code-verification result.
+   implemented and available. The production `phpcompatibility` adapter is such an adapter, so its exit
+   `7` is capability evidence about the selected tool, not a code-verification result.
 6. Obey the guidance the tool gives, and repeat its warnings verbatim rather than paraphrasing them
    away.
 
@@ -162,9 +162,8 @@ The unreleased M3-A source exposes this explicit verification shape:
 php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/app --json
 ```
 
-This placeholder always produces a complete unavailable report and never runs the selected executable.
-If the executable cannot be found, the report says so; if it exists, the report says that the adapter
-capability is not implemented in this build. See `references/cli-contract.md` for the full contract.
+This adapter runs the selected executable and reports the findings it produces, or reports truthfully
+that the selected tool is unavailable. See `references/cli-contract.md` for the full contract.
 
 ## Exit codes
 
@@ -180,14 +179,15 @@ just because its exit code is non-zero.
 `verify` emits a complete report on stdout with stderr empty for exits `0`, `6`, `7`, `8` and `9`.
 These mean completed without findings, completed with findings, unavailable adapter/tool, adapter
 execution failure, and unsupported exact policy projection respectively. Invocation and core-input
-errors retain the existing empty-stdout behavior. In M3-A, production verification can only return the
-truthful unavailable outcome; no real analyzer is executed.
+errors retain the existing empty-stdout behavior. Production verification can return every one of those
+outcomes.
 
 ## Hard limits
 
 - The core commands are metadata-only and never edit, execute, or write to the target project. The
-  unreleased M3-A `verify` placeholder also runs no analyzer. Later real adapters must remain explicit,
-  isolated child processes and must prove zero target writes.
+  `verify` surface is the one place that starts an external process, and it still never edits, fixes or
+  writes to the target project. Later real adapters must remain explicit, isolated child processes and
+  must prove zero target writes.
 - It covers PHP 8.2 through 8.5 only.
 - A `coverage_gap` coverage status, or a `coverage.below_known_min`,
   `coverage.open_upper_bound_bounded` or `coverage.open_upper_bound_unbounded` warning, must be

@@ -10,8 +10,7 @@ use ModernPhpGuidelines\Command\ListCommand;
 use ModernPhpGuidelines\Command\ResolveCommand;
 use ModernPhpGuidelines\Command\VerifyCommand;
 use ModernPhpGuidelines\Command\VersionCommand;
-use ModernPhpGuidelines\Verification\Adapter\UnavailableAdapter;
-use ModernPhpGuidelines\Verification\ExecutableLocator;
+use ModernPhpGuidelines\Verification\Adapter\PhpCompatibilityAdapter;
 use ModernPhpGuidelines\Verification\VerificationAdapterRegistry;
 use Symfony\Component\Console\Application;
 
@@ -31,7 +30,7 @@ final class ApplicationFactory
         $application->add(new ExplainCommand());
         $application->add(new DoctorCommand());
         $application->add(new VerifyCommand(new VerificationAdapterRegistry([
-            new UnavailableAdapter('phpcompatibility', new ExecutableLocator()),
+            new PhpCompatibilityAdapter(),
         ])));
 
         return $application;

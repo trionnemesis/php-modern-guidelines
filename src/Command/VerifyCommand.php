@@ -31,8 +31,9 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Explicit, policy-aware verification boundary. M3-A ships only the contract and an unavailable
- * production placeholder; no real analyzer parser or target-project execution enters this slice.
+ * Explicit, policy-aware verification boundary. M3-A shipped only the contract and an unavailable
+ * production placeholder; M3-B registers the real PHPCompatibility adapter, so this command now parses
+ * a real analyzer's output and executes target-project analysis through it.
  */
 #[AsCommand(name: 'verify', description: 'Collect policy-aware advisory evidence from an explicit adapter.')]
 final class VerifyCommand extends Command

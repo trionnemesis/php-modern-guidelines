@@ -1,0 +1,3 @@
+This is not a valid executable program. It has no shebang line and is not a recognizable binary
+format, so attempting to execute it must fail at the operating-system level (ENOEXEC), which the
+verification executor records as ProcessState::StartFailed. See WORK-ORDER-M3B.md N11 / [V-3].

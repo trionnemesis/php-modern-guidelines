@@ -26,10 +26,11 @@ applies, before acting on it.
 
 The published `v0.2.0` release stops there. The current unreleased M3-A source also exposes an explicit
 verification adapter interface after policy and rule consultation. Its production
-registry recognizes only a `phpcompatibility` unavailable placeholder. For example:
+registry recognizes only `phpcompatibility`. For example:
 php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/your/project --json
-This placeholder never launches the executable and its exit `7` is capability evidence, not evidence
-that project code was scanned. Do not claim PHPCompatibility, PHPStan or Rector verification from M3-A.
+This adapter launches the selected PHP_CodeSniffer, so its exit `7` means that tool is unavailable
+rather than that project code was scanned; treat its findings as evidence to check, and do not claim
+PHPStan or Rector verification, because neither is implemented.
 
 The core tool is metadata-only and never edits, executes or fixes the project. Its existing exit codes:
 `2` means the input (usually `composer.json`) was invalid; `3` means an unknown rule id was passed to
