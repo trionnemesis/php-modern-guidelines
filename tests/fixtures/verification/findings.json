@@ -1,0 +1,130 @@
+{
+    "output_version": "1.0.0",
+    "status": "findings",
+    "exit_code": 6,
+    "adapter": {
+        "id": "fake",
+        "executable": "fake-analyzer",
+        "tool_version": "1.0.0"
+    },
+    "policy": {
+        "fingerprint": "sha256:b9601068db0118d8e9bbfd5028a20d1d31e64bc57e385ccb4ff0350ba7becc14",
+        "mode": "range-safe",
+        "allowed_minors": [
+            "8.2",
+            "8.3",
+            "8.4"
+        ],
+        "feature_ceiling": "8.2",
+        "lifecycle_ceiling": "8.4",
+        "projection_status": "supported",
+        "planned_invocations": [
+            {
+                "id": "verification-1",
+                "purpose": "analysis",
+                "policy_minors": [
+                    "8.2",
+                    "8.3",
+                    "8.4"
+                ],
+                "executable": "fake-analyzer",
+                "arguments": [
+                    "--format=json",
+                    "."
+                ],
+                "working_directory": "project_root",
+                "timeout_milliseconds": 300000,
+                "environment": "sanitized"
+            }
+        ]
+    },
+    "invocations": [
+        {
+            "id": "verification-1",
+            "purpose": "analysis",
+            "policy_minors": [
+                "8.2",
+                "8.3",
+                "8.4"
+            ],
+            "executable": "fake-analyzer",
+            "arguments": [
+                "--format=json",
+                "."
+            ],
+            "working_directory": "project_root",
+            "timeout_milliseconds": 300000,
+            "environment": "sanitized",
+            "status": "exited",
+            "exit_code": 1,
+            "signal": null
+        }
+    ],
+    "summary": {
+        "invocation_count": 1,
+        "finding_count": 2,
+        "mapped_finding_count": 1,
+        "unmapped_finding_count": 1,
+        "mapping_count": 1,
+        "mapped_rule_count": 1
+    },
+    "reason": null,
+    "rule_contexts": [
+        {
+            "id": "language.dollar_brace_string_interpolation",
+            "applicability": {
+                "status": "deprecated_across_range",
+                "axis": "lifecycle",
+                "usable_across_range": false,
+                "affected_minors": [
+                    "8.2",
+                    "8.3",
+                    "8.4"
+                ]
+            },
+            "sources": [
+                {
+                    "type": "php_source_upgrading",
+                    "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+                    "checked_at": "2026-08-30"
+                }
+            ]
+        }
+    ],
+    "findings": [
+        {
+            "evidence_class": "external_compatibility",
+            "invocation_ids": [
+                "verification-1"
+            ],
+            "external_rule_id": "Fake.Sniff.Mapped",
+            "type": "error",
+            "severity": "5",
+            "message": "Mapped fake finding.",
+            "file": "src/Example.php",
+            "line": 10,
+            "column": 3,
+            "proposed_diff": null,
+            "mapping_status": "mapped",
+            "mapped_rule_ids": [
+                "language.dollar_brace_string_interpolation"
+            ]
+        },
+        {
+            "evidence_class": "external_compatibility",
+            "invocation_ids": [
+                "verification-1"
+            ],
+            "external_rule_id": "Fake.Sniff.Unmapped",
+            "type": "warning",
+            "severity": "3",
+            "message": "Unmapped fake finding.",
+            "file": "src/Example.php",
+            "line": 20,
+            "column": 1,
+            "proposed_diff": null,
+            "mapping_status": "unmapped",
+            "mapped_rule_ids": []
+        }
+    ]
+}

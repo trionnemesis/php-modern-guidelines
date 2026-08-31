@@ -3,6 +3,10 @@
 The complete, mechanically-checked reference for `php-modern-guidelines`'s commands, options, exit
 codes and JSON shapes. `SKILL.md` links here instead of repeating any of it.
 
+The published `v0.2.0` release contains the M2 commands. The current source tree additionally exposes
+the unreleased M3-A `verify` contract described below. M3-A has no real analyzer adapter: its production
+`phpcompatibility` registration is a non-executing placeholder that reports `unavailable` truthfully.
+
 ## Global options
 
 Every command additionally accepts the options Symfony Console merges onto every application:
@@ -22,7 +26,7 @@ exits `0`.
 
 ## Shared policy options
 
-`resolve`, `list-rules`, `explain` and `doctor` all accept these four options:
+`resolve`, `list-rules`, `explain`, `doctor` and `verify` all accept these four options:
 
 | Option | Shortcut | Meaning |
 | --- | --- | --- |
@@ -79,6 +83,29 @@ as `skipped`, never as passing.
 | --- | --- |
 | `--rules-dir` | Advanced/testing: load rules from this directory instead of the bundled one. |
 
+### `verify`
+
+Collects one deterministic, policy-aware advisory-evidence report from an explicitly selected adapter.
+It takes one required adapter argument and one additional required option:
+
+```bash
+php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/app --json
+```
+
+| Input | Meaning |
+| --- | --- |
+| `adapter` | Adapter id. M3-A production builds recognize only `phpcompatibility`. |
+| `--executable` | Path or `PATH` name of an already-installed executable selected by the caller. |
+
+The four shared policy options remain authoritative: the adapter consumes the resolved policy rather
+than the PHP runtime executing this CLI. The CLI never installs a tool, accepts arbitrary analyzer
+arguments, loads the target project's autoloader, or writes analyzer output under the project root.
+
+M3-A is an unreleased foundation, not a PHPCompatibility implementation. Its placeholder checks whether
+the selected executable exists but never starts it. A missing executable and an existing executable with
+no implemented adapter both return a complete `unavailable` report with exit `7`; they differ by the
+stable reason in that report. A real PHPCompatibility parser and invocation belong to M3-B.
+
 ### exit codes
 
 | Code | Meaning |
@@ -89,6 +116,10 @@ as `skipped`, never as passing.
 | `3` | The rule id given to `explain` does not exist. |
 | `4` | A valid PHP constraint contains none of the PHP minors this tool knows, so policy resolution cannot proceed. |
 | `5` | Invalid rule data: a malformed rule file, a duplicate id, or a filename that does not match its id. |
+| `6` | Verification completed and produced one or more advisory findings. |
+| `7` | The selected verification adapter or executable is unavailable. |
+| `8` | The verification adapter could not complete execution. |
+| `9` | The resolved PHP policy cannot be projected exactly into the selected analyzer. |
 
 For `resolve`, `list-rules` and `explain`, a non-zero exit writes a human-readable error line to stderr
 and leaves stdout byte-empty, so a `--json` caller never receives a partial document. `doctor` is the
@@ -96,6 +127,13 @@ one documented exception: on a non-zero exit it prints the complete report on st
 empty, because the report is the diagnosis rather than a failure to answer — except for a mistake in
 `doctor`'s own options, which is rejected before any check runs and, like every other command, prints
 nothing on stdout.
+
+`verify` has a separate report rule. Outcomes `0`, `6`, `7`, `8` and `9` write one complete human or
+canonical JSON report to stdout and leave stderr byte-empty. Exit `0` means verification completed with
+no findings; `6` means it completed with findings. The other three statuses retain the reason no report
+consumer should have to infer. A mistake in the `verify` invocation, a policy-resolution error, invalid
+rule data, or an unexpected internal failure keeps the existing exit `2`, `4`, `5` or `1` behavior:
+stdout is byte-empty and stderr receives the error, so a JSON consumer never sees a partial document.
 
 ### resolve --json keys
 
@@ -116,6 +154,38 @@ field that `resolve --json` does not have.
 - `confidence`
 - `sources`
 - `warnings`
+
+### verify --json keys
+
+`verify --json` satisfies `schemas/verification.schema.json`. Its top-level keys are deterministic and
+ordered as follows:
+
+- `output_version`
+- `status`
+- `exit_code`
+- `adapter`
+- `policy`
+- `invocations`
+- `summary`
+- `reason`
+- `rule_contexts`
+- `findings`
+
+The report distinguishes `success`, `findings`, `unavailable`, `failed` and `unsupported_policy`.
+The `planned_invocations` member of `policy` records the complete plan validated before execution; top-level
+`invocations` records only processes actually attempted, so an early failure does not invent later runs.
+Each entry distinguishes a `tool_probe` from `analysis`, uses the `project_root` working-directory role,
+and records its bounded timeout and `sanitized` environment role. Executable paths in evidence are
+project-relative or reduced to a stable external basename so machine-specific prefixes are not disclosed.
+The sanitized runtime ignores inherited `TMPDIR`, `TEMP`, and `TMP` values and replaces all three with
+one canonical writable directory proven outside the target, failing closed if no reviewed path is safe.
+The native runner requires an operational Linux user/PID namespace and fails closed when it cannot create
+one. Killing namespace PID 1 also kills descendants that created another session or process group. Stdout
+and stderr are capped separately; exceeding either limit terminates the isolated tree, records
+`output_limit_exceeded`, and uses the stable failure reason `adapter.output_limit_exceeded`; partial output
+never becomes partial findings.
+External findings retain their external ids and use `mapped` or `unmapped` mapping status; exact mapped
+project rule ids are arrays, never comma-separated strings. No timestamp is emitted.
 
 ## Worked `explain` example
 

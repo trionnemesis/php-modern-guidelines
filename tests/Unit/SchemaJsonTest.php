@@ -66,5 +66,6 @@ final class SchemaJsonTest extends TestCase
 
         yield 'rule schema' => [$root . '/schemas/rule.schema.json'];
         yield 'policy schema' => [$root . '/schemas/policy.schema.json'];
+        yield 'verification schema' => [$root . '/schemas/verification.schema.json'];
     }
 }

@@ -150,6 +150,76 @@ final class PharBuildConfigTest extends TestCase
         self::assertStringContainsString('explain language.property_hooks', $yaml);
     }
 
+    public function testComposerProductionDependenciesExcludeVerificationAnalyzers(): void
+    {
+        $composer = JsonFile::readArray($this->root() . '/composer.json', 'composer.json');
+        $require = $composer['require'] ?? null;
+        self::assertIsArray($require);
+
+        $forbidden = [
+            'phpcompatibility/php-compatibility',
+            'squizlabs/php_codesniffer',
+            'phpstan/phpstan-deprecation-rules',
+            'rector/rector',
+        ];
+
+        foreach ($forbidden as $package) {
+            self::assertArrayNotHasKey(
+                $package,
+                $require,
+                sprintf('Analyzer package "%s" must not be a production dependency.', $package),
+            );
+        }
+    }
+
+    public function testCiWorkflowSmokeTestsTruthfulUnavailableVerificationWithoutBundledAnalyzers(): void
+    {
+        $yaml = $this->fileContents('.github/workflows/ci.yml');
+
+        foreach ([
+            'phpcompatibility/php-compatibility',
+            'squizlabs/php_codesniffer',
+            'phpstan/phpstan-deprecation-rules',
+            'rector/rector',
+        ] as $package) {
+            self::assertStringContainsString($package, $yaml);
+        }
+
+        self::assertStringContainsString('Composer\\InstalledVersions::isInstalled($package, false)', $yaml);
+        self::assertStringContainsString("new Phar('build/php-modern-guidelines.phar')", $yaml);
+        self::assertStringContainsString("=== 'FakeVerificationAdapter.php'", $yaml);
+        self::assertStringContainsString("file_get_contents('schemas/verification.schema.json')", $yaml);
+        self::assertStringContainsString("'/schemas/verification.schema.json'", $yaml);
+        self::assertStringContainsString('The PHAR must contain the exact canonical verification schema.', $yaml);
+        self::assertStringContainsString('missing_executable=/definitely/not-installed/phpcs', $yaml);
+        self::assertStringContainsString('php "$phar" verify phpcompatibility', $yaml);
+        self::assertStringContainsString('--executable="$missing_executable"', $yaml);
+        self::assertStringContainsString('--project-root="$fixture"', $yaml);
+        self::assertStringContainsString('> "$verify_stdout" 2> "$verify_stderr"', $yaml);
+        self::assertStringContainsString('if [[ "$verify_exit" -ne 7 ]]', $yaml);
+        self::assertStringContainsString('if [[ -s "$verify_stderr" ]]', $yaml);
+        self::assertStringContainsString("'status'] ?? null) === 'unavailable'", $yaml);
+        self::assertStringContainsString("'output_version'] ?? null) === '1.0.0'", $yaml);
+        self::assertStringContainsString("'exit_code'] ?? null) === 7", $yaml);
+        self::assertStringContainsString("'projection_status'] ?? null) === 'not_evaluated'", $yaml);
+        self::assertStringContainsString("'planned_invocations'] ?? null) === []", $yaml);
+        self::assertStringContainsString("'adapter.executable_unavailable'", $yaml);
+        self::assertStringContainsString("!str_contains(\$raw, \$missingExecutable)", $yaml);
+        self::assertStringContainsString('PackagePaths::verificationSchemaPath()', $yaml);
+        self::assertStringContainsString('->validate($reportObject) === []', $yaml);
+
+        foreach ([
+            'invocation_count',
+            'finding_count',
+            'mapped_finding_count',
+            'unmapped_finding_count',
+            'mapping_count',
+            'mapped_rule_count',
+        ] as $countKey) {
+            self::assertStringContainsString(sprintf("'%s' => 0", $countKey), $yaml);
+        }
+    }
+
     /**
      * E-T11a: the doctor hand-off guard. Implemented exactly as pinned in WORK-ORDER §3.7 — never with
      * assertStringContainsString, because the marker comment quotes the command it stands in for, which

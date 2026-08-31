@@ -24,8 +24,18 @@ deprecations and removals must be considered. Do not collapse the two.
 Follow up with `list-rules` (filtered to the change you are making) and `explain` for any rule that
 applies, before acting on it.
 
-This tool is read-only: it never edits, executes or fixes the project. Its exit codes: `2` means the
-input (usually `composer.json`) was invalid; `3` means an unknown rule id was passed to `explain`; `4`
-means the declared PHP constraint contains no PHP minor this tool knows; `5` means the tool's own rule
-data is invalid. Run `doctor` if the tool will not answer, and report what it says rather than guessing.
+The published `v0.2.0` release stops there. The current unreleased M3-A source also exposes an explicit
+verification adapter interface after policy and rule consultation. Its production
+registry recognizes only a `phpcompatibility` unavailable placeholder. For example:
+php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/your/project --json
+This placeholder never launches the executable and its exit `7` is capability evidence, not evidence
+that project code was scanned. Do not claim PHPCompatibility, PHPStan or Rector verification from M3-A.
+
+The core tool is metadata-only and never edits, executes or fixes the project. Its existing exit codes:
+`2` means the input (usually `composer.json`) was invalid; `3` means an unknown rule id was passed to
+`explain`; `4` means the declared PHP constraint contains no PHP minor this tool knows; `5` means the
+tool's own rule data is invalid. Verification adds `6` for completed-with-findings, `7` for unavailable,
+`8` for adapter failure and `9` for unsupported exact policy projection. A `verify` outcome with exit
+`0`, `6`, `7`, `8` or `9` is a complete report on stdout with empty stderr; invalid invocations keep
+stdout empty. Run `doctor` if the core tool will not answer, and report what it says rather than guessing.
 ```

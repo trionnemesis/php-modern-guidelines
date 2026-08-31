@@ -1,6 +1,6 @@
 ---
 name: php-modern-guidelines
-description: Consult the Modern PHP Guidelines CLI (resolve, list-rules, explain, doctor) before writing or changing PHP in a project, so generated code stays inside the project's declared Composer PHP range. Use this when adding or editing PHP code, choosing between an older and a newer PHP idiom, reviewing a PHP diff for version safety, or answering which PHP versions a project supports.
+description: Consult the Modern PHP Guidelines CLI (resolve, list-rules, explain, doctor, and the unreleased verify contract) before writing or changing PHP in a project, so generated code stays inside the project's declared Composer PHP range. Use this when adding or editing PHP code, choosing between an older and a newer PHP idiom, reviewing a PHP diff for version safety, or answering which PHP versions a project supports.
 license: Apache-2.0. LICENSE has the complete terms.
 ---
 
@@ -11,6 +11,11 @@ license: Apache-2.0. LICENSE has the complete terms.
 compatibility range and answers queries about which PHP syntax and APIs are safe to emit, and which
 deprecations or removals apply, against that range. It never edits, executes or fixes the project it is
 pointed at, and it needs no network access to run.
+
+The published `v0.2.0` release is M2. The current source tree also contains the unreleased M3-A
+verification contract. Its production `phpcompatibility` adapter is only a truthful unavailable
+placeholder: it checks the selected executable but never launches PHPCompatibility or any other
+analyser. Do not present M3-A output as a completed scan.
 
 ## When to use it
 
@@ -35,7 +40,10 @@ resolution modes.
 2. Read `feature_ceiling` and `lifecycle_ceiling` from that output — never just one PHP version.
 3. Run `list-rules` filtered to the kind of change you are about to make.
 4. Run `explain` for any rule that applies, passing its rule id, before acting on it.
-5. Obey the guidance the tool gives, and repeat its warnings verbatim rather than paraphrasing them
+5. Use `verify` only after policy and rule consultation, and only when a relevant real adapter is
+   implemented and available. M3-A has no such adapter, so its exit `7` is capability evidence, not a
+   code-verification result.
+6. Obey the guidance the tool gives, and repeat its warnings verbatim rather than paraphrasing them
    away.
 
 ## Commands
@@ -148,9 +156,19 @@ Details
     error                   -
 ```
 
+The unreleased M3-A source exposes this explicit verification shape:
+
+```bash
+php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/app --json
+```
+
+This placeholder always produces a complete unavailable report and never runs the selected executable.
+If the executable cannot be found, the report says so; if it exists, the report says that the adapter
+capability is not implemented in this build. See `references/cli-contract.md` for the full contract.
+
 ## Exit codes
 
-`resolve`, `list-rules`, `explain` and `doctor` share one exit-code contract; the full table is in
+`resolve`, `list-rules`, `explain`, `doctor` and `verify` share one exit-code table; the full table is in
 `references/cli-contract.md`. For `resolve`, `list-rules` and `explain`, a non-zero exit writes one
 human-readable error line to stderr and leaves stdout byte-empty, so a `--json` consumer never receives
 a partial document. `doctor` is the one documented exception: on a non-zero exit it prints its
@@ -159,10 +177,17 @@ exception to that exception is a mistake in `doctor`'s own options, which is rej
 runs and prints nothing on stdout, exactly like every other command. Do not discard `doctor`'s output
 just because its exit code is non-zero.
 
+`verify` emits a complete report on stdout with stderr empty for exits `0`, `6`, `7`, `8` and `9`.
+These mean completed without findings, completed with findings, unavailable adapter/tool, adapter
+execution failure, and unsupported exact policy projection respectively. Invocation and core-input
+errors retain the existing empty-stdout behavior. In M3-A, production verification can only return the
+truthful unavailable outcome; no real analyzer is executed.
+
 ## Hard limits
 
-- This tool is read-only. It never edits, executes, or writes to the target project, and it runs no
-  PHPStan, Rector, or other analyser against it.
+- The core commands are metadata-only and never edit, execute, or write to the target project. The
+  unreleased M3-A `verify` placeholder also runs no analyzer. Later real adapters must remain explicit,
+  isolated child processes and must prove zero target writes.
 - It covers PHP 8.2 through 8.5 only.
 - A `coverage_gap` coverage status, or a `coverage.below_known_min`,
   `coverage.open_upper_bound_bounded` or `coverage.open_upper_bound_unbounded` warning, must be
@@ -197,7 +222,7 @@ php php-modern-guidelines.phar version
 
 ## Reference files
 
-- `references/cli-contract.md` — the complete option tables, the exit-code table, the `resolve --json`
-  key list, and the full `explain` example.
+- `references/cli-contract.md` — the complete option tables, exit-code table, deterministic `resolve`
+  and `verify` JSON key lists, and the full `explain` example.
 - `references/two-axis-policy.md` — the two-axis semantics, the coverage statuses, and the three
   resolution modes.

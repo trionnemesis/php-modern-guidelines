@@ -1,0 +1,395 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trionnemesis.github.io/php-modern-guidelines/schemas/verification.schema.json",
+  "title": "Modern PHP Guidelines verification report",
+  "description": "Canonical deterministic report for one explicit policy-aware verification adapter run. The schema validates structural and local value constraints; producers additionally enforce relational invariants among plans, actual invocations, findings, mappings, and derived summary counts as specified by ADR-008.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["output_version", "status", "exit_code", "adapter", "policy", "invocations", "summary", "reason", "rule_contexts", "findings"],
+  "properties": {
+    "output_version": {"const": "1.0.0"},
+    "status": {"type": "string", "enum": ["success", "findings", "unavailable", "failed", "unsupported_policy"]},
+    "exit_code": {"type": "integer", "enum": [0, 6, 7, 8, 9]},
+    "adapter": {"$ref": "#/$defs/adapter"},
+    "policy": {"$ref": "#/$defs/policy"},
+    "invocations": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/invocation"}},
+    "summary": {"$ref": "#/$defs/summary"},
+    "reason": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/reason"}]},
+    "rule_contexts": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/ruleContext"}},
+    "findings": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/finding"}}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "status": {"const": "success"},
+        "exit_code": {"const": 0},
+        "adapter": {"properties": {"tool_version": {"type": "string", "minLength": 1}}},
+        "policy": {"properties": {"projection_status": {"const": "supported"}, "planned_invocations": {"minItems": 1}}},
+        "invocations": {
+          "minItems": 1,
+          "items": {"properties": {"status": {"const": "exited"}, "exit_code": {"const": 0}}},
+          "contains": {"properties": {"purpose": {"const": "analysis"}}, "required": ["purpose"]}
+        },
+        "summary": {
+          "properties": {
+            "invocation_count": {"minimum": 1},
+            "finding_count": {"const": 0},
+            "mapped_finding_count": {"const": 0},
+            "unmapped_finding_count": {"const": 0},
+            "mapping_count": {"const": 0},
+            "mapped_rule_count": {"const": 0}
+          }
+        },
+        "reason": {"type": "null"},
+        "rule_contexts": {"maxItems": 0},
+        "findings": {"maxItems": 0}
+      }
+    },
+    {
+      "properties": {
+        "status": {"const": "findings"},
+        "exit_code": {"const": 6},
+        "adapter": {"properties": {"tool_version": {"type": "string", "minLength": 1}}},
+        "policy": {"properties": {"projection_status": {"const": "supported"}, "planned_invocations": {"minItems": 1}}},
+        "invocations": {
+          "minItems": 1,
+          "items": {"properties": {"status": {"const": "exited"}}},
+          "contains": {"properties": {"purpose": {"const": "analysis"}}, "required": ["purpose"]}
+        },
+        "summary": {"properties": {"invocation_count": {"minimum": 1}, "finding_count": {"minimum": 1}}},
+        "reason": {"type": "null"},
+        "findings": {"minItems": 1}
+      }
+    },
+    {
+      "properties": {
+        "status": {"const": "unavailable"},
+        "exit_code": {"const": 7},
+        "summary": {
+          "properties": {
+            "finding_count": {"const": 0},
+            "mapped_finding_count": {"const": 0},
+            "unmapped_finding_count": {"const": 0},
+            "mapping_count": {"const": 0},
+            "mapped_rule_count": {"const": 0}
+          }
+        },
+        "reason": {"type": "object", "properties": {"code": {"enum": ["adapter.executable_unavailable", "adapter.capability_unavailable"]}}},
+        "rule_contexts": {"maxItems": 0},
+        "findings": {"maxItems": 0}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "adapter": {"properties": {"tool_version": {"type": "null"}}},
+            "policy": {"properties": {"projection_status": {"const": "not_evaluated"}, "planned_invocations": {"maxItems": 0}}},
+            "invocations": {"maxItems": 0},
+            "summary": {"properties": {"invocation_count": {"const": 0}}}
+          }
+        },
+        {
+          "properties": {
+            "policy": {"properties": {"projection_status": {"const": "supported"}, "planned_invocations": {"minItems": 1}}},
+            "invocations": {
+              "minItems": 1,
+              "items": {"properties": {"status": {"const": "exited"}}}
+            },
+            "summary": {"properties": {"invocation_count": {"minimum": 1}}},
+            "reason": {"properties": {"code": {"const": "adapter.capability_unavailable"}}}
+          }
+        }
+      ]
+    },
+    {
+      "properties": {
+        "status": {"const": "failed"},
+        "exit_code": {"const": 8},
+        "policy": {"properties": {"projection_status": {"const": "supported"}, "planned_invocations": {"minItems": 1}}},
+        "invocations": {"minItems": 1},
+        "summary": {
+          "properties": {
+            "invocation_count": {"minimum": 1},
+            "finding_count": {"const": 0},
+            "mapped_finding_count": {"const": 0},
+            "unmapped_finding_count": {"const": 0},
+            "mapping_count": {"const": 0},
+            "mapped_rule_count": {"const": 0}
+          }
+        },
+        "reason": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": ["adapter.process_start_failed", "adapter.process_timed_out", "adapter.process_exit_failed", "adapter.process_signaled", "adapter.output_limit_exceeded", "adapter.output_invalid"]
+            }
+          }
+        },
+        "rule_contexts": {"maxItems": 0},
+        "findings": {"maxItems": 0}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.process_start_failed"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "start_failed"}}, "required": ["status"]}}}}
+        },
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.process_timed_out"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "timed_out"}}, "required": ["status"]}}}}
+        },
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.process_exit_failed"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "exited"}, "exit_code": {"type": "integer", "minimum": 1}}, "required": ["status", "exit_code"]}}}}
+        },
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.process_signaled"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "signaled"}, "signal": {"type": "integer", "minimum": 1}}, "required": ["status", "signal"]}}}}
+        },
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.output_limit_exceeded"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "output_limit_exceeded"}}, "required": ["status"]}}}}
+        },
+        {
+          "if": {"properties": {"reason": {"properties": {"code": {"const": "adapter.output_invalid"}}}}},
+          "then": {"properties": {"invocations": {"contains": {"properties": {"status": {"const": "exited"}}, "required": ["status"]}}}}
+        }
+      ]
+    },
+    {
+      "properties": {
+        "status": {"const": "unsupported_policy"},
+        "exit_code": {"const": 9},
+        "adapter": {"properties": {"tool_version": {"type": "null"}}},
+        "policy": {"properties": {"projection_status": {"const": "unsupported"}, "planned_invocations": {"maxItems": 0}}},
+        "invocations": {"maxItems": 0},
+        "summary": {
+          "properties": {
+            "invocation_count": {"const": 0},
+            "finding_count": {"const": 0},
+            "mapped_finding_count": {"const": 0},
+            "unmapped_finding_count": {"const": 0},
+            "mapping_count": {"const": 0},
+            "mapped_rule_count": {"const": 0}
+          }
+        },
+        "reason": {"type": "object", "properties": {"code": {"const": "policy.projection_unsupported"}}},
+        "rule_contexts": {"maxItems": 0},
+        "findings": {"maxItems": 0}
+      }
+    }
+  ],
+  "$defs": {
+    "phpMinor": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "ruleId": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+    "invocationId": {"type": "string", "pattern": "^verification-[1-9][0-9]*$"},
+    "executableEvidence": {
+      "description": "A bare executable identity, normalized project-relative path, or stable <external> identity.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?![A-Za-z][A-Za-z0-9+.-]+:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[^\\\\/\\x00-\\x1F\\x7F]+(?:/[^\\\\/\\x00-\\x1F\\x7F]+)*$"
+    },
+    "invocationArgument": {
+      "description": "A NUL-free argument with no absolute or parent-traversal path operand.",
+      "type": "string",
+      "pattern": "^(?!.*(?:^|[^A-Za-z0-9._-])(?:[\\\\/]|[A-Za-z]:[\\\\/]))(?!.*(?:^|[^A-Za-z0-9._-])[A-Za-z]:(?![\\\\/]))(?!.*(?:^|[^A-Za-z0-9._-])\\.\\.(?:[\\\\/]|$))[^\\x00]*$"
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "executable", "tool_version"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+        "executable": {"$ref": "#/$defs/executableEvidence"},
+        "tool_version": {"type": ["string", "null"], "minLength": 1, "pattern": "^[^\\x00-\\x1F\\x7F]+$"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fingerprint", "mode", "allowed_minors", "feature_ceiling", "lifecycle_ceiling", "projection_status", "planned_invocations"],
+      "properties": {
+        "fingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "mode": {"type": "string", "enum": ["range-safe", "single-target", "runtime-observed"]},
+        "allowed_minors": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/phpMinor"}},
+        "feature_ceiling": {"$ref": "#/$defs/phpMinor"},
+        "lifecycle_ceiling": {"$ref": "#/$defs/phpMinor"},
+        "projection_status": {"type": "string", "enum": ["supported", "unsupported", "not_evaluated"]},
+        "planned_invocations": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/plannedInvocation"}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "single-target"}}, "required": ["mode"]},
+          "then": {"properties": {"allowed_minors": {"minItems": 1, "maxItems": 1}}}
+        },
+        {
+          "if": {"properties": {"projection_status": {"const": "supported"}}, "required": ["projection_status"]},
+          "then": {
+            "properties": {
+              "planned_invocations": {
+                "contains": {"properties": {"purpose": {"const": "analysis"}}, "required": ["purpose"]}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "plannedInvocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "policy_minors", "executable", "arguments", "working_directory", "timeout_milliseconds", "environment"],
+      "properties": {
+        "id": {"$ref": "#/$defs/invocationId"},
+        "purpose": {"type": "string", "enum": ["tool_probe", "analysis"]},
+        "policy_minors": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/phpMinor"}},
+        "executable": {"$ref": "#/$defs/executableEvidence"},
+        "arguments": {"type": "array", "items": {"$ref": "#/$defs/invocationArgument"}},
+        "working_directory": {"const": "project_root"},
+        "timeout_milliseconds": {"type": "integer", "minimum": 1, "maximum": 3600000},
+        "environment": {"const": "sanitized"}
+      },
+      "oneOf": [
+        {"properties": {"purpose": {"const": "tool_probe"}, "policy_minors": {"maxItems": 0}}},
+        {"properties": {"purpose": {"const": "analysis"}, "policy_minors": {"minItems": 1}}}
+      ]
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "policy_minors", "executable", "arguments", "working_directory", "timeout_milliseconds", "environment", "status", "exit_code", "signal"],
+      "properties": {
+        "id": {"$ref": "#/$defs/invocationId"},
+        "purpose": {"type": "string", "enum": ["tool_probe", "analysis"]},
+        "policy_minors": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/phpMinor"}},
+        "executable": {"$ref": "#/$defs/executableEvidence"},
+        "arguments": {"type": "array", "items": {"$ref": "#/$defs/invocationArgument"}},
+        "working_directory": {"const": "project_root"},
+        "timeout_milliseconds": {"type": "integer", "minimum": 1, "maximum": 3600000},
+        "environment": {"const": "sanitized"},
+        "status": {"type": "string", "enum": ["exited", "signaled", "start_failed", "timed_out", "output_limit_exceeded"]},
+        "exit_code": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "signal": {"type": ["integer", "null"], "minimum": 1}
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {"properties": {"purpose": {"const": "tool_probe"}, "policy_minors": {"maxItems": 0}}},
+            {"properties": {"purpose": {"const": "analysis"}, "policy_minors": {"minItems": 1}}}
+          ]
+        },
+        {
+          "oneOf": [
+            {"properties": {"status": {"const": "exited"}, "exit_code": {"type": "integer"}, "signal": {"type": "null"}}},
+            {"properties": {"status": {"const": "signaled"}, "exit_code": {"type": "null"}, "signal": {"type": "integer", "minimum": 1}}},
+            {"properties": {"status": {"enum": ["start_failed", "timed_out", "output_limit_exceeded"]}, "exit_code": {"type": "null"}, "signal": {"type": "null"}}}
+          ]
+        }
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invocation_count", "finding_count", "mapped_finding_count", "unmapped_finding_count", "mapping_count", "mapped_rule_count"],
+      "properties": {
+        "invocation_count": {"type": "integer", "minimum": 0},
+        "finding_count": {"type": "integer", "minimum": 0},
+        "mapped_finding_count": {"type": "integer", "minimum": 0},
+        "unmapped_finding_count": {"type": "integer", "minimum": 0},
+        "mapping_count": {"type": "integer", "minimum": 0},
+        "mapped_rule_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+        "message": {"type": "string", "minLength": 1, "pattern": "^[^\\x00-\\x1F\\x7F]+$"}
+      }
+    },
+    "ruleContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "applicability", "sources"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "applicability": {"$ref": "#/$defs/applicability"},
+        "sources": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/source"}}
+      }
+    },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "axis", "usable_across_range", "affected_minors"],
+      "properties": {
+        "status": {"type": "string", "enum": ["applicable", "forbidden_above_feature_ceiling", "not_in_range", "deprecated_in_range", "deprecated_across_range", "removed_in_range", "removed_across_range"]},
+        "axis": {"type": "string", "enum": ["feature", "lifecycle", "none"]},
+        "usable_across_range": {"type": "boolean"},
+        "affected_minors": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/phpMinor"}}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "url", "checked_at"],
+      "properties": {
+        "type": {"type": "string", "enum": ["official_php_migration_guide", "official_php_manual", "official_php_rfc", "php_source_upgrading"]},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://(?:www\\.php\\.net/|wiki\\.php\\.net/|github\\.com/php/php-src/|raw\\.githubusercontent\\.com/php/php-src/)"},
+        "checked_at": {"type": "string", "format": "date"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_class", "invocation_ids", "external_rule_id", "type", "severity", "message", "file", "line", "column", "proposed_diff", "mapping_status", "mapped_rule_ids"],
+      "properties": {
+        "evidence_class": {"type": "string", "enum": ["external_compatibility", "deprecation_annotation", "proposed_transformation"]},
+        "invocation_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/invocationId"}},
+        "external_rule_id": {"type": "string", "minLength": 1, "pattern": "^[^\\x00-\\x1F\\x7F]+$"},
+        "type": {"type": ["string", "null"], "minLength": 1, "pattern": "^[^\\x00-\\x1F\\x7F]+$"},
+        "severity": {"type": ["string", "null"], "minLength": 1, "pattern": "^[^\\x00-\\x1F\\x7F]+$"},
+        "message": {"type": "string", "minLength": 1, "pattern": "^[^\\x00-\\x1F\\x7F]+$"},
+        "file": {"type": ["string", "null"], "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:)(?![A-Za-z][A-Za-z0-9+.-]+:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[^\\\\/\\x00-\\x1F\\x7F]+(?:/[^\\\\/\\x00-\\x1F\\x7F]+)*$"},
+        "line": {"type": ["integer", "null"], "minimum": 1},
+        "column": {"type": ["integer", "null"], "minimum": 1},
+        "proposed_diff": {"type": ["string", "null"], "minLength": 1},
+        "mapping_status": {"type": "string", "enum": ["mapped", "unmapped"]},
+        "mapped_rule_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/ruleId"}}
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "mapping_status": {"const": "mapped"},
+                "external_rule_id": {"type": "string", "minLength": 1},
+                "mapped_rule_ids": {"minItems": 1}
+              }
+            },
+            {
+              "properties": {
+                "mapping_status": {"const": "unmapped"},
+                "mapped_rule_ids": {"maxItems": 0}
+              }
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "evidence_class": {"const": "proposed_transformation"},
+                "proposed_diff": {"type": "string", "minLength": 1}
+              }
+            },
+            {
+              "properties": {
+                "evidence_class": {"enum": ["external_compatibility", "deprecation_annotation"]},
+                "proposed_diff": {"type": "null"}
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

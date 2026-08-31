@@ -40,7 +40,7 @@ final class SkillCliContractTest extends TestCase
     /** Advanced/testing options exempt from reverse coverage (F-T21). */
     private const REVERSE_COVERAGE_ALLOW_LIST = ['rules-dir'];
 
-    private const OPTION_CHECKED_COMMANDS = ['resolve', 'list-rules', 'explain', 'doctor'];
+    private const OPTION_CHECKED_COMMANDS = ['resolve', 'list-rules', 'explain', 'doctor', 'verify'];
 
     // --- live surface --------------------------------------------------------------------------
 
@@ -70,7 +70,7 @@ final class SkillCliContractTest extends TestCase
         return $own;
     }
 
-    /** @return list<string> the de-duplicated getName() set — five canonical command names */
+    /** @return list<string> the de-duplicated getName() set — six canonical command names */
     private static function ownCommandNames(): array
     {
         $own = self::ownCommandsByNameOrAlias();

@@ -36,4 +36,9 @@ final class PackagePaths
     {
         return self::packageRoot() . '/schemas/policy.schema.json';
     }
+
+    public static function verificationSchemaPath(): string
+    {
+        return self::packageRoot() . '/schemas/verification.schema.json';
+    }
 }

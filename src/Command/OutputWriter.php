@@ -10,8 +10,8 @@ use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * stdout/stderr split, deterministic label padding, and error rendering shared by all three
- * commands. Every helper here is a pure string builder or a thin write — no command holds any
+ * stdout/stderr split, deterministic label padding, and error rendering shared by the CLI commands.
+ * Every helper here is a pure string builder or a thin write — no command holds any
  * state a second call here would need.
  */
 final class OutputWriter
