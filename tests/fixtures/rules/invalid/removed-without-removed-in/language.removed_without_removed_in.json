@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.removed_without_removed_in",
     "title": "Fixture: language.removed_without_removed_in",
     "summary": "Synthetic invalid fixture rule for RuleLoaderTest; not a real guideline.",
@@ -22,7 +22,7 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [],
         "phpstan": null,
         "rector": null
     },

@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "core.array_first_last",
     "title": "Prefer array_first() and array_last()",
     "summary": "PHP 8.5 added array_first() and array_last(), which read an array's first and last values without touching its internal pointer, replacing the older reset()/end() and array_key_first()/array_key_last() indexing idioms for that purpose.",
@@ -37,7 +37,10 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.array_firstFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.array_lastFound"
+        ],
         "phpstan": null,
         "rector": null
     },

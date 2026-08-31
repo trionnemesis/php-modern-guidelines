@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "core.dynamic_properties",
     "title": "Creation of dynamic properties is deprecated",
     "summary": "PHP 8.2 deprecates writing to a property that a class never declared, unless the class opts in with `#[AllowDynamicProperties]`; `stdClass` still allows dynamic properties, and `__get()`/`__set()` magic methods are unaffected.",
@@ -22,7 +22,7 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [],
         "phpstan": null,
         "rector": null
     },

@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "core.json_validate",
     "title": "Prefer `json_validate()` over decode-and-check",
     "summary": "`json_validate()`, added in PHP 8.3, reports whether a string is syntactically valid JSON without building the decoded value, replacing the common `json_decode()` plus `json_last_error()` validity check.",
@@ -31,7 +31,9 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.json_validateFound"
+        ],
         "phpstan": null,
         "rector": null
     },

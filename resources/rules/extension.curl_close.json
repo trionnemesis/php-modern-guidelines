@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "extension.curl_close",
     "title": "curl_close() is deprecated",
     "summary": "PHP 8.5 deprecates curl_close() because CurlHandle objects are freed automatically once nothing references them, making the explicit close call unnecessary.",
@@ -33,7 +33,9 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated"
+        ],
         "phpstan": null,
         "rector": null
     },

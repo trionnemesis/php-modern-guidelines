@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "extension.mysqli_driver_reconnect",
     "title": "`mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed",
     "summary": "PHP 8.2 removed the `reconnect` property of `mysqli_driver` (it only ever worked when mysqli was linked against the legacy libmysql client library) and removed the companion `mysqli.reconnect` php.ini directive in the same release.",
@@ -22,7 +22,9 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.IniDirectives.RemovedIniDirectives.mysqli_reconnectRemoved"
+        ],
         "phpstan": null,
         "rector": null
     },

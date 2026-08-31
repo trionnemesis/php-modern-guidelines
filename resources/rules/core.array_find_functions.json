@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "core.array_find_functions",
     "title": "array_find(), array_find_key(), array_any() and array_all()",
     "summary": "PHP 8.4 added four short-circuiting array-search functions: array_find(), array_find_key(), array_any() and array_all().",
@@ -69,7 +69,12 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.array_allFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.array_anyFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.array_findFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.array_find_keyFound"
+        ],
         "phpstan": null,
         "rector": null
     },

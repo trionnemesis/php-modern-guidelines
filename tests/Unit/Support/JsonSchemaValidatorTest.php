@@ -7,6 +7,7 @@ namespace ModernPhpGuidelines\Tests\Unit\Support;
 use ModernPhpGuidelines\Exception\RuleDataException;
 use ModernPhpGuidelines\Support\JsonSchemaValidator;
 use ModernPhpGuidelines\Support\PackagePaths;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class JsonSchemaValidatorTest extends TestCase
@@ -52,6 +53,31 @@ final class JsonSchemaValidatorTest extends TestCase
         $errors = $validator->validate($data);
 
         self::assertContains('/package_constraints: The data (array) must match the type: object', $errors);
+    }
+
+    /** @return iterable<string, array{mixed}> */
+    public static function legacyPhpCompatibilityShapes(): iterable
+    {
+        yield 'legacy null' => [null];
+        yield 'legacy single string' => ['PHPCompatibility.Classes.NewTypedConstants.Found'];
+    }
+
+    #[DataProvider('legacyPhpCompatibilityShapes')]
+    public function testLegacyPhpCompatibilityScalarShapesAreRejected(mixed $legacyValue): void
+    {
+        $validator = new JsonSchemaValidator(PackagePaths::ruleSchemaPath());
+        $data = $this->decode(__DIR__ . '/../../fixtures/rules/valid/language.f82.json');
+        self::assertInstanceOf(\stdClass::class, $data->verification);
+        $data->verification->phpcompatibility = $legacyValue;
+
+        $errors = $validator->validate($data);
+
+        self::assertNotSame([], $errors);
+        self::assertStringContainsString(
+            '/verification/phpcompatibility:',
+            implode("\n", $errors),
+        );
+        self::assertStringContainsString('array', implode("\n", $errors));
     }
 
     public function testUnresolvedRemoteReferenceFailsRatherThanFetches(): void

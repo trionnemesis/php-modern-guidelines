@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.readonly_classes",
     "title": "Readonly classes",
     "summary": "PHP 8.2 lets a whole class be declared readonly, so every declared property is readonly without repeating the modifier on each one.",
@@ -41,7 +41,7 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [],
         "phpstan": null,
         "rector": null
     },

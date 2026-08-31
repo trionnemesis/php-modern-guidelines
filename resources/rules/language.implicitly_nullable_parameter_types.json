@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.implicitly_nullable_parameter_types",
     "title": "Implicitly nullable parameter types are deprecated",
     "summary": "PHP 8.4 deprecates giving a typed parameter a default value of null without also marking the type itself nullable (\"?Type\" or \"Type|null\"); the parameter still accepts null, but omitting the explicit nullable marker now raises a deprecation notice.",
@@ -51,7 +51,9 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionDeclarations.RemovedImplicitlyNullableParam.Deprecated"
+        ],
         "phpstan": null,
         "rector": null
     },

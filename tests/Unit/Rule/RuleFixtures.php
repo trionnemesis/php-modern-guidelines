@@ -53,7 +53,7 @@ trait RuleFixtures
             guideline: 'Fixture only.',
             details: 'Synthetic rule used solely by unit tests.',
             examples: [new RuleExample(null, null, true)],
-            verification: new RuleVerification(null, null, null),
+            verification: new RuleVerification([], null, null),
             sources: [new RuleSource(
                 'php_source_upgrading',
                 'https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING',
