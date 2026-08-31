@@ -1,6 +1,6 @@
 ---
 name: php-modern-guidelines
-description: Consult the Modern PHP Guidelines CLI (resolve, list-rules, explain, doctor, and the unreleased verify contract) before writing or changing PHP in a project, so generated code stays inside the project's declared Composer PHP range. Use this when adding or editing PHP code, choosing between an older and a newer PHP idiom, reviewing a PHP diff for version safety, or answering which PHP versions a project supports.
+description: Consult the Modern PHP Guidelines CLI (resolve, list-rules, explain, doctor, and verify) before writing or changing PHP in a project, so generated code stays inside the project's declared Composer PHP range. Use this when adding or editing PHP code, choosing between an older and a newer PHP idiom, reviewing a PHP diff for version safety, or answering which PHP versions a project supports.
 license: Apache-2.0. LICENSE has the complete terms.
 ---
 
@@ -12,10 +12,11 @@ compatibility range and answers queries about which PHP syntax and APIs are safe
 deprecations or removals apply, against that range. It never edits, executes or fixes the project it is
 pointed at, and it needs no network access to run.
 
-The published `v0.2.0` release is M2. The current source tree also contains the unreleased M3-A
-verification contract. Its production `phpcompatibility` adapter runs a caller-selected,
-already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and
-reports advisory evidence, never an automatic fix.
+The published `v0.3.0` release includes the `verify` surface. Its production `phpcompatibility`
+adapter runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as
+an isolated child process and reports advisory evidence, never an automatic fix. It installs nothing,
+writes nothing under the target project, and always projects the resolved policy — never the PHP
+version running this CLI — onto the analyzer.
 
 ## When to use it
 
@@ -41,8 +42,10 @@ resolution modes.
 3. Run `list-rules` filtered to the kind of change you are about to make.
 4. Run `explain` for any rule that applies, passing its rule id, before acting on it.
 5. Use `verify` only after policy and rule consultation, and only when a relevant real adapter is
-   implemented and available. The production `phpcompatibility` adapter is such an adapter, so its exit
-   `7` is capability evidence about the selected tool, not a code-verification result.
+   implemented and available. The production `phpcompatibility` adapter is such an adapter, but it
+   needs an already-installed PHP_CodeSniffer with the PHPCompatibility standard registered, selected
+   with `--executable`; its exit `7` is capability evidence about the selected tool, not a
+   code-verification result.
 6. Obey the guidance the tool gives, and repeat its warnings verbatim rather than paraphrasing them
    away.
 
@@ -156,14 +159,19 @@ Details
     error                   -
 ```
 
-The unreleased M3-A source exposes this explicit verification shape:
+The `verify` command exposes this explicit shape:
 
 ```bash
 php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/app --json
 ```
 
 This adapter runs the selected executable and reports the findings it produces, or reports truthfully
-that the selected tool is unavailable. See `references/cli-contract.md` for the full contract.
+that the selected tool is unavailable. Before analysis it probes the selected executable in order: first
+that it can be located, then that it reports a version, then that it has the PHPCompatibility standard
+registered — a missing executable, a program that is not PHP_CodeSniffer, and a PHP_CodeSniffer
+installation without that standard are three distinct unavailable reasons, all exit `7`. If the resolved
+policy cannot be projected onto the analyzer's version range exactly, `verify` exits `9` rather than
+approximating it. See `references/cli-contract.md` for the full contract.
 
 ## Exit codes
 
@@ -180,14 +188,16 @@ just because its exit code is non-zero.
 These mean completed without findings, completed with findings, unavailable adapter/tool, adapter
 execution failure, and unsupported exact policy projection respectively. Invocation and core-input
 errors retain the existing empty-stdout behavior. Production verification can return every one of those
-outcomes.
+outcomes. Each finding keeps the analyzer's external sniff identifier verbatim, carries a mapped
+internal rule id only where a committed, reviewed mapping exists, and is preserved even when no mapping
+exists.
 
 ## Hard limits
 
 - The core commands are metadata-only and never edit, execute, or write to the target project. The
   `verify` surface is the one place that starts an external process, and it still never edits, fixes or
-  writes to the target project. Later real adapters must remain explicit, isolated child processes and
-  must prove zero target writes.
+  writes to the target project. Every real adapter, including the shipped `phpcompatibility` adapter, is
+  tested to leave the target tree byte-identical before and after every success and failure path.
 - It covers PHP 8.2 through 8.5 only.
 - A `coverage_gap` coverage status, or a `coverage.below_known_min`,
   `coverage.open_upper_bound_bounded` or `coverage.open_upper_bound_unbounded` warning, must be

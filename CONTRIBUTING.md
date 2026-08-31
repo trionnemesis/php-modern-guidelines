@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering a contribution. This repository is at M2 (`0.2.0`): the Composer Semver policy resolver, the two-axis rule registry, the `resolve` / `list-rules` / `explain` / `doctor` commands, the CI-built PHAR release asset, and the agent-distribution surfaces in `skills/` are implemented. Keep changes aligned with the active milestone and avoid bringing forward later framework-pack, analyzer/adapter, auto-fix, or marketplace work into an M2 change.
+Thank you for considering a contribution. This repository is at M3 (`0.3.0`): the Composer Semver policy resolver, the two-axis rule registry, the `resolve` / `list-rules` / `explain` / `doctor` / `verify` commands — `verify`'s only registered adapter is a real, explicit opt-in PHPCompatibility advisory adapter — the CI-built PHAR release asset, and the agent-distribution surfaces in `skills/` are implemented. Keep changes aligned with the active milestone and avoid bringing forward framework-pack, auto-fix/target-project-write, or agent-marketplace/plugin-manifest work, or the PHPStan and Rector adapters that were deferred and dropped from `0.3.0` (see `CHANGELOG.md`), into an M3 change.
 
 ## Development checks
 

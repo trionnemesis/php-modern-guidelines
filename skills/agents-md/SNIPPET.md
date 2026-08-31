@@ -24,13 +24,13 @@ deprecations and removals must be considered. Do not collapse the two.
 Follow up with `list-rules` (filtered to the change you are making) and `explain` for any rule that
 applies, before acting on it.
 
-The published `v0.2.0` release stops there. The current unreleased M3-A source also exposes an explicit
-verification adapter interface after policy and rule consultation. Its production
-registry recognizes only `phpcompatibility`. For example:
+The published `v0.3.0` release also exposes an explicit verification adapter interface after policy
+and rule consultation. Its production registry recognizes only `phpcompatibility`. For example:
 php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/your/project --json
-This adapter launches the selected PHP_CodeSniffer, so its exit `7` means that tool is unavailable
-rather than that project code was scanned; treat its findings as evidence to check, and do not claim
-PHPStan or Rector verification, because neither is implemented.
+This adapter launches the selected PHP_CodeSniffer, with the PHPCompatibility standard, as an isolated
+child process, so its exit `7` means that tool is unavailable rather than that project code was
+scanned; treat its findings as evidence to check, and do not claim PHPStan or Rector verification,
+because neither is implemented.
 
 The core tool is metadata-only and never edits, executes or fixes the project. Its existing exit codes:
 `2` means the input (usually `composer.json`) was invalid; `3` means an unknown rule id was passed to
