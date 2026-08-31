@@ -220,9 +220,11 @@ final class VerifyPhpCompatibilityStubTest extends TestCase
                 self::assertNull($report['invocations'][0]['exit_code']);
                 self::assertNull($report['invocations'][0]['signal']);
             } else {
-                // On PHP 8.2 proc_open() still forks first, so the same ENOEXEC is observable
-                // only as the child exiting 127; the truthful record is an exited version probe
-                // with a failure status, not a fabricated start_failed.
+                // On PHP 8.2 proc_open() still spawns first, so the ENOEXEC is observable only
+                // through the child: glibc's spawn path may even fall back to interpreting the
+                // file with /bin/sh (observed on ubuntu-24.04: dash exits 2 on the fixture's
+                // parenthesis), so the only version-stable truth is an exited, non-zero probe —
+                // never a fabricated start_failed.
                 self::assertSame(VerificationReason::PROCESS_EXIT_FAILED, $report['reason']['code']);
                 self::assertSame(
                     'The PHP_CodeSniffer version probe exited with a non-zero status.',
@@ -230,7 +232,8 @@ final class VerifyPhpCompatibilityStubTest extends TestCase
                 );
                 self::assertCount(1, $report['invocations']);
                 self::assertSame('exited', $report['invocations'][0]['status']);
-                self::assertSame(127, $report['invocations'][0]['exit_code']);
+                self::assertIsInt($report['invocations'][0]['exit_code']);
+                self::assertGreaterThan(0, $report['invocations'][0]['exit_code']);
                 self::assertNull($report['invocations'][0]['signal']);
             }
             self::assertSame(0, $report['summary']['finding_count']);
