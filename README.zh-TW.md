@@ -230,7 +230,9 @@ policy fingerprint 與 projection status、預先驗證的 invocation plan、實
 deterministic counts、reason、
 mapped source-backed rule context，以及 mapped/unmapped external finding；不輸出 timestamp。
 Plan 會區分不參與 policy partition 的 tool probe 與 policy-partitioned analysis，並記錄固定的
-`project_root` working-directory role、bounded timeout、capped output 與 sanitized environment role；report evidence
+`project_root` working-directory role、bounded timeout、capped output 與 sanitized environment role。
+Parent temporary-directory variable 會被忽略；所有 analyzer temp variable 都使用一個位於 target
+之外、受控且 canonical 的 writable directory，否則 execution 會 fail closed。Report evidence
 不會洩漏 machine-specific executable path prefix。
 
 這是 explicit adapter boundary，不是 arbitrary-command interface；caller 無法傳入 raw analyzer

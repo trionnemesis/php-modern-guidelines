@@ -79,7 +79,9 @@ Before any child process may start, an adapter must return a side-effect-free in
 descriptor states whether it is a `tool_probe` or policy-partitioned `analysis`, fixes the project-root
 working-directory role, bounded timeout, and sanitized environment role, and uses only canonical
 relative path operands. The runner supplies a small locale/timezone/color/process-discovery allow-list;
-it does not inherit proxy, credential, home, or user-config variables. Probe
+it does not inherit proxy, credential, home, user-config, or temporary-directory values. Instead,
+`TMPDIR`, `TEMP`, and `TMP` share one fixed canonical writable directory proven outside the target;
+execution fails closed when neither reviewed host path is safe. Probe
 invocations carry no policy minors and therefore cannot counterfeit coverage. The
 orchestration layer independently validates that plan and rejects a `supported` claim for a range-safe
 policy whose known coverage is incomplete or open-ended, as well as overlapping, missing, or reordered

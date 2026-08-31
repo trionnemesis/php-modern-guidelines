@@ -93,12 +93,23 @@ final class NativeProcessRunnerTest extends TestCase
     public function testChildReceivesOnlyTheSanitizedEnvironmentAllowList(): void
     {
         $previousSecret = getenv('PMG_PROCESS_SECRET');
+        $previousTemporaryValues = [];
+        foreach (['TMPDIR', 'TEMP', 'TMP'] as $name) {
+            $previousTemporaryValues[$name] = getenv($name);
+        }
+
         putenv('PMG_PROCESS_SECRET=must-not-leak');
+        putenv('TMPDIR=relative-temp');
+        putenv('TEMP=' . $this->projectRoot());
+        putenv('TMP=' . $this->projectRoot() . '/tests');
 
         try {
             $result = $this->runner()->run($this->request(['environment']));
         } finally {
             putenv($previousSecret === false ? 'PMG_PROCESS_SECRET' : 'PMG_PROCESS_SECRET=' . $previousSecret);
+            foreach ($previousTemporaryValues as $name => $value) {
+                putenv($value === false ? $name : $name . '=' . $value);
+            }
         }
 
         self::assertSame(ProcessState::Exited, $result->state);
@@ -108,6 +119,10 @@ final class NativeProcessRunnerTest extends TestCase
         self::assertSame('C', $environment['LC_ALL']);
         self::assertSame('UTC', $environment['TZ']);
         self::assertSame('1', $environment['NO_COLOR']);
+        self::assertContains($environment['TMPDIR'], ['/tmp', '/var/tmp']);
+        self::assertSame($environment['TMPDIR'], $environment['TEMP']);
+        self::assertSame($environment['TMPDIR'], $environment['TMP']);
+        self::assertFalse(str_starts_with($environment['TMPDIR'], $this->projectRoot() . '/'));
         self::assertArrayNotHasKey('PMG_PROCESS_SECRET', $environment);
         self::assertArrayNotHasKey('HOME', $environment);
         self::assertArrayNotHasKey('HTTP_PROXY', $environment);

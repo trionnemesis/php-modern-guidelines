@@ -230,8 +230,10 @@ policy fingerprint and projection status, the prevalidated invocation plan, actu
 deterministic counts, reason, mapped
 source-backed rule contexts, and mapped or unmapped external findings. It emits no timestamp.
 Plans distinguish non-partitioning tool probes from policy-partitioned analysis, and record the fixed
-`project_root` working-directory role, bounded timeout, capped output, and sanitized environment role. Machine-specific
-executable prefixes are normalized out of report evidence.
+`project_root` working-directory role, bounded timeout, capped output, and sanitized environment role.
+Parent temporary-directory variables are ignored; all analyzer temp variables use one controlled,
+canonical writable directory outside the target or execution fails closed. Machine-specific executable
+prefixes are normalized out of report evidence.
 
 This is an explicit adapter boundary, not an arbitrary-command interface: the caller cannot supply raw
 analyzer arguments. M3-A recognizes only `phpcompatibility`, and that registration is a non-executing
