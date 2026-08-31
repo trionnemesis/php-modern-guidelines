@@ -185,7 +185,7 @@ final class VerifyPhpCompatibilityStubTest extends TestCase
         self::assertTrue(is_executable(self::stub()));
     }
 
-    public function testRow4SelectedExecutableThatCannotStartRecordsStartFailed(): void
+    public function testRow4SelectedExecutableThatCannotBeExecutedIsReportedTruthfully(): void
     {
         $this->withProject(function (string $root): void {
             $before = FixtureTreeSnapshot::capture($root);
@@ -206,15 +206,33 @@ final class VerifyPhpCompatibilityStubTest extends TestCase
 
             self::assertSame('failed', $report['status']);
             self::assertSame('<external>/not-a-program', $report['adapter']['executable']);
-            self::assertSame(VerificationReason::PROCESS_START_FAILED, $report['reason']['code']);
-            self::assertSame(
-                'The selected PHP_CodeSniffer executable could not be started.',
-                $report['reason']['message'],
-            );
-            self::assertCount(1, $report['invocations']);
-            self::assertSame('start_failed', $report['invocations'][0]['status']);
-            self::assertNull($report['invocations'][0]['exit_code']);
-            self::assertNull($report['invocations'][0]['signal']);
+            if (\PHP_VERSION_ID >= 80300) {
+                // PHP >= 8.3's posix_spawn-based proc_open() reports the execve failure itself
+                // (php-src UPGRADING 8.3: "proc_open() returns false if $command array is invalid
+                // command instead of resource object"), so the runner records start_failed.
+                self::assertSame(VerificationReason::PROCESS_START_FAILED, $report['reason']['code']);
+                self::assertSame(
+                    'The selected PHP_CodeSniffer executable could not be started.',
+                    $report['reason']['message'],
+                );
+                self::assertCount(1, $report['invocations']);
+                self::assertSame('start_failed', $report['invocations'][0]['status']);
+                self::assertNull($report['invocations'][0]['exit_code']);
+                self::assertNull($report['invocations'][0]['signal']);
+            } else {
+                // On PHP 8.2 proc_open() still forks first, so the same ENOEXEC is observable
+                // only as the child exiting 127; the truthful record is an exited version probe
+                // with a failure status, not a fabricated start_failed.
+                self::assertSame(VerificationReason::PROCESS_EXIT_FAILED, $report['reason']['code']);
+                self::assertSame(
+                    'The PHP_CodeSniffer version probe exited with a non-zero status.',
+                    $report['reason']['message'],
+                );
+                self::assertCount(1, $report['invocations']);
+                self::assertSame('exited', $report['invocations'][0]['status']);
+                self::assertSame(127, $report['invocations'][0]['exit_code']);
+                self::assertNull($report['invocations'][0]['signal']);
+            }
             self::assertSame(0, $report['summary']['finding_count']);
 
             self::assertSame($before, FixtureTreeSnapshot::capture($root));
