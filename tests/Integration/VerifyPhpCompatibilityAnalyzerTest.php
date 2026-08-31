@@ -29,6 +29,188 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
     private const CLEAN_PROJECT_PATH = __DIR__ . '/../fixtures/verification/projects/phpcompatibility-clean';
     private const OR_CONSTRAINT_PROJECT_PATH = __DIR__ . '/../fixtures/projects/or-constraint';
 
+    /**
+     * The complete set of imap_* function names `src/imap_findings.php` calls that the
+     * FunctionUse.RemovedFunctions sniff reports as "removed since PHP 8.4" because of the ext/imap
+     * unbundling (cross-checked against phpcompatibility/php-compatibility 10.0.0-alpha2's own
+     * removedFunctions table). imap_header is deliberately excluded: it reports a distinct, pre-floor
+     * "removed since PHP 8.0" fact and must stay unmapped.
+     *
+     * This is one of four PHPCompatibility sniff families that report the same "ext/imap removed in
+     * PHP 8.4" fact. See IMAP_UNBUNDLED_NON_FUNCTION_SNIFF_IDS below for the other three families
+     * (Constants.RemovedConstants, Classes.RemovedClasses, IniDirectives.RemovedIniDirectives) — the map
+     * is complete per-fact only with all four covered.
+     *
+     * @var list<string>
+     */
+    private const IMAP_UNBUNDLED_FUNCTION_NAMES = [
+        'imap_8bit',
+        'imap_alerts',
+        'imap_append',
+        'imap_base64',
+        'imap_binary',
+        'imap_body',
+        'imap_bodystruct',
+        'imap_check',
+        'imap_clearflag_full',
+        'imap_close',
+        'imap_create',
+        'imap_createmailbox',
+        'imap_delete',
+        'imap_deletemailbox',
+        'imap_errors',
+        'imap_expunge',
+        'imap_fetch_overview',
+        'imap_fetchbody',
+        'imap_fetchheader',
+        'imap_fetchmime',
+        'imap_fetchstructure',
+        'imap_fetchtext',
+        'imap_gc',
+        'imap_get_quota',
+        'imap_get_quotaroot',
+        'imap_getacl',
+        'imap_getmailboxes',
+        'imap_getsubscribed',
+        'imap_headerinfo',
+        'imap_headers',
+        'imap_is_open',
+        'imap_last_error',
+        'imap_list',
+        'imap_listmailbox',
+        'imap_listscan',
+        'imap_listsubscribed',
+        'imap_lsub',
+        'imap_mail',
+        'imap_mail_compose',
+        'imap_mail_copy',
+        'imap_mail_move',
+        'imap_mailboxmsginfo',
+        'imap_mime_header_decode',
+        'imap_msgno',
+        'imap_mutf7_to_utf8',
+        'imap_num_msg',
+        'imap_num_recent',
+        'imap_open',
+        'imap_ping',
+        'imap_qprint',
+        'imap_rename',
+        'imap_renamemailbox',
+        'imap_reopen',
+        'imap_rfc822_parse_adrlist',
+        'imap_rfc822_parse_headers',
+        'imap_rfc822_write_address',
+        'imap_savebody',
+        'imap_scan',
+        'imap_scanmailbox',
+        'imap_search',
+        'imap_set_quota',
+        'imap_setacl',
+        'imap_setflag_full',
+        'imap_sort',
+        'imap_status',
+        'imap_subscribe',
+        'imap_thread',
+        'imap_timeout',
+        'imap_uid',
+        'imap_undelete',
+        'imap_unsubscribe',
+        'imap_utf7_decode',
+        'imap_utf7_encode',
+        'imap_utf8',
+        'imap_utf8_to_mutf7',
+    ];
+
+    /**
+     * The remaining 70 sniff ids that report the same "ext/imap removed in PHP 8.4" fact through three
+     * other PHPCompatibility sniff families, completing the map alongside IMAP_UNBUNDLED_FUNCTION_NAMES
+     * above (75 + 68 + 1 + 1 = 145 ids total). Cross-checked against phpcompatibility/php-compatibility
+     * 10.0.0-alpha2's own data tables: every entry across the RemovedFunctions, RemovedConstants,
+     * RemovedClasses and RemovedIniDirectives tables carrying `'extension' => 'imap'` with
+     * `'8.4' => true`, minus the 75 already listed above.
+     *
+     * 68 are `Constants.RemovedConstants.<name>Removed`, fired by `src/imap_all_surfaces.php`. Note
+     * NIL's id is `nilDeprecatedRemoved`, not `nilRemoved`: NIL is separately deprecated since PHP 8.1,
+     * on top of being removed in 8.4. One is `Classes.RemovedClasses.imap_connectionRemoved` (also
+     * `src/imap_all_surfaces.php`, fired twice — once for the parameter type, once for the return type).
+     * One is `IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved`, fired twice by
+     * `src/imap_ini.php` (once for `ini_set()`, once for `ini_get()`).
+     *
+     * @var list<string>
+     */
+    private const IMAP_UNBUNDLED_NON_FUNCTION_SNIFF_IDS = [
+        'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.cl_expungeRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.cp_moveRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.cp_uidRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.enc7bitRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.enc8bitRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.encbase64Removed',
+        'PHPCompatibility.Constants.RemovedConstants.encbinaryRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.encotherRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.encquotedprintableRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.ft_internalRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.ft_notRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.ft_peekRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.ft_prefetchtextRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.ft_uidRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_closetimeoutRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_gc_eltRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_gc_envRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_gc_textsRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_opentimeoutRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_readtimeoutRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.imap_writetimeoutRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_haschildrenRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_hasnochildrenRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_markedRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_noinferiorsRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_noselectRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_referralRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.latt_unmarkedRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.nilDeprecatedRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_anonymousRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_debugRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_expungeRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_halfopenRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_prototypeRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_readonlyRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_secureRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_shortcacheRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.op_silentRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sa_allRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sa_messagesRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sa_recentRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sa_uidnextRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sa_uidvalidityRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sa_unseenRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.se_freeRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.se_noprefetchRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.se_uidRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.so_freeRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.so_noserverRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sortarrivalRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sortccRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sortdateRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sortfromRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sortsizeRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sortsubjectRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.sorttoRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.st_setRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.st_silentRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.st_uidRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typeapplicationRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typeaudioRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typeimageRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typemessageRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typemodelRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typemultipartRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typeotherRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typetextRemoved',
+        'PHPCompatibility.Constants.RemovedConstants.typevideoRemoved',
+        'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved',
+    ];
+
     private string $executable = '';
 
     private string $findingsProject = '';
@@ -108,11 +290,11 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame(
             [
                 'invocation_count' => 3,
-                'finding_count' => 17,
-                'mapped_finding_count' => 14,
-                'unmapped_finding_count' => 3,
-                'mapping_count' => 14,
-                'mapped_rule_count' => 8,
+                'finding_count' => 166,
+                'mapped_finding_count' => 161,
+                'unmapped_finding_count' => 5,
+                'mapping_count' => 161,
+                'mapped_rule_count' => 9,
             ],
             $report['summary'],
         );
@@ -122,7 +304,8 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             $ids[] = $finding['external_rule_id'];
         }
 
-        $expectedIds = [
+        // The 16 ids verified before the imap family was mapped (13 mapped + 3 unmapped), unchanged.
+        $preImapIds = [
             'PHPCompatibility.Classes.NewTypedConstants.Found',
             'PHPCompatibility.FunctionDeclarations.RemovedImplicitlyNullableParam.Deprecated',
             'PHPCompatibility.FunctionUse.NewFunctions.array_allFound',
@@ -141,16 +324,34 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedVariableSyntax',
         ];
 
-        // (a) the sorted set of external rule ids: the 16 verified ids (13 mapped + 3 unmapped).
+        // The imap family adds 145 mapped ids (the complete per-fact map returned by
+        // imapUnbundledSniffIds(): 75 FunctionUse.RemovedFunctions + 68 Constants.RemovedConstants + 1
+        // Classes.RemovedClasses + 1 IniDirectives.RemovedIniDirectives) plus two unmapped ids that prove
+        // the boundary: imap_is_open() was itself added in PHP 8.2.1, so it also reports an unrelated
+        // "not present in PHP version 8.2.0 or earlier" finding, and imap_header() reports a distinct,
+        // pre-floor "removed since PHP 8.0" fact that must not be swept into the map.
+        $expectedIds = array_merge($preImapIds, self::imapUnbundledSniffIds(), [
+            'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
+            'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
+        ]);
+        sort($expectedIds, SORT_STRING);
+
+        // (a) the sorted set of external rule ids: 163 distinct ids (158 mapped + 5 unmapped).
         $sortedSet = array_values(array_unique($ids));
         sort($sortedSet, SORT_STRING);
         self::assertSame($expectedIds, $sortedSet);
 
-        // (b) the sorted 17-element multiset: the same set with the dollar-brace expression syntax id
-        // appearing twice — once from mapped_findings.php, once from duplicate_findings.php — which are
-        // different files and therefore different sortKey()s that dedupe must not collapse.
+        // (b) the sorted 166-element multiset: the same 163 distinct ids with three ids each appearing
+        // once more, because each is triggered from two distinct locations that dedupe must not collapse:
+        // the dollar-brace expression syntax id (once from mapped_findings.php, once from
+        // duplicate_findings.php — different files, so different sortKey()s), the IMAP\Connection class
+        // id (the parameter type and the return type of the same function signature, in
+        // imap_all_surfaces.php — same file and line, different columns), and the imap.enable_insecure_rsh
+        // ini-directive id (ini_set() then ini_get(), in imap_ini.php — same file, different lines).
         $expectedMultiset = $expectedIds;
         $expectedMultiset[] = 'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax';
+        $expectedMultiset[] = 'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved';
+        $expectedMultiset[] = 'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved';
         sort($expectedMultiset, SORT_STRING);
         $sortedMultiset = $ids;
         sort($sortedMultiset, SORT_STRING);
@@ -182,6 +383,21 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         ) {
             self::assertSame(['language.dollar_brace_string_interpolation'], $mapped);
         }
+        foreach (self::imapUnbundledSniffIds() as $sniffId) {
+            foreach ($mappedRuleIdsBySniffId[$sniffId] as $mapped) {
+                self::assertSame(['extension.imap_unbundled'], $mapped);
+            }
+        }
+
+        // The two imap boundary ids prove the "must stay unmapped" decision: imap_is_open() was itself
+        // added in PHP 8.2.1 (a fact this catalogue does not track) and imap_header() was removed in PHP
+        // 8.0 (a different, pre-floor fact) — neither is part of the 75-entry unbundling family.
+        foreach ($mappedRuleIdsBySniffId['PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound'] as $mapped) {
+            self::assertSame([], $mapped);
+        }
+        foreach ($mappedRuleIdsBySniffId['PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved'] as $mapped) {
+            self::assertSame([], $mapped);
+        }
 
         foreach ($report['findings'] as $finding) {
             if ($finding['mapping_status'] === 'unmapped') {
@@ -203,6 +419,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
                 'core.array_first_last',
                 'core.json_validate',
                 'extension.curl_close',
+                'extension.imap_unbundled',
                 'extension.mysqli_driver_reconnect',
                 'language.dollar_brace_string_interpolation',
                 'language.implicitly_nullable_parameter_types',
@@ -376,16 +593,16 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertStringContainsString('Verification: findings (exit 6)', $human);
         self::assertStringContainsString('Planned invocations: 3', $human);
         self::assertStringContainsString('Invocations: 3', $human);
-        self::assertStringContainsString('Findings: 17', $human);
-        self::assertStringContainsString('mapped findings        14', $human);
-        self::assertStringContainsString('unmapped findings      3', $human);
+        self::assertStringContainsString('Findings: 166', $human);
+        self::assertStringContainsString('mapped findings        161', $human);
+        self::assertStringContainsString('unmapped findings      5', $human);
 
         [$jsonExitCode, $report] = $this->verifyReport($this->findingsProject);
         /** @var array{status: string, exit_code: int, summary: array{finding_count: int}} $report */
         self::assertSame($humanExitCode, $jsonExitCode);
         self::assertSame('findings', $report['status']);
         self::assertSame(ExitCode::VERIFICATION_FINDINGS, $report['exit_code']);
-        self::assertSame(17, $report['summary']['finding_count']);
+        self::assertSame(166, $report['summary']['finding_count']);
     }
 
     public function testJsonOutputIsByteIdenticalAcrossTwoRuns(): void
@@ -496,5 +713,21 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertIsString($resolved);
 
         return $resolved;
+    }
+
+    /**
+     * @return list<string> the complete 145-id per-fact map: the 75 `…RemovedFunctions.<name>Removed`
+     *     sniff ids IMAP_UNBUNDLED_FUNCTION_NAMES calls into, plus the 70 ids in
+     *     IMAP_UNBUNDLED_NON_FUNCTION_SNIFF_IDS.
+     */
+    private static function imapUnbundledSniffIds(): array
+    {
+        return array_merge(
+            array_map(
+                static fn(string $name): string => 'PHPCompatibility.FunctionUse.RemovedFunctions.' . $name . 'Removed',
+                self::IMAP_UNBUNDLED_FUNCTION_NAMES,
+            ),
+            self::IMAP_UNBUNDLED_NON_FUNCTION_SNIFF_IDS,
+        );
     }
 }

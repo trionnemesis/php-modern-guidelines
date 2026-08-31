@@ -1,18 +1,22 @@
 # Agent instructions
 
-## M2 release and unreleased M3-A boundary
+## v0.3.0 release and verification adapter boundary
 
-The published release is M2 (`0.2.0`). Implemented there: the `version`, `resolve`, `list-rules`, `explain`
-and `doctor` commands, the Composer Semver policy resolver, the two-axis applicability engine, the seed
-rule catalogue in `resources/rules/`, a CI-built PHAR attached to each release, and the agent-distribution
-surfaces in `skills/`.
+The published release is M3 (`0.3.0`). Implemented there: the `version`, `resolve`, `list-rules`,
+`explain`, `doctor` and `verify` commands, the Composer Semver policy resolver, the two-axis
+applicability engine, the seed rule catalogue in `resources/rules/`, a CI-built PHAR attached to each
+release, the agent-distribution surfaces in `skills/`, and the explicit `verify` boundary with its one
+real adapter.
 
-The current source tree additionally contains the unreleased M3-A verification foundation: the explicit
-verify adapter surface, its canonical report schema, process boundary and
-test-only fake adapter. Its production registry recognizes only a non-executing `phpcompatibility`
-placeholder, which truthfully reports exit `7`; no real analyzer is invoked in M3-A. Do not add a real
-PHPCompatibility, PHPStan or Rector adapter, framework packs, auto-fixes, network rule fetching, or agent
-marketplace/plugin manifests unless the active task explicitly advances the corresponding later slice.
+`verify`'s production registry recognizes only `phpcompatibility`: a real PHPCompatibility
+implementation that runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility
+standard as an isolated child process, reports advisory evidence, and never installs, writes under, or
+mutates the target project. Its committed sniff-to-rule mapping covers 9 of the 16 catalogue rules,
+including the whole `extension.imap_unbundled` surface; every other finding is preserved unmapped rather
+than discarded. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D)
+was dropped from `0.3.0` on value-gate evidence — see issue #9 and its linked follow-ups — so do not add
+either, or any framework pack, auto-fix, network rule fetching, or agent marketplace/plugin manifest,
+unless the active task explicitly advances that later milestone.
 
 Rule files: one JSON file per rule in `resources/rules/`, basename equal to the rule `id`, and the id's
 first dot-segment equal to its `category`. Categories: parser-level syntax is `language`, runtime-visible
@@ -30,8 +34,8 @@ uncertainty instead of guessing.
 `skills/php-modern-guidelines/` holds the Claude Agent Skill (`SKILL.md` plus `references/`);
 `skills/agents-md/SNIPPET.md` holds the plain-Markdown wrapper a consuming project pastes into its own
 `AGENTS.md`. Both distinguish the metadata-only core from the explicit verification boundary. Never write
-text implying that M3-A runs a real analyzer, edits or fixes a target project, or that its unreleased
-surface is already present in the `v0.2.0` release asset.
+text implying that `verify` edits or fixes a target project, that its findings are anything but advisory
+evidence, that mapping coverage is complete, or that a PHPStan or Rector adapter exists.
 
 This text is contract-tested, not review-tested. Only content inside backticks is checked: every command,
 option, exit code, rule id and warning code written in backticks must exist in the real CLI, and every
@@ -67,7 +71,7 @@ pinned across builds because this package commits no `composer.lock`.
 - Use Composer Semver for Composer constraints; never approximate complete constraint semantics with regex.
 - Keep feature ceiling (lowest supported minor) separate from lifecycle ceiling (highest known supported minor).
 - Core commands must be deterministic and read-only: no target code execution, analyzed-project `vendor/autoload.php`, Composer scripts/plugins, network calls, or target-repository writes.
-- Verification must remain explicit, policy-aware and zero-mutation. Time and captured output stay bounded; an operational PID namespace must contain the full process tree, including workers that create new sessions; analyzer temporary paths stay outside the target; missing executables, unsupported projections and unmapped findings stay visible. M3-A itself runs no real analyzer.
+- Verification must remain explicit, policy-aware and zero-mutation. Time and captured output stay bounded; an operational PID namespace must contain the full process tree, including workers that create new sessions; analyzer temporary paths stay outside the target; missing executables, unsupported projections and unmapped findings stay visible. The shipped `phpcompatibility` adapter proves all of this by test, and any later real adapter must too.
 - PHP language/Core/bundled-extension facts require an official PHP source URL and review date. Mark uncertainty instead of guessing.
 - Keep generated output stable unless a caller explicitly requests timestamps.
 

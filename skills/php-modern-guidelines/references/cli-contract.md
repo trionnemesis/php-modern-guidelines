@@ -3,9 +3,11 @@
 The complete, mechanically-checked reference for `php-modern-guidelines`'s commands, options, exit
 codes and JSON shapes. `SKILL.md` links here instead of repeating any of it.
 
-The published `v0.2.0` release contains the M2 commands. The current source tree additionally exposes
-the unreleased M3-A `verify` contract described below. Its production `phpcompatibility` adapter runs
-a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard.
+The published `v0.3.0` release contains the commands below, including `verify`. Its production
+`phpcompatibility` adapter runs a caller-selected, already-installed PHP_CodeSniffer with the
+PHPCompatibility standard as an isolated child process, installs nothing, writes nothing under the
+target project, and always projects the resolved policy — never the PHP version running this CLI — onto
+the analyzer.
 
 ## Global options
 
@@ -94,7 +96,7 @@ php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpc
 
 | Input | Meaning |
 | --- | --- |
-| `adapter` | Adapter id. M3-A production builds recognize only `phpcompatibility`. |
+| `adapter` | Adapter id. Production builds recognize only `phpcompatibility`. |
 | `--executable` | Path or `PATH` name of an already-installed executable selected by the caller. |
 
 The four shared policy options remain authoritative: the adapter consumes the resolved policy rather
@@ -104,6 +106,25 @@ arguments, loads the target project's autoloader, or writes analyzer output unde
 The production `phpcompatibility` adapter is a real PHPCompatibility implementation: it starts the
 caller-selected, already-installed PHP_CodeSniffer, and a tool it cannot use still returns a complete
 `unavailable` report with exit `7` carrying a stable reason.
+
+Before running any analysis, the adapter probes the selected executable in order, and each probe stage
+is a distinct truthful outcome: the executable cannot be located (`adapter.executable_unavailable`); it
+can be located but does not report a PHP_CodeSniffer version (`adapter.capability_unavailable`); or it
+reports a version but does not have the PHPCompatibility standard registered
+(`adapter.capability_unavailable` with a different stable message). All three are exit `7`, and none of
+them starts the analysis phase.
+
+The analyzer's version range comes from the resolved policy alone, never from the PHP runtime executing
+this CLI: a single allowed minor projects to that one PHP minor, and a contiguous multi-minor range
+projects to its inclusive bounds. A policy the analyzer cannot express exactly — an unresolved coverage
+gap, an open upper bound, or a non-contiguous allowed set — is refused with exit `9` rather than
+approximated. `--mode=single-target` (see "Shared policy options" above) narrows the resolved policy to
+one PHP minor before projection, and is the way to obtain a supported plan for a policy that would
+otherwise be refused this way.
+
+Each finding preserves the analyzer's own sniff identifier verbatim; it carries one or more internal
+rule ids only where a committed, reviewed mapping exists, and is kept, unmapped, when no mapping exists
+— a finding is never discarded merely because no internal rule matches it.
 
 ### exit codes
 

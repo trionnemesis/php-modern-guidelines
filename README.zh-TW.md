@@ -4,16 +4,16 @@
 [![Deploy Pages](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml/badge.svg)](https://github.com/trionnemesis/php-modern-guidelines/actions/workflows/pages.yml)
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777bb4)](https://www.php.net/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![M2 agent distribution](https://img.shields.io/badge/status-M2%20agent%20distribution-5b4b8a)](CHANGELOG.md)
-[![Source: M3-A verification foundation](https://img.shields.io/badge/source-M3--A%20verification%20foundation-0e7490)](docs/adr/ADR-008-external-verification-adapters.md)
+[![M3 verification adapter](https://img.shields.io/badge/status-M3%20verification%20adapter-5b4b8a)](CHANGELOG.md)
+[![Verify: PHPCompatibility advisory adapter](https://img.shields.io/badge/verify-PHPCompatibility%20advisory%20adapter-0e7490)](docs/adr/ADR-008-external-verification-adapters.md)
 
 > 讓 AI coding agent 在產生 PHP 程式碼前，先理解專案真正允許的 PHP 版本範圍、已棄用 API 與現代替代方案，避免「本機可跑、專案最低版本卻不能跑」。
 
 🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Agent distribution](#agent-distribution) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**已發布：M2 / alpha · v0.2.0。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet，以及 CI 建置、checksum 驗證的 PHAR release asset。
+**已發布：M3 · v0.3.0。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
 
-> **開發狀態：** `v0.2.0` 仍是最新正式 release。Current source tree 另外包含尚未發布的 M3-A verification foundation：canonical report contract 與 `verify <adapter> --executable=<path-or-name>`。Production registry 目前只有不執行程式的 `phpcompatibility` unavailable placeholder；M3-A 不會執行 PHPCompatibility、PHPStan、Rector 或其他真實 analyzer。
+> **Verification：** `v0.3.0` 新增了明確、opt-in 的 `verify <adapter> --executable=<path-or-name>` surface。其 production `phpcompatibility` adapter 是真實的 PHPCompatibility 實作：它會以 isolated child process 執行 caller 選定、已安裝好的 PHP_CodeSniffer 與 PHPCompatibility standard，回報 advisory evidence——絕非自動修復。PHPStan deprecation adapter（M3-C）已被延後，Rector dry-run adapter（M3-D）則未納入本次 release；原因見 [Changelog](CHANGELOG.md)。
 
 ## Why
 
@@ -38,7 +38,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
 | Repository verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
-| Verification foundation | 尚未發布的 M3-A `verify` command、canonical JSON schema、deterministic statuses、exact-mapping model 與 test-only fake adapter | Production 只辨識 truthful unavailable placeholder；不執行真實 analyzer |
+| Verification | 具備真實、policy-aware PHPCompatibility adapter 的 `verify` command：canonical JSON schema、deterministic statuses、exact policy projection，以及已提交的 sniff-to-rule mapping | Explicit opt-in、zero-mutation，僅提供 advisory evidence；不含 PHPStan 與 Rector adapter |
 | Agent distribution | `skills/php-modern-guidelines/` 下的 Claude Agent Skill，以及 `skills/agents-md/` 下 Codex 相容的 `AGENTS.md` snippet | 僅提供指令文字；沒有 marketplace 或 plugin manifest，也沒有 agent-runtime 註冊 |
 | PHAR distribution | 由 CI 建置並 smoke-test 的單一檔案封存，每次 release 附上 SHA-256 checksum | 只在 CI 建置；build tool 不是 Composer dependency |
 | Diagnostics | `doctor` 以 human 與 JSON 形式回報本工具實際讀到、載入的內容 | 診斷本工具自身的輸入與安裝狀態；不檢查或執行目標專案 |
@@ -47,7 +47,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 
 - Project-local configuration file；`policy.schema.json` 已保留 `project.config` 欄位，但 M2 不讀取此類設定檔。
 - Laravel、Symfony 等 framework rule pack。
-- 真實 PHPCompatibility、PHPStan deprecation、Rector target-project adapter；M3-A 只有不執行程式的 PHPCompatibility placeholder。
+- PHPStan deprecation 或 Rector target-project adapter。真實的 PHPCompatibility adapter 已於 `v0.3.0` 上線；PHPStan（M3-C）已延後、Rector（M3-D）未納入本次 release——詳見 [Changelog](CHANGELOG.md)。
 - Auto-fix、target-project write、agent marketplace manifest、network rule fetching。
 
 `composer.json` 的 `conflict.php` 已支援：只有當 conflict constraint 覆蓋某個已知 PHP minor 的完整區間時，該 minor 才會從允許範圍排除。像 `8.3.5` 這種 patch-level conflict 不會直接移除整個 PHP 8.3。顯式 override（`--php`、`config.platform.php`、`composer.lock` platform override 或 `runtime-observed` mode）則直接決定有效版本，不再套用 `require.php` / `conflict.php` 的 range 推導。
@@ -128,7 +128,7 @@ php bin/php-modern-guidelines version
 預期輸出：
 
 ```text
-php-modern-guidelines 0.2.0
+php-modern-guidelines 0.3.0
 ```
 
 解析目標專案 policy、列出適用規則、解釋單一規則，並診斷本工具自身的輸入：
@@ -141,10 +141,9 @@ php bin/php-modern-guidelines explain language.property_hooks --project-root=/pa
 php bin/php-modern-guidelines doctor --project-root=/path/to/app
 ```
 
-### 尚未發布的 M3-A verification foundation
+### 使用 PHPCompatibility 進行 verify
 
-只有包含 M3-A 的 source checkout 具備新的 verification contract；正式發布的 `v0.2.0` PHAR
-沒有此功能。Explicit command shape 為：
+Source checkout 與正式發布的 `v0.3.0` PHAR 都具備 `verify` command。Explicit command shape 為：
 
 ```bash
 php bin/php-modern-guidelines verify phpcompatibility \
@@ -153,10 +152,33 @@ php bin/php-modern-guidelines verify phpcompatibility \
   --json
 ```
 
-M3-A 不會啟動該 executable。若找不到 executable，`verify` 會以 exit `7` 回傳完整 unavailable
-report；若 executable 存在，同一 exit 會說明此 build 尚未實作 adapter capability。兩者都不
-代表已驗證 target code。只有在後續 M3 slice 完成並驗證 exact policy projection 與
-zero-mutation guarantee 後，才會開始執行真實 analyzer。
+`verify` 要求 caller 必須已經安裝好 PHP_CodeSniffer 並註冊 PHPCompatibility standard，且需以
+`--executable` 明確選定；本工具不會自行安裝、更新或內建任何 analyzer。分析開始前，它會依序探測
+該 executable——先確認能定位到它，再確認它會回報版本，最後確認它已註冊 PHPCompatibility
+standard——因此「找不到 executable」「該程式不是 PHP_CodeSniffer」與「PHP_CodeSniffer 未註冊該
+standard」是三種不同、如實回報的 `unavailable` 結果，皆為 exit `7`。
+
+工具可用之後，`verify` 會把 resolved policy——而非執行本 CLI 的 PHP 版本——精確投影到 analyzer
+的版本範圍：單一 allowed minor 會對應到該 minor 本身，連續的範圍則對應到其頭尾。若 policy 無法被
+analyzer 精確表達（例如存在 coverage gap 或 allowed minor 不連續），會以 exit `9` 拒絕執行，而不是
+近似處理；若專案屬於這種情況，可先加上 `--mode=single-target` 將 policy 收斂到單一 PHP minor，
+以取得可執行的 plan。執行完成會回傳 exit `0`（無 finding）或 exit `6`（一筆以上 advisory
+finding）；analyzer 執行中途失敗則是 exit `8`。
+
+每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 16 條規則中有 9 條——包含整個
+`extension.imap_unbundled` 範圍——具備已提交、經過審查的 sniff id 對 rule id mapping；其餘 finding
+則保留為 `mapping_status: unmapped`，不會被捨棄。Finding 是需要評估的 advisory evidence，絕非自動
+修復：`verify` 只會透過選定的外部 process 讀取 target project，且測試證明每一條成功與失敗路徑執行
+前後 target tree 都是 byte-identical。
+
+PHPStan deprecation evidence（M3-C）已延後，Rector advisory evidence（M3-D）則未納入本次
+release，而非持續擴張產品邊界——M3-B 的 value gate 發現，真正的瓶頸是 mapping coverage 與 rule
+目錄深度，而不是缺少某個 analyzer
+（[issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)）。把 `verify` 的掃描
+範圍排除 `vendor/` 的討論記錄在
+[issue #14](https://github.com/trionnemesis/php-modern-guidelines/issues/14)；把 sniff-to-rule
+mapping 移進 rule schema 本身、讓 coverage 可以逐條規則審查，則記錄在
+[issue #12](https://github.com/trionnemesis/php-modern-guidelines/issues/12)。
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
@@ -238,9 +260,11 @@ user/PID namespace，因此 descendant 無法藉由建立新 session 或 process
 提供這項隔離的 host 會 fail closed。
 
 這是 explicit adapter boundary，不是 arbitrary-command interface；caller 無法傳入 raw analyzer
-arguments。M3-A 只辨識 `phpcompatibility`，且該 registration 是 non-executing placeholder。
-Missing 或尚未實作的 capability 會保持 `unavailable`，不會自動安裝、近似處理或宣稱已成功
-掃描。完整決策見 [ADR-008](docs/adr/ADR-008-external-verification-adapters.md)。
+arguments。Production 只辨識 `phpcompatibility`，一個真實的 PHPCompatibility 實作。PHPStan
+deprecation adapter 與 Rector dry-run adapter 皆未納入本次 release
+（[Changelog](CHANGELOG.md)）。找不到的工具與無法表達的 policy projection 會保持 `unavailable`
+或被拒絕，不會自動安裝、近似處理或宣稱已成功掃描。完整決策見
+[ADR-008](docs/adr/ADR-008-external-verification-adapters.md)。
 
 ## PHP coverage 與 fail-safe 行為
 
@@ -288,11 +312,12 @@ Core 的定位是「提供可驗證建議」，不是「執行或修改目標專
 
 完整設計見 [ADR-006](docs/adr/ADR-006-read-only-core.md)。
 
-尚未發布的 M3-A `verify` 是另一個 explicit boundary，受
-[ADR-008](docs/adr/ADR-008-external-verification-adapters.md) 約束。Current production placeholder
-只做 read-only executable discovery，不會啟動 analyzer。後續真實 adapter 必須以 isolated child
-process 執行、精確使用 resolved policy、禁止 network/configuration/install 行為、保留 unmapped
-evidence，並證明 target tree 執行前後 byte-identical；這不會削弱 metadata-only core commands。
+`verify` surface 是另一個 explicit boundary，受
+[ADR-008](docs/adr/ADR-008-external-verification-adapters.md) 約束。其 production `phpcompatibility`
+adapter 以 isolated child process 執行、精確使用 resolved policy、禁止
+network/configuration/install 行為、保留 unmapped evidence，並經測試證明每一條路徑執行前後
+target tree 都是 byte-identical。未來任何真實 adapter 都必須達到相同標準。Verification 不會削弱
+metadata-only core commands。
 
 ## Source provenance
 
@@ -311,7 +336,8 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **M0 Foundation** | `v0.0.1` | ✅ 完成：repository contracts、CLI skeleton、schemas、CI、static Pages | Foundation contract 已建立 |
 | **M1 Core parity** | `v0.1.0` | ✅ 完成：Composer Semver resolver、two-axis policy、rule registry、`resolve` / `list-rules` / `explain`、16 條 seed rules | Framework pack 與 target analyzer 不進入 M1 |
 | **M2 Agent distribution** | `v0.2.0` | ✅ 完成：Agent Skill、Codex/AGENTS.md wrapper、附加在 release 上的 CI-built PHAR，以及 bounded `doctor` | 依賴穩定的 M1 CLI / JSON contract |
-| **M3 Verification adapters** | `v0.3.0` | 🚧 M3-A foundation 已在 source 完成但尚未發布；真實 PHPCompatibility、PHPStan-deprecation、Rector advisory adapter 仍屬後續 slice | Explicit opt-in、exact policy projection、advisory evidence、zero target writes |
+| **M3 Verification adapters** | `v0.3.0` | ✅ 完成：真實 PHPCompatibility adapter 已上線，提供 advisory evidence；PHPStan deprecation（[#9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)）已延後，Rector 則未納入，避免持續擴張產品邊界 | Explicit opt-in、exact policy projection、advisory evidence、zero target writes |
+| **Next：rule-catalogue expansion** | — | 規劃：M3-B 的 value gate 發現，真正的瓶頸是 mapping coverage 與 16 條規則的 catalogue 深度，而非缺少 analyzer，因此擴充 source-backed PHP rule 已被排在後續 adapter 工作之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
@@ -320,7 +346,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 |---|---|
 | `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
 | `resources/rules/` | 16 個 source-backed seed rule JSON，一條 rule 一個檔案 |
-| `schemas/` | Versioned rule、policy 與尚未發布的 verification contracts |
+| `schemas/` | Versioned rule、policy 與 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |
 | `site/` | Dependency-free GitHub Pages overview |
