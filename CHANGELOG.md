@@ -2,6 +2,24 @@
 
 All notable changes will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Rule schema `1.1.0` changes `verification.phpcompatibility` from a nullable scalar to a sorted,
+  unique list. All 16 bundled rules are migrated: nine carry the exact reviewed PHPCompatibility sniff
+  ids and seven use an empty list for no proven mapping. A bidirectional consistency test keeps these
+  rule-local lists exactly aligned with the adapter's sniff-to-rule map, including one-to-many and
+  many-to-one relationships. This resolves issues
+  [#11](https://github.com/trionnemesis/php-modern-guidelines/issues/11) and
+  [#12](https://github.com/trionnemesis/php-modern-guidelines/issues/12).
+- `verify phpcompatibility` now passes deterministic, explicit top-level scan operands and omits only
+  the target root's exact `vendor/` directory. It deliberately does not use PHPCS's unanchored
+  `--ignore` matching, so a checkout below a path component named `vendor` still scans its source. The
+  effective operands remain verbatim in planned and executed invocation evidence, with a regression
+  fixture proving both dependency exclusion and no false clean. This resolves issue
+  [#14](https://github.com/trionnemesis/php-modern-guidelines/issues/14).
+
 ## [0.3.0] - 2026-08-31
 
 ### Added

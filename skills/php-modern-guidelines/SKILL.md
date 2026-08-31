@@ -16,7 +16,9 @@ The published `v0.3.0` release includes the `verify` surface. Its production `ph
 adapter runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as
 an isolated child process and reports advisory evidence, never an automatic fix. It installs nothing,
 writes nothing under the target project, and always projects the resolved policy — never the PHP
-version running this CLI — onto the analyzer.
+version running this CLI — onto the analyzer. Current source builds scan explicit top-level operands and
+omit the exact project-root `vendor/` directory; planned and executed invocation evidence records those
+operands, so dependency scoping is visible rather than an implicit clean result.
 
 ## When to use it
 

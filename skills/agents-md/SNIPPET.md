@@ -29,8 +29,9 @@ and rule consultation. Its production registry recognizes only `phpcompatibility
 php bin/php-modern-guidelines verify phpcompatibility --executable=/path/to/phpcs --project-root=/path/to/your/project --json
 This adapter launches the selected PHP_CodeSniffer, with the PHPCompatibility standard, as an isolated
 child process, so its exit `7` means that tool is unavailable rather than that project code was
-scanned; treat its findings as evidence to check, and do not claim PHPStan or Rector verification,
-because neither is implemented.
+scanned. Current source builds record explicit top-level scan operands and omit the exact project-root
+`vendor/` directory; treat its findings as evidence to check, and do not claim PHPStan or Rector
+verification, because neither is implemented.
 
 The core tool is metadata-only and never edits, executes or fixes the project. Its existing exit codes:
 `2` means the input (usually `composer.json`) was invalid; `3` means an unknown rule id was passed to

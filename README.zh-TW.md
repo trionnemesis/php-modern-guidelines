@@ -15,6 +15,10 @@
 
 > **Verification：** `v0.3.0` 新增了明確、opt-in 的 `verify <adapter> --executable=<path-or-name>` surface。其 production `phpcompatibility` adapter 是真實的 PHPCompatibility 實作：它會以 isolated child process 執行 caller 選定、已安裝好的 PHP_CodeSniffer 與 PHPCompatibility standard，回報 advisory evidence——絕非自動修復。PHPStan deprecation adapter（M3-C）已被延後，Rector dry-run adapter（M3-D）則未納入本次 release；原因見 [Changelog](CHANGELOG.md)。
 
+> **未發布的 source update：** rule schema `1.1.0` 已將 PHPCompatibility mapping 改為排序 list；
+> verification 會列出明確的 top-level operands，並只省略 project root 下精確的 `vendor/`
+> directory。Report 會保留這些 operands，不使用未錨定的 PHPCS ignore pattern。
+
 ## Why
 
 AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」，但真正的專案常同時支援多個 PHP minor。若專案宣告 `require.php: ^8.2`，單純看到開發機是 PHP 8.5 並不足以證明可以使用 PHP 8.5-only 語法。
@@ -167,18 +171,22 @@ finding）；analyzer 執行中途失敗則是 exit `8`。
 
 每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 16 條規則中有 9 條——包含整個
 `extension.imap_unbundled` 範圍——具備已提交、經過審查的 sniff id 對 rule id mapping；其餘 finding
-則保留為 `mapping_status: unmapped`，不會被捨棄。Finding 是需要評估的 advisory evidence，絕非自動
-修復：`verify` 只會透過選定的外部 process 讀取 target project，且測試證明每一條成功與失敗路徑執行
-前後 target tree 都是 byte-identical。
+則保留為 `mapping_status: unmapped`，不會被捨棄。同一組 mapping 也以排序後的
+`verification.phpcompatibility` list 儲存在 rule files，並以測試保證它與 adapter map 互為精確反向。
+Finding 是需要評估的 advisory evidence，絕非自動修復：`verify` 只會透過選定的外部 process 讀取
+target project，且測試證明每一條成功與失敗路徑執行前後 target tree 都是 byte-identical。
+
+分析時會使用明確、排序後的 top-level operands，並只省略 project root 下精確的 `vendor/`
+directory；planned 與 executed invocation evidence 都會保留這些 operands。Adapter 不使用 PHPCS
+未錨定的 `--ignore` matching，因此 checkout 的 ancestor path 即使名為 `vendor`，也不會被靜默排除。
 
 PHPStan deprecation evidence（M3-C）已延後，Rector advisory evidence（M3-D）則未納入本次
 release，而非持續擴張產品邊界——M3-B 的 value gate 發現，真正的瓶頸是 mapping coverage 與 rule
 目錄深度，而不是缺少某個 analyzer
-（[issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)）。把 `verify` 的掃描
-範圍排除 `vendor/` 的討論記錄在
-[issue #14](https://github.com/trionnemesis/php-modern-guidelines/issues/14)；把 sniff-to-rule
-mapping 移進 rule schema 本身、讓 coverage 可以逐條規則審查，則記錄在
-[issue #12](https://github.com/trionnemesis/php-modern-guidelines/issues/12)。
+（[issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)）。未發布的 source tree
+現已處理明確 `vendor/` scoping 與 list-valued rule mapping 這兩個 bounded follow-up；詳見
+[#14](https://github.com/trionnemesis/php-modern-guidelines/issues/14) 與
+[#12](https://github.com/trionnemesis/php-modern-guidelines/issues/12)。
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
