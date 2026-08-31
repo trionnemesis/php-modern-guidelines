@@ -76,12 +76,56 @@ if ($mode === 'sleep') {
     exit(0);
 }
 
-if ($mode === 'spawn-worker') {
+$workerParentModes = [
+    'spawn-worker',
+    'spawn-escaped-worker-exit',
+    'spawn-escaped-worker-timeout',
+    'spawn-escaped-worker-output-overflow',
+];
+
+if (in_array($mode, $workerParentModes, true)) {
     $sentinel = $arguments[2] ?? '';
     $delayMilliseconds = isset($arguments[3]) ? (int) $arguments[3] : 1_200;
     if ($sentinel === '') {
         exit(64);
     }
+
+    if ($mode === 'spawn-escaped-worker-exit') {
+        if (!function_exists('pcntl_fork')
+            || !function_exists('pcntl_async_signals')
+            || !function_exists('pcntl_signal')
+            || !function_exists('posix_kill')
+            || !function_exists('posix_setsid')) {
+            exit(69);
+        }
+
+        $workerPid = pcntl_fork();
+        if ($workerPid === -1) {
+            exit(69);
+        }
+        if ($workerPid === 0) {
+            if (posix_setsid() < 1) {
+                exit(69);
+            }
+
+            pcntl_async_signals(true);
+            pcntl_signal(15, SIG_IGN);
+            usleep($delayMilliseconds * 1_000);
+            file_put_contents($sentinel, "escaped worker survived\n");
+            exit(0);
+        }
+
+        usleep(50_000);
+        if (!posix_kill($workerPid, 0)) {
+            exit(69);
+        }
+
+        write_all(STDOUT, sprintf("worker:%d\n", $workerPid));
+        fflush(STDOUT);
+        exit(0);
+    }
+
+    $workerMode = $mode === 'spawn-worker' ? 'delayed-write' : 'escaped-delayed-write';
 
     $descriptors = [
         0 => ['pipe', 'r'],
@@ -90,7 +134,7 @@ if ($mode === 'spawn-worker') {
     ];
     $workerPipes = [];
     $worker = proc_open(
-        [PHP_BINARY, __FILE__, 'delayed-write', $sentinel, (string) $delayMilliseconds],
+        [PHP_BINARY, __FILE__, $workerMode, $sentinel, (string) $delayMilliseconds],
         $descriptors,
         $workerPipes,
     );
@@ -112,17 +156,32 @@ if ($mode === 'spawn-worker') {
 
     write_all(STDOUT, sprintf("worker:%d\n", $workerStatus['pid']));
     fflush(STDOUT);
+
+    if ($mode === 'spawn-escaped-worker-output-overflow') {
+        $chunk = str_repeat('O', 8192);
+        while (!feof(STDOUT)) {
+            write_all(STDOUT, $chunk);
+        }
+
+        exit(0);
+    }
+
     usleep(4_000_000);
     proc_close($worker);
     exit(0);
 }
 
-if ($mode === 'delayed-write') {
+if ($mode === 'delayed-write' || $mode === 'escaped-delayed-write') {
     $sentinel = $arguments[2] ?? '';
     $delayMilliseconds = isset($arguments[3]) ? (int) $arguments[3] : 1_200;
     if ($sentinel === ''
         || !function_exists('pcntl_async_signals')
         || !function_exists('pcntl_signal')) {
+        exit(69);
+    }
+
+    if ($mode === 'escaped-delayed-write'
+        && (!function_exists('posix_setsid') || posix_setsid() < 1)) {
         exit(69);
     }
 

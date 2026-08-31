@@ -179,9 +179,11 @@ and records its bounded timeout and `sanitized` environment role. Executable pat
 project-relative or reduced to a stable external basename so machine-specific prefixes are not disclosed.
 The sanitized runtime ignores inherited `TMPDIR`, `TEMP`, and `TMP` values and replaces all three with
 one canonical writable directory proven outside the target, failing closed if no reviewed path is safe.
-The native runner caps stdout and stderr separately. Exceeding either limit terminates the process group,
-records `output_limit_exceeded`, and uses the stable failure reason `adapter.output_limit_exceeded`; partial
-output never becomes partial findings.
+The native runner requires an operational Linux user/PID namespace and fails closed when it cannot create
+one. Killing namespace PID 1 also kills descendants that created another session or process group. Stdout
+and stderr are capped separately; exceeding either limit terminates the isolated tree, records
+`output_limit_exceeded`, and uses the stable failure reason `adapter.output_limit_exceeded`; partial output
+never becomes partial findings.
 External findings retain their external ids and use `mapped` or `unmapped` mapping status; exact mapped
 project rule ids are arrays, never comma-separated strings. No timestamp is emitted.
 

@@ -23,12 +23,58 @@ final class NativeProcessRunnerTest extends TestCase
             }
         }
 
+        $hasNamespaceLauncher = false;
+        foreach (['/usr/bin/unshare', '/bin/unshare'] as $path) {
+            if (is_file($path) && is_executable($path)) {
+                $hasNamespaceLauncher = true;
+                break;
+            }
+        }
+
+        $hasProbeExecutable = false;
+        foreach (['/usr/bin/true', '/bin/true'] as $path) {
+            if (is_file($path) && is_executable($path)) {
+                $hasProbeExecutable = true;
+                break;
+            }
+        }
+
+        $hasStaticPrerequisites = PHP_OS_FAMILY === 'Linux'
+            && function_exists('posix_getpgid')
+            && function_exists('posix_kill')
+            && $hasSessionLauncher
+            && $hasNamespaceLauncher
+            && $hasProbeExecutable
+            && str_starts_with(PHP_BINARY, '/')
+            && is_file(PHP_BINARY)
+            && is_executable(PHP_BINARY);
+
+        if (!$hasStaticPrerequisites) {
+            self::assertFalse(NativeProcessRunner::isSupportedOnCurrentPlatform());
+
+            return;
+        }
+
+        $supported = NativeProcessRunner::isSupportedOnCurrentPlatform();
+        self::assertSame($supported, NativeProcessRunner::isSupportedOnCurrentPlatform());
+
+        if (!$supported) {
+            $result = (new NativeProcessRunner())->run($this->request(['argv', 'must-not-run']));
+            self::assertSame(ProcessState::StartFailed, $result->state);
+            self::assertSame('', $result->stdout);
+            self::assertSame('', $result->stderr);
+        }
+    }
+
+    public function testNamespaceInitEntryPointFailsClosedOutsidePidOne(): void
+    {
+        if (getmypid() === 1) {
+            self::markTestSkipped('The test process itself is PID 1.');
+        }
+
         self::assertSame(
-            PHP_OS_FAMILY === 'Linux'
-                && function_exists('posix_getpgid')
-                && function_exists('posix_kill')
-                && $hasSessionLauncher,
-            NativeProcessRunner::isSupportedOnCurrentPlatform(),
+            125,
+            NativeProcessRunner::namespaceInitMain([PHP_BINARY, $this->childPath(), 'argv', 'must-not-run']),
         );
     }
 
@@ -220,7 +266,6 @@ final class NativeProcessRunnerTest extends TestCase
         }
 
         $sentinel = sys_get_temp_dir() . '/php-modern-guidelines-worker-' . bin2hex(random_bytes(12));
-        $workerPid = null;
 
         try {
             $result = $this->runner()->run($this->request(['spawn-worker', $sentinel, '1200'], 500));
@@ -228,19 +273,78 @@ final class NativeProcessRunnerTest extends TestCase
             self::assertSame(ProcessState::TimedOut, $result->state);
             self::assertSame('', $result->stderr);
             self::assertMatchesRegularExpression('/^worker:[1-9][0-9]*\n$/', $result->stdout);
-            $workerPid = (int) substr(trim($result->stdout), strlen('worker:'));
 
             usleep(1_400_000);
             self::assertFileDoesNotExist($sentinel);
-            self::assertFalse($this->processCanStillRun($workerPid), 'The analyzer background worker survived.');
         } finally {
-            if (is_int($workerPid) && $workerPid > 1 && $this->processCanStillRun($workerPid)) {
-                posix_kill($workerPid, 9);
-            }
             if (is_file($sentinel)) {
                 unlink($sentinel);
             }
         }
+    }
+
+    #[DataProvider('escapedWorkerTerminationPaths')]
+    public function testPidNamespaceTerminatesWorkersThatEscapeTheOriginalProcessGroup(
+        string $mode,
+        ProcessState $expectedState,
+        int $timeoutMilliseconds,
+    ): void {
+        if (!function_exists('pcntl_async_signals')
+            || !function_exists('pcntl_fork')
+            || !function_exists('pcntl_signal')
+            || !function_exists('posix_kill')
+            || !function_exists('posix_setsid')) {
+            self::markTestSkipped('The escaped-descendant test requires PCNTL and POSIX sessions.');
+        }
+
+        $targetDirectory = sys_get_temp_dir()
+            . '/php-modern-guidelines-escaped-target-'
+            . bin2hex(random_bytes(12));
+        self::assertTrue(mkdir($targetDirectory, 0700));
+        $sentinel = $targetDirectory . '/worker-write';
+
+        try {
+            $result = $this->runner()->run(
+                $this->request([$mode, $sentinel, '1200'], $timeoutMilliseconds, $targetDirectory),
+            );
+
+            self::assertSame($expectedState, $result->state);
+            self::assertSame('', $result->stderr);
+            if ($expectedState === ProcessState::OutputLimitExceeded) {
+                self::assertSame(NativeProcessRunner::MAX_CAPTURE_BYTES_PER_STREAM, strlen($result->stdout));
+                self::assertStringStartsWith('worker:', $result->stdout);
+            } else {
+                self::assertMatchesRegularExpression('/^worker:[1-9][0-9]*\n$/', $result->stdout);
+            }
+
+            if ($expectedState === ProcessState::Exited) {
+                self::assertSame(0, $result->exitCode);
+            } else {
+                self::assertNull($result->exitCode);
+            }
+
+            usleep(1_400_000);
+            self::assertFileDoesNotExist($sentinel);
+        } finally {
+            if (is_file($sentinel)) {
+                unlink($sentinel);
+            }
+            if (is_dir($targetDirectory)) {
+                rmdir($targetDirectory);
+            }
+        }
+    }
+
+    /** @return iterable<string, array{string, ProcessState, int}> */
+    public static function escapedWorkerTerminationPaths(): iterable
+    {
+        yield 'normal analyzer exit' => ['spawn-escaped-worker-exit', ProcessState::Exited, 2_000];
+        yield 'analyzer timeout' => ['spawn-escaped-worker-timeout', ProcessState::TimedOut, 500];
+        yield 'analyzer output overflow' => [
+            'spawn-escaped-worker-output-overflow',
+            ProcessState::OutputLimitExceeded,
+            30_000,
+        ];
     }
 
     public function testSignalTerminationIsNotMisreportedAsAStartFailure(): void
@@ -326,19 +430,22 @@ final class NativeProcessRunnerTest extends TestCase
     private function runner(): NativeProcessRunner
     {
         if (!NativeProcessRunner::isSupportedOnCurrentPlatform()) {
-            self::markTestSkipped('The native process runner requires Linux process-group isolation.');
+            self::markTestSkipped('The native process runner requires operational Linux PID-namespace isolation.');
         }
 
         return new NativeProcessRunner();
     }
 
     /** @param list<string> $childArguments */
-    private function request(array $childArguments, int $timeoutMilliseconds = 2_000): ProcessRequest
-    {
+    private function request(
+        array $childArguments,
+        int $timeoutMilliseconds = 2_000,
+        ?string $workingDirectory = null,
+    ): ProcessRequest {
         return new ProcessRequest(
             PHP_BINARY,
             [$this->childPath(), ...$childArguments],
-            $this->projectRoot(),
+            $workingDirectory ?? $this->projectRoot(),
             $timeoutMilliseconds,
         );
     }
@@ -359,19 +466,5 @@ final class NativeProcessRunnerTest extends TestCase
     private function monotonicNanoseconds(): float
     {
         return (float) hrtime(true);
-    }
-
-    private function processCanStillRun(int $pid): bool
-    {
-        if ($pid < 2 || !posix_kill($pid, 0)) {
-            return false;
-        }
-
-        $stat = @file_get_contents(sprintf('/proc/%d/stat', $pid));
-        if (is_string($stat) && preg_match('/^[0-9]+ \(.+\) ([A-Z]) /', $stat, $matches) === 1) {
-            return $matches[1] !== 'Z';
-        }
-
-        return true;
     }
 }

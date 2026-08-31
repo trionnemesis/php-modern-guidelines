@@ -51,17 +51,19 @@ An adapter must not:
 The low-level process runner is an internal implementation detail available only to committed adapters.
 It uses an argument vector rather than a shell command, captures stdout, stderr, and the external exit or
 terminating signal, and applies a bounded timeout. On supported Linux hosts it starts the analyzer through
-a fixed `setsid` path, verifies that the child owns a dedicated process group, and signals that whole group
-with TERM followed by KILL on timeout. It also kills any descendants left behind by a normally exited
-leader before releasing the process id. This closes the timeout path over analyzer-created background
-workers rather than stopping only the direct child. Stdout and stderr are each capped at 8 MiB; exceeding
-either cap kills the process group and records `output_limit_exceeded` with the stable failure reason
+a fixed `setsid` plus `unshare` chain: the outer child owns a dedicated process group and the analyzer is
+PID 1 in a fresh user/PID namespace. The namespace launcher receives a parent-death KILL; when its PID 1
+dies, Linux kills every remaining process in that namespace, including a worker that called `setsid()` or
+created another process group. Timeout sends TERM followed by KILL to the outer group, and normal leader
+exit tears down the namespace before its process id is released. Stdout and stderr are each capped at
+8 MiB; exceeding either cap kills the process group and records `output_limit_exceeded` with the stable failure reason
 `adapter.output_limit_exceeded`, so a verbose or malfunctioning analyzer cannot exhaust the parent before
 cleanup. The cap preserves only the exact bounded prefix and no partial findings. It is not exposed as a
-generic command-execution facility. Native execution fails closed unless non-blocking pipes, the PHP POSIX group-signal functions,
-and a fixed compatible `setsid` launcher are available. A future implementation for Windows, macOS, or
-another unsupported host needs a separately tested, equally bounded process-tree and capture strategy; it
-must not fall back to a shell or silently weaken timeout behavior.
+generic command-execution facility. Native execution fails closed unless non-blocking pipes, the PHP POSIX
+group-signal functions, fixed compatible `setsid`/`unshare` launchers, and an operational unprivileged
+user/PID-namespace probe are available. Merely finding the binaries is insufficient. A future
+implementation for Windows, macOS, or another unsupported host needs a separately tested, equally bounded
+process-tree and capture strategy; it must not fall back to a shell or silently weaken timeout behavior.
 
 ### Exact policy projection
 

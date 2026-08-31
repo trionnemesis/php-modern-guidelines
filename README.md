@@ -233,7 +233,9 @@ Plans distinguish non-partitioning tool probes from policy-partitioned analysis,
 `project_root` working-directory role, bounded timeout, capped output, and sanitized environment role.
 Parent temporary-directory variables are ignored; all analyzer temp variables use one controlled,
 canonical writable directory outside the target or execution fails closed. Machine-specific executable
-prefixes are normalized out of report evidence.
+prefixes are normalized out of report evidence. Native execution additionally requires an operational
+Linux user/PID namespace, so descendants cannot escape cleanup by creating a new session or process group;
+hosts that cannot provide it fail closed.
 
 This is an explicit adapter boundary, not an arbitrary-command interface: the caller cannot supply raw
 analyzer arguments. M3-A recognizes only `phpcompatibility`, and that registration is a non-executing

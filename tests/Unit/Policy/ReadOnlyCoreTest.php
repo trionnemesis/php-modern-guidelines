@@ -8,9 +8,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * ADR-006/ADR-008 trust-boundary scan of src/: writes, sockets and shell execution remain forbidden;
- * the six reviewed native process primitives exist only in NativeProcessRunner; fopen stays read-only;
- * file_get_contents never receives a literal http URL.
+ * ADR-006/ADR-008 trust-boundary scan of src/: filesystem writes, sockets and shell execution remain
+ * forbidden; the six reviewed native process primitives and one exact namespace-status pipe write
+ * exist only in NativeProcessRunner; fopen otherwise stays read-only; file_get_contents never receives
+ * a literal http URL.
  */
 final class ReadOnlyCoreTest extends TestCase
 {
@@ -52,6 +53,14 @@ final class ReadOnlyCoreTest extends TestCase
     public function testNoForbiddenPrimitiveCallSites(string $path): void
     {
         $stripped = $this->strippedSource($path);
+        if ($this->relativePath($path) === self::NATIVE_PROCESS_RUNNER) {
+            $stripped = preg_replace(
+                '/fwrite\(\$stream,\s*substr\(\$status,\s*\$offset\)\)/',
+                '',
+                $stripped,
+            );
+            self::assertIsString($stripped);
+        }
 
         self::assertDoesNotMatchRegularExpression(
             self::forbiddenCallPattern(),
@@ -70,8 +79,7 @@ final class ReadOnlyCoreTest extends TestCase
         $calls = array_values(array_unique($matches[1]));
         sort($calls, SORT_STRING);
 
-        $root = dirname(__DIR__, 3) . '/src';
-        $relativePath = str_replace('\\', '/', substr($path, strlen($root) + 1));
+        $relativePath = $this->relativePath($path);
 
         if ($relativePath === self::NATIVE_PROCESS_RUNNER) {
             self::assertSame(
@@ -149,12 +157,35 @@ final class ReadOnlyCoreTest extends TestCase
         preg_match_all('/fopen\([^)]*\)/', $stripped, $calls);
 
         foreach ($calls[0] as $call) {
+            if ($this->relativePath($path) === self::NATIVE_PROCESS_RUNNER
+                && str_contains($call, 'php://fd/3')) {
+                self::assertMatchesRegularExpression(
+                    "/fopen\('php:\/\/fd\/3',\s*'wb'\)/",
+                    $call,
+                );
+
+                continue;
+            }
+
             self::assertMatchesRegularExpression(
                 "/fopen\\([^)]*,\\s*'(r|rb)'\\s*\\)/",
                 $call,
                 sprintf('%s calls fopen() with a non-read-only or non-literal mode: %s', $path, $call),
             );
         }
+    }
+
+    public function testNativeRunnerHasOneExactStatusPipeWrite(): void
+    {
+        $path = dirname(__DIR__, 3) . '/src/' . self::NATIVE_PROCESS_RUNNER;
+        $stripped = $this->strippedSource($path);
+
+        self::assertSame(1, preg_match_all('/fwrite\(/', $stripped));
+        self::assertMatchesRegularExpression(
+            '/fwrite\(\$stream,\s*substr\(\$status,\s*\$offset\)\)/',
+            $stripped,
+        );
+        self::assertSame(1, preg_match_all("/fopen\('php:\/\/fd\/3',\s*'wb'\)/", $stripped));
     }
 
     #[DataProvider('phpFiles')]
@@ -182,6 +213,13 @@ final class ReadOnlyCoreTest extends TestCase
         foreach ($files as $file) {
             yield substr($file, strlen($root) + 1) => [$file];
         }
+    }
+
+    private function relativePath(string $path): string
+    {
+        $root = dirname(__DIR__, 3) . '/src';
+
+        return str_replace('\\', '/', substr($path, strlen($root) + 1));
     }
 
     /** @return list<string> */

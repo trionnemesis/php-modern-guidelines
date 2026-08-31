@@ -67,7 +67,7 @@ pinned across builds because this package commits no `composer.lock`.
 - Use Composer Semver for Composer constraints; never approximate complete constraint semantics with regex.
 - Keep feature ceiling (lowest supported minor) separate from lifecycle ceiling (highest known supported minor).
 - Core commands must be deterministic and read-only: no target code execution, analyzed-project `vendor/autoload.php`, Composer scripts/plugins, network calls, or target-repository writes.
-- Verification must remain explicit, policy-aware and zero-mutation. Time, captured output and process trees stay bounded; analyzer temporary paths stay outside the target; missing executables, unsupported projections and unmapped findings stay visible. M3-A itself runs no real analyzer.
+- Verification must remain explicit, policy-aware and zero-mutation. Time and captured output stay bounded; an operational PID namespace must contain the full process tree, including workers that create new sessions; analyzer temporary paths stay outside the target; missing executables, unsupported projections and unmapped findings stay visible. M3-A itself runs no real analyzer.
 - PHP language/Core/bundled-extension facts require an official PHP source URL and review date. Mark uncertainty instead of guessing.
 - Keep generated output stable unless a caller explicitly requests timestamps.
 

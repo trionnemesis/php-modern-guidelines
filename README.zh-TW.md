@@ -233,7 +233,9 @@ Plan 會區分不參與 policy partition 的 tool probe 與 policy-partitioned a
 `project_root` working-directory role、bounded timeout、capped output 與 sanitized environment role。
 Parent temporary-directory variable 會被忽略；所有 analyzer temp variable 都使用一個位於 target
 之外、受控且 canonical 的 writable directory，否則 execution 會 fail closed。Report evidence
-不會洩漏 machine-specific executable path prefix。
+不會洩漏 machine-specific executable path prefix。Native execution 另外要求 operational Linux
+user/PID namespace，因此 descendant 無法藉由建立新 session 或 process group 逃離 cleanup；無法
+提供這項隔離的 host 會 fail closed。
 
 這是 explicit adapter boundary，不是 arbitrary-command interface；caller 無法傳入 raw analyzer
 arguments。M3-A 只辨識 `phpcompatibility`，且該 registration 是 non-executing placeholder。
