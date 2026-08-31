@@ -50,11 +50,15 @@ An adapter must not:
 
 The low-level process runner is an internal implementation detail available only to committed adapters.
 It uses an argument vector rather than a shell command, captures stdout, stderr, and the external exit or
-terminating signal, and applies a bounded timeout. It is not exposed as a generic command-execution
-facility. The current runner explicitly refuses native execution on Windows because PHP anonymous pipes
-there cannot provide the non-blocking capture and timeout guarantees this contract requires. A future
-Windows implementation needs a separately tested, equally bounded capture strategy; it must not fall
-back to a shell or silently weaken timeout behavior.
+terminating signal, and applies a bounded timeout. On supported Linux hosts it starts the analyzer through
+a fixed `setsid` path, verifies that the child owns a dedicated process group, and signals that whole group
+with TERM followed by KILL on timeout. It also kills any descendants left behind by a normally exited
+leader before releasing the process id. This closes the timeout path over analyzer-created background
+workers rather than stopping only the direct child. It is not exposed as a generic command-execution
+facility. Native execution fails closed unless non-blocking pipes, the PHP POSIX group-signal functions,
+and a fixed compatible `setsid` launcher are available. A future implementation for Windows, macOS, or
+another unsupported host needs a separately tested, equally bounded process-tree and capture strategy; it
+must not fall back to a shell or silently weaken timeout behavior.
 
 ### Exact policy projection
 

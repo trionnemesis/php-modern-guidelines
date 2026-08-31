@@ -65,6 +65,65 @@ if ($mode === 'sleep') {
     exit(0);
 }
 
+if ($mode === 'spawn-worker') {
+    $sentinel = $arguments[2] ?? '';
+    $delayMilliseconds = isset($arguments[3]) ? (int) $arguments[3] : 1_200;
+    if ($sentinel === '') {
+        exit(64);
+    }
+
+    $descriptors = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+    $workerPipes = [];
+    $worker = proc_open(
+        [PHP_BINARY, __FILE__, 'delayed-write', $sentinel, (string) $delayMilliseconds],
+        $descriptors,
+        $workerPipes,
+    );
+    if (!is_resource($worker)) {
+        exit(69);
+    }
+
+    fclose($workerPipes[0]);
+    $ready = fgets($workerPipes[1]);
+    $workerStatus = proc_get_status($worker);
+    fclose($workerPipes[1]);
+    fclose($workerPipes[2]);
+
+    if ($ready !== "ready\n" || !$workerStatus['running']) {
+        proc_terminate($worker, 9);
+        proc_close($worker);
+        exit(69);
+    }
+
+    write_all(STDOUT, sprintf("worker:%d\n", $workerStatus['pid']));
+    fflush(STDOUT);
+    usleep(4_000_000);
+    proc_close($worker);
+    exit(0);
+}
+
+if ($mode === 'delayed-write') {
+    $sentinel = $arguments[2] ?? '';
+    $delayMilliseconds = isset($arguments[3]) ? (int) $arguments[3] : 1_200;
+    if ($sentinel === ''
+        || !function_exists('pcntl_async_signals')
+        || !function_exists('pcntl_signal')) {
+        exit(69);
+    }
+
+    pcntl_async_signals(true);
+    pcntl_signal(15, SIG_IGN);
+    write_all(STDOUT, "ready\n");
+    fflush(STDOUT);
+    usleep($delayMilliseconds * 1_000);
+    file_put_contents($sentinel, "worker survived\n");
+    exit(0);
+}
+
 if ($mode === 'signal') {
     write_all(STDOUT, "before signal\n");
     fflush(STDOUT);

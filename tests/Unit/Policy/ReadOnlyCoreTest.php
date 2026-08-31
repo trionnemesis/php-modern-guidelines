@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * ADR-006/ADR-008 trust-boundary scan of src/: writes, sockets and shell execution remain forbidden;
- * the four reviewed native process primitives exist only in NativeProcessRunner; fopen stays read-only;
+ * the six reviewed native process primitives exist only in NativeProcessRunner; fopen stays read-only;
  * file_get_contents never receives a literal http URL.
  */
 final class ReadOnlyCoreTest extends TestCase
@@ -18,6 +18,8 @@ final class ReadOnlyCoreTest extends TestCase
 
     /** @var list<string> */
     private const ALLOWED_PROCESS_PRIMITIVES = [
+        'posix_getpgid',
+        'posix_kill',
         'proc_close',
         'proc_get_status',
         'proc_open',
@@ -25,7 +27,7 @@ final class ReadOnlyCoreTest extends TestCase
     ];
 
     private const FORBIDDEN_ALTERNATION =
-        'exec|shell_exec|passthru|popen|pclose|system|eval|proc_nice|pcntl_exec|pcntl_fork|posix_kill'
+        'exec|shell_exec|passthru|popen|pclose|system|eval|proc_nice|pcntl_exec|pcntl_fork'
         . '|file_put_contents|fwrite|fputs|fputcsv|ftruncate|flock|unlink|rmdir|mkdir|rename|copy|touch'
         . '|chmod|chown|chgrp|symlink|link|umask|tempnam|tmpfile|move_uploaded_file'
         . '|fsockopen|pfsockopen|stream_socket_client|stream_socket_server|stream_context_create'

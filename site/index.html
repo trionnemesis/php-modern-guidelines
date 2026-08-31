@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Modern PHP Guidelines gives AI coding agents version-aware, source-backed PHP guidance without exceeding a project's declared compatibility range.">
+    <meta name="description" content="Modern PHP Guidelines gives AI coding agents version-aware, source-backed PHP guidance plus an explicit, zero-mutation verification contract.">
     <title>Modern PHP Guidelines — Version-aware guidance for coding agents</title>
     <link rel="stylesheet" href="styles.css">
   </head>
@@ -13,29 +13,29 @@
       <nav class="nav container" aria-label="Primary navigation">
         <a class="brand" href="./" aria-label="Modern PHP Guidelines home"><span aria-hidden="true">&lt;/&gt;</span> Modern PHP Guidelines</a>
         <div class="nav-links">
-          <a href="#scope">Scope</a><a href="#roadmap">Roadmap</a><a href="#trust">Trust</a>
+          <a href="#scope">Scope</a><a href="#verification">Verification</a><a href="#roadmap">Roadmap</a><a href="#trust">Trust</a>
           <a class="github-link" href="https://github.com/trionnemesis/php-modern-guidelines">GitHub <span aria-hidden="true">↗</span></a>
         </div>
       </nav>
     </header>
     <main id="main">
       <section class="hero container">
-        <p class="eyebrow">PHP 8.2+ · VERSION-AWARE · READ-ONLY · AGENT-READY</p>
+        <p class="eyebrow">PHP 8.2+ · VERSION-AWARE · READ-ONLY · M3-A CONTRACT</p>
         <div class="hero-grid">
           <div>
             <h1>Modern PHP guidance that respects the whole version range.</h1>
             <p class="lede">A policy and rule-query foundation for coding agents: understand the project's declared PHP compatibility before choosing newer syntax, APIs, deprecations, or replacements.</p>
-            <ul class="hero-facts" role="list"><li>16 source-backed rules</li><li>PHP 8.2–8.5 coverage</li><li>Skill · AGENTS.md · PHAR</li></ul>
+            <ul class="hero-facts" role="list"><li>16 source-backed rules</li><li>PHP 8.2–8.5 coverage</li><li>M3-A verification foundation</li></ul>
             <div class="actions">
               <a class="button primary" href="https://github.com/trionnemesis/php-modern-guidelines">View repository <span aria-hidden="true">→</span></a>
               <a class="button secondary" href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/README.md">Read the README</a>
             </div>
           </div>
           <aside class="version-card" aria-label="Current release status">
-            <span class="status-dot" aria-hidden="true"></span><span>M2 agent distribution / alpha</span>
+            <span class="status-dot" aria-hidden="true"></span><span>Latest release · M2 / alpha</span>
             <strong>v0.2.0</strong>
-            <p>The M1 engine is now distributable: a Claude Agent Skill, a Codex-compatible <code>AGENTS.md</code> snippet, a CI-built PHAR attached to each release, and a read-only <code>doctor</code> diagnostic. Framework packs and analyzer adapters remain out of scope.</p>
-            <p class="meta">Skill · AGENTS.md snippet · PHAR + SHA-256</p>
+            <p>The published PHAR contains the M2 engine and agent distribution. Current <code>main</code> additionally contains the unreleased M3-A verification contract; it does not run a real analyzer.</p>
+            <p class="meta">Release: M2 · Source: M3-A foundation</p>
           </aside>
         </div>
       </section>
@@ -49,13 +49,14 @@
         <p class="caption">The resolver keeps these values separate instead of treating the developer's local runtime as the project's compatibility policy.</p>
       </section>
 
-      <section class="container section">
-        <div class="section-heading"><p class="eyebrow">M2 capability</p><h2>Small enough to verify, explicit about what is missing.</h2></div>
+      <section class="container section" id="verification">
+        <div class="section-heading"><p class="eyebrow">Current source</p><h2>M3-A defines verification before connecting a real analyzer.</h2></div>
         <div class="cards">
-          <article class="card"><h3>Available now</h3><ul><li><code>php-modern-guidelines resolve</code> / <code>list-rules</code> / <code>explain</code></li><li>Deterministic <code>policy.schema.json</code> JSON</li><li>16 source-backed PHP 8.2–8.5 rules</li><li>PHP 8.2–8.5 CI matrix</li><li>Agent Skill + <code>AGENTS.md</code> wrapper</li><li>PHAR release asset + SHA-256</li><li><code>doctor</code> diagnostics</li></ul></article>
-          <article class="card"><h3>Next: M3</h3><ul><li>PHPCompatibility adapter</li><li>PHPStan deprecation adapter</li><li>Rector advisory adapter</li></ul></article>
-          <article class="card muted"><h3>Deliberately later</h3><ul><li>Framework-specific rule packs</li><li>Target-project analyzer adapters</li><li>Rector advisory integration</li><li>Auto-fixing or target-project writes</li></ul></article>
+          <article class="card"><h3>Released: M2</h3><ul><li><code>resolve</code> / <code>list-rules</code> / <code>explain</code> / <code>doctor</code></li><li>16 source-backed PHP 8.2–8.5 rules</li><li>Agent Skill + <code>AGENTS.md</code> wrapper</li><li>PHAR release asset + SHA-256</li></ul></article>
+          <article class="card"><h3>Current main: M3-A</h3><ul><li>Explicit <code>verify &lt;adapter&gt;</code> surface</li><li>Canonical <code>verification.schema.json</code></li><li>Exact policy projection contract</li><li>Mapped and unmapped evidence model</li><li>Bounded process-group cleanup</li></ul></article>
+          <article class="card muted"><h3>Not implemented yet</h3><ul><li>Real PHPCompatibility execution</li><li>PHPStan deprecation adapter</li><li>Rector dry-run advisory adapter</li><li>Auto-fixing or target-project writes</li></ul></article>
         </div>
+        <p class="caption"><code>v0.2.0</code> does not include <code>verify</code>. In current source, the production <code>phpcompatibility</code> registration is a truthful, non-executing placeholder: missing or unimplemented capability returns unavailable instead of claiming a scan occurred.</p>
       </section>
 
       <section class="container section">
@@ -73,8 +74,9 @@
         <ol class="roadmap" role="list">
           <li><strong>M0 · v0.0.1 (complete)</strong><span>Repository contracts, CLI skeleton, schemas, CI, ADRs, and static Pages source.</span></li>
           <li><strong>M1 · v0.1.0 (complete)</strong><span>Implemented: Composer Semver resolver, two-axis policy, rule registry, the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands, and 16 verified PHP seed rules.</span></li>
-          <li class="current"><strong>M2 · v0.2.0</strong><span>Implemented: a Claude Agent Skill, a Codex-compatible <code>AGENTS.md</code> snippet, a CI-built PHAR attached to each release, and a bounded, read-only <code>doctor</code> diagnostic.</span></li>
-          <li><strong>M3 · v0.3.0</strong><span>Explicit opt-in PHPCompatibility, PHPStan-deprecation, and Rector advisory adapters.</span></li>
+          <li><strong>M2 · v0.2.0 (complete)</strong><span>Implemented: a Claude Agent Skill, a Codex-compatible <code>AGENTS.md</code> snippet, a CI-built PHAR attached to each release, and a bounded, read-only <code>doctor</code> diagnostic.</span></li>
+          <li class="current"><strong>M3-A · current source</strong><span>Implemented but unreleased: explicit verification surface, canonical report schema, fake-adapter contract, policy projection validation, process boundary, and truthful unavailable production placeholder.</span></li>
+          <li><strong>M3-B–E · planned</strong><span>Real PHPCompatibility, PHPStan-deprecation, and Rector dry-run advisory adapters, followed by agent surfaces, final documentation, and the guarded <code>v0.3.0</code> release.</span></li>
           <li><strong>M4 · v0.4.x</strong><span>Isolated framework rule packs without mixing framework conventions into PHP Core policy.</span></li>
         </ol>
       </section>
@@ -82,10 +84,11 @@
       <section class="container section trust" id="trust">
         <div class="section-heading"><p class="eyebrow">Trust boundary</p><h2>Designed to advise, not to act on your project.</h2></div>
         <p>Core commands are deterministic and read-only: no target PHP execution, no analyzed-project <code>vendor/autoload.php</code>, no Composer scripts or plugins, no network requirement for core resolution, and no writes to the analyzed repository.</p>
+        <p>M3-A keeps verification explicit and zero-mutation. It never installs an analyzer, never accepts arbitrary analyzer arguments, preserves unsupported policies and unmapped findings, and currently exposes no production path that launches an analyzer.</p>
         <p>PHP language, Core, and bundled-extension facts must be backed by authoritative PHP sources and a review date. If a fact cannot be established, the project should leave the rule absent or explicitly uncertain rather than guess.</p>
         <p class="attribution">Primary inspiration: <a href="https://github.com/JetBrains/go-modern-guidelines">JetBrains/go-modern-guidelines</a>. Modern PHP Guidelines is an independent implementation and is not affiliated with or endorsed by JetBrains. Its narrow version-policy focus is also distinct from <a href="https://github.com/netresearch/php-modernization-skill">netresearch/php-modernization-skill</a>.</p>
       </section>
     </main>
-    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M2 v0.2.0</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
+    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M2 v0.2.0 release · M3-A source</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
   </body>
 </html>

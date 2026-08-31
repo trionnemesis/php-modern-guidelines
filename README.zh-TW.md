@@ -5,12 +5,13 @@
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777bb4)](https://www.php.net/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![M2 agent distribution](https://img.shields.io/badge/status-M2%20agent%20distribution-5b4b8a)](CHANGELOG.md)
+[![Source: M3-A verification foundation](https://img.shields.io/badge/source-M3--A%20verification%20foundation-0e7490)](docs/adr/ADR-008-external-verification-adapters.md)
 
 > 讓 AI coding agent 在產生 PHP 程式碼前，先理解專案真正允許的 PHP 版本範圍、已棄用 API 與現代替代方案，避免「本機可跑、專案最低版本卻不能跑」。
 
 🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Agent distribution](#agent-distribution) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**M2 / alpha · v0.2.0.** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet，以及 CI 建置、checksum 驗證的 PHAR release asset。
+**已發布：M2 / alpha · v0.2.0。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet，以及 CI 建置、checksum 驗證的 PHAR release asset。
 
 > **開發狀態：** `v0.2.0` 仍是最新正式 release。Current source tree 另外包含尚未發布的 M3-A verification foundation：canonical report contract 與 `verify <adapter> --executable=<path-or-name>`。Production registry 目前只有不執行程式的 `phpcompatibility` unavailable placeholder；M3-A 不會執行 PHPCompatibility、PHPStan、Rector 或其他真實 analyzer。
 

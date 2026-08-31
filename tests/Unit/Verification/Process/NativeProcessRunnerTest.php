@@ -14,7 +14,21 @@ final class NativeProcessRunnerTest extends TestCase
 {
     public function testPlatformSupportIsExplicit(): void
     {
-        self::assertSame(PHP_OS_FAMILY !== 'Windows', NativeProcessRunner::isSupportedOnCurrentPlatform());
+        $hasSessionLauncher = false;
+        foreach (['/usr/bin/setsid', '/bin/setsid'] as $path) {
+            if (is_file($path) && is_executable($path)) {
+                $hasSessionLauncher = true;
+                break;
+            }
+        }
+
+        self::assertSame(
+            PHP_OS_FAMILY === 'Linux'
+                && function_exists('posix_getpgid')
+                && function_exists('posix_kill')
+                && $hasSessionLauncher,
+            NativeProcessRunner::isSupportedOnCurrentPlatform(),
+        );
     }
 
     public function testArgumentsArePassedVerbatimWithoutShellParsing(): void
@@ -152,6 +166,38 @@ final class NativeProcessRunnerTest extends TestCase
         self::assertLessThan(3.0, ($finishedAt - $startedAt) / 1_000_000_000.0);
     }
 
+    public function testTimeoutTerminatesBackgroundWorkersThatIgnoreTerminateSignal(): void
+    {
+        if (!function_exists('pcntl_async_signals')
+            || !function_exists('pcntl_signal')
+            || !function_exists('posix_kill')) {
+            self::markTestSkipped('The descendant cleanup test requires PCNTL and POSIX signals.');
+        }
+
+        $sentinel = sys_get_temp_dir() . '/php-modern-guidelines-worker-' . bin2hex(random_bytes(12));
+        $workerPid = null;
+
+        try {
+            $result = $this->runner()->run($this->request(['spawn-worker', $sentinel, '1200'], 500));
+
+            self::assertSame(ProcessState::TimedOut, $result->state);
+            self::assertSame('', $result->stderr);
+            self::assertMatchesRegularExpression('/^worker:[1-9][0-9]*\n$/', $result->stdout);
+            $workerPid = (int) substr(trim($result->stdout), strlen('worker:'));
+
+            usleep(1_400_000);
+            self::assertFileDoesNotExist($sentinel);
+            self::assertFalse($this->processCanStillRun($workerPid), 'The analyzer background worker survived.');
+        } finally {
+            if (is_int($workerPid) && $workerPid > 1 && $this->processCanStillRun($workerPid)) {
+                posix_kill($workerPid, 9);
+            }
+            if (is_file($sentinel)) {
+                unlink($sentinel);
+            }
+        }
+    }
+
     public function testSignalTerminationIsNotMisreportedAsAStartFailure(): void
     {
         if (PHP_OS_FAMILY === 'Windows' || !function_exists('posix_kill')) {
@@ -235,7 +281,7 @@ final class NativeProcessRunnerTest extends TestCase
     private function runner(): NativeProcessRunner
     {
         if (!NativeProcessRunner::isSupportedOnCurrentPlatform()) {
-            self::markTestSkipped('The native process runner requires non-blocking POSIX pipes.');
+            self::markTestSkipped('The native process runner requires Linux process-group isolation.');
         }
 
         return new NativeProcessRunner();
@@ -268,5 +314,19 @@ final class NativeProcessRunnerTest extends TestCase
     private function monotonicNanoseconds(): float
     {
         return (float) hrtime(true);
+    }
+
+    private function processCanStillRun(int $pid): bool
+    {
+        if ($pid < 2 || !posix_kill($pid, 0)) {
+            return false;
+        }
+
+        $stat = @file_get_contents(sprintf('/proc/%d/stat', $pid));
+        if (is_string($stat) && preg_match('/^[0-9]+ \(.+\) ([A-Z]) /', $stat, $matches) === 1) {
+            return $matches[1] !== 'Z';
+        }
+
+        return true;
     }
 }

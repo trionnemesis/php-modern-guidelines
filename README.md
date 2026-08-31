@@ -5,12 +5,13 @@
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777bb4)](https://www.php.net/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![M2 agent distribution](https://img.shields.io/badge/status-M2%20agent%20distribution-5b4b8a)](CHANGELOG.md)
+[![Source: M3-A verification foundation](https://img.shields.io/badge/source-M3--A%20verification%20foundation-0e7490)](docs/adr/ADR-008-external-verification-adapters.md)
 
 > Give AI coding agents the project's real PHP version range, deprecated APIs, and modern alternatives before they generate code—avoiding code that runs locally but violates the project's minimum PHP version.
 
 🌐 **[GitHub Pages overview](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md)** ・ [Quick start](#quick-start) ・ [Current capabilities](#current-capabilities) ・ [Agent distribution](#agent-distribution) ・ [Policy flow](#policy-flow) ・ [Trust boundary](#trust-boundary) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**M2 / alpha · v0.2.0.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, and a CI-built, checksum-verified PHAR release asset.
+**Released: M2 / alpha · v0.2.0.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, and a CI-built, checksum-verified PHAR release asset.
 
 > **Development status:** `v0.2.0` is still the latest published release. The current source tree additionally contains the unreleased M3-A verification foundation: a canonical report contract and `verify <adapter> --executable=<path-or-name>`. Its production registry has only a non-executing `phpcompatibility` unavailable placeholder. M3-A does not run PHPCompatibility, PHPStan, Rector, or any other real analyzer.
 
