@@ -12,6 +12,8 @@
 
 **M2 / alpha · v0.2.0.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, and a CI-built, checksum-verified PHAR release asset.
 
+> **Development status:** `v0.2.0` is still the latest published release. The current source tree additionally contains the unreleased M3-A verification foundation: a canonical report contract and `verify <adapter> --executable=<path-or-name>`. Its production registry has only a non-executing `phpcompatibility` unavailable placeholder. M3-A does not run PHPCompatibility, PHPStan, Rector, or any other real analyzer.
+
 ## Why
 
 AI coding agents often generate the newest PHP style based on their current runtime, while real projects commonly support several PHP minors. If a project declares `require.php: ^8.2`, seeing PHP 8.5 on the development machine does not prove that PHP 8.5-only syntax is safe to use.
@@ -34,7 +36,8 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 | Rule registry | Schema validation, deterministic ordering, and 16 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
 | Agent query surface | `resolve`, `list-rules`, and `explain` with human and JSON output | `resolve --json` must satisfy `policy.schema.json` |
 | CLI foundation | `version` and a consistent exit-code contract | Never writes to the target repository |
-| Verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, and PHP 8.2–8.5 CI | Verifies this repository; it does not scan the target project |
+| Repository verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, and PHP 8.2–8.5 CI | Verifies this repository; it does not scan the target project |
+| Verification foundation | Unreleased M3-A `verify` command, canonical JSON schema, deterministic statuses, exact-mapping model, and test-only fake adapter | Production recognizes only a truthful unavailable placeholder; no real analyzer runs |
 | Agent distribution | A Claude Agent Skill in `skills/php-modern-guidelines/` and a Codex-compatible `AGENTS.md` snippet in `skills/agents-md/` | Instructions only; no marketplace or plugin manifest, and no agent-runtime registration |
 | PHAR distribution | A single-file archive built and smoke-tested in CI, attached to each release with a SHA-256 checksum | Built in CI only; the build tool is not a Composer dependency |
 | Diagnostics | `doctor` reports what this tool found, read and loaded, in human and JSON form | Diagnoses this tool's inputs and installation; never inspects or executes the target project |
@@ -43,7 +46,7 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 
 - A project-local configuration file. `policy.schema.json` reserves `project.config`, but M2 does not read such a file.
 - Laravel, Symfony, or other framework rule packs.
-- PHPCompatibility, PHPStan deprecation, or Rector target-project adapters.
+- Real PHPCompatibility, PHPStan deprecation, or Rector target-project adapters. M3-A contains only the non-executing PHPCompatibility placeholder.
 - Auto-fixes, target-project writes, agent marketplace manifests, or network rule fetching.
 
 `composer.json` `conflict.php` constraints are supported. A known PHP minor is removed only when the conflict covers that minor's complete interval; a patch-level conflict such as `8.3.5` does not remove all of PHP 8.3. An explicit override—`--php`, `config.platform.php`, a Composer lock platform override, or `runtime-observed` mode—directly determines the effective version and bypasses range inference from `require.php` and `conflict.php`.
@@ -137,6 +140,23 @@ php bin/php-modern-guidelines explain language.property_hooks --project-root=/pa
 php bin/php-modern-guidelines doctor --project-root=/path/to/app
 ```
 
+### Unreleased M3-A verification foundation
+
+Only a source checkout containing M3-A exposes the new verification contract; the published `v0.2.0`
+PHAR does not. The explicit shape is:
+
+```bash
+php bin/php-modern-guidelines verify phpcompatibility \
+  --executable=/path/to/phpcs \
+  --project-root=/path/to/app \
+  --json
+```
+
+M3-A never launches that executable. If it cannot be found, `verify` returns a complete unavailable
+report with exit `7`; if it exists, the same exit reports that the adapter capability is not implemented
+in this build. Neither outcome verifies the target code. Real analyzer execution begins only in later M3
+slices after exact policy projection and zero-mutation guarantees are implemented and tested.
+
 For a target project declaring `require.php: ^8.2`, representative `resolve` output is:
 
 ```text
@@ -177,8 +197,17 @@ composer check
 | `3` | The rule id given to `explain` does not exist |
 | `4` | A valid PHP constraint contains none of the PHP minors known to this tool, so policy resolution cannot proceed |
 | `5` | Invalid rule data, such as a malformed rule, duplicate id, or filename/id mismatch |
+| `6` | Verification completed and produced one or more advisory findings |
+| `7` | The selected verification adapter or executable is unavailable |
+| `8` | The verification adapter could not complete execution |
+| `9` | The resolved PHP policy cannot be projected exactly into the selected analyzer |
 
 For any non-zero exit from `resolve`, `list-rules` or `explain`, human-readable output is written to stderr, and in `--json` mode stdout remains byte-empty so JSON consumers never receive a partial document. `doctor` is the one documented exception: its report *is* the diagnosis, so it prints the complete report on stdout and leaves stderr empty even when it exits non-zero—except for a mistake in `doctor`'s own options, which is rejected before any check runs and still prints nothing on stdout.
+
+`verify` is the other report-producing surface. Outcomes `0`, `6`, `7`, `8`, and `9` write one complete
+human or canonical JSON report to stdout and leave stderr byte-empty. Invalid invocation, policy,
+rule-data, and internal errors keep the established `2`, `4`, `5`, and `1` empty-stdout semantics; no
+JSON consumer receives a partial verification document.
 
 ### `list-rules`
 
@@ -188,7 +217,26 @@ By default, it hides rules with `not_in_range` status. Use `--all` to show every
 
 ### `doctor`
 
-`doctor` runs nine fixed, ordered, read-only checks over this tool's own inputs and installation for a target project: the running build (version, and whether it runs from a PHAR or from source), the project root, `composer.json` and `composer.lock` presence/readability/JSON validity, the declared PHP values, the resolved policy summary, both bundled schemas, and the effective rules directory and its load. Each check reports a status (`ok` / `warn` / `fail` / `skipped`), a fixed one-line summary and a fixed set of detail keys, in both human-readable and `--json` form; the JSON form carries `output_version` like `list-rules` and `explain`. It introduces no new exit code—the process exit code is whichever of `1` / `2` / `4` / `5` the first failing check would already produce today. As noted above, `doctor` prints its complete report on stdout even when it exits non-zero, because the report is the diagnosis; a mistake in `doctor`'s own options is the one case that still prints nothing.
+`doctor` runs nine fixed, ordered, read-only checks over this tool's own inputs and installation for a target project: the running build (version, and whether it runs from a PHAR or from source), the project root, `composer.json` and `composer.lock` presence/readability/JSON validity, the declared PHP values, the resolved policy summary, the two core rule/policy schemas, and the effective rules directory and its load. Each check reports a status (`ok` / `warn` / `fail` / `skipped`), a fixed one-line summary and a fixed set of detail keys, in both human-readable and `--json` form; the JSON form carries `output_version` like `list-rules` and `explain`. It introduces no new exit code—the process exit code is whichever of `1` / `2` / `4` / `5` the first failing check would already produce today. As noted above, `doctor` prints its complete report on stdout even when it exits non-zero, because the report is the diagnosis; a mistake in `doctor`'s own options is the one case that still prints nothing.
+
+### `verify`
+
+`verify` takes one required adapter argument, the four shared policy options (`--project-root`, `--php`,
+`--mode`, `--json`), and a required `--executable` path or `PATH` name. It resolves policy before asking
+the selected adapter for evidence. The canonical JSON document satisfies
+[`verification.schema.json`](schemas/verification.schema.json) and records status, exit code, adapter,
+policy fingerprint and projection status, the prevalidated invocation plan, actual attempted invocations,
+deterministic counts, reason, mapped
+source-backed rule contexts, and mapped or unmapped external findings. It emits no timestamp.
+Plans distinguish non-partitioning tool probes from policy-partitioned analysis, and record the fixed
+`project_root` working-directory role, bounded timeout, and sanitized environment role. Machine-specific
+executable prefixes are normalized out of report evidence.
+
+This is an explicit adapter boundary, not an arbitrary-command interface: the caller cannot supply raw
+analyzer arguments. M3-A recognizes only `phpcompatibility`, and that registration is a non-executing
+placeholder. Missing or currently unimplemented capabilities remain `unavailable`; they are never
+installed, approximated, or presented as a successful scan. See
+[ADR-008](docs/adr/ADR-008-external-verification-adapters.md).
 
 ## PHP coverage and fail-safe behavior
 
@@ -236,6 +284,13 @@ They must not:
 
 See [ADR-006](docs/adr/ADR-006-read-only-core.md) for the complete design.
 
+The unreleased M3-A `verify` surface is a separately explicit boundary governed by
+[ADR-008](docs/adr/ADR-008-external-verification-adapters.md). Its current production placeholder only
+performs read-only executable discovery and never launches an analyzer. Later real adapters must run as
+isolated child processes, consume the resolved policy exactly, avoid network/configuration/install
+behavior, retain unmapped evidence and prove that the target tree is byte-identical before and after.
+They do not weaken the metadata-only core commands.
+
 ## Source provenance
 
 Lifecycle facts for PHP language, Core, and bundled extensions require an authoritative PHP source, such as:
@@ -253,16 +308,16 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | **M0 Foundation** | `v0.0.1` | ✅ Complete: repository contracts, CLI skeleton, schemas, CI, and static Pages | Foundation contract established |
 | **M1 Core parity** | `v0.1.0` | ✅ Complete: Composer Semver resolver, two-axis policy, rule registry, `resolve` / `list-rules` / `explain`, and 16 seed rules | Framework packs and target analyzers do not enter M1 |
 | **M2 Agent distribution** | `v0.2.0` | ✅ Complete: Agent Skill, Codex/AGENTS.md wrapper, CI-built PHAR attached to releases, and bounded `doctor` | Depends on the stable M1 CLI and JSON contract |
-| **M3 Verification adapters** | `v0.3.0` | Next: PHPCompatibility, PHPStan deprecation, and Rector advisory integration | Advisory and read-only by default |
+| **M3 Verification adapters** | `v0.3.0` | 🚧 M3-A foundation implemented in source but unreleased; real PHPCompatibility, PHPStan deprecation, and Rector advisory adapters remain later slices | Explicit opt-in, exact policy projection, advisory evidence, and zero target writes |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
 ## Repository structure
 
 | Path | Purpose |
 |---|---|
-| `src/` | Symfony Console application, Composer/PHP policy resolver, and rule registry/query engine |
+| `src/` | Symfony Console application, Composer/PHP policy resolver, rule registry/query engine, and explicit verification boundary |
 | `resources/rules/` | 16 source-backed seed-rule JSON files, one rule per file |
-| `schemas/` | Versioned rule and policy contracts |
+| `schemas/` | Versioned rule, policy, and unreleased verification contracts |
 | `docs/adr/` | Binding architecture decisions and trust boundaries |
 | `tests/` | CLI, schema, and static-page verification |
 | `site/` | Dependency-free GitHub Pages overview |

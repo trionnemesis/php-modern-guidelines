@@ -71,6 +71,151 @@ jobs:
           php "$phar" explain language.property_hooks --project-root="$fixture" --json > /dev/null
           php "$phar" doctor --project-root="$fixture" --json > /dev/null
 
+          php <<'PHP'
+          <?php
+
+          require 'vendor/autoload.php';
+
+          $forbiddenAnalyzers = [
+              'phpcompatibility/php-compatibility',
+              'squizlabs/php_codesniffer',
+              'phpstan/phpstan-deprecation-rules',
+              'rector/rector',
+          ];
+
+          foreach ($forbiddenAnalyzers as $package) {
+              if (\Composer\InstalledVersions::isInstalled($package, false)) {
+                  fwrite(STDERR, sprintf("Analyzer package %s must not be bundled in the PHAR.\n", $package));
+                  exit(1);
+              }
+          }
+
+          $archive = new Phar('build/php-modern-guidelines.phar');
+          foreach (new RecursiveIteratorIterator($archive) as $entry) {
+              if ($entry->getFilename() === 'FakeVerificationAdapter.php') {
+                  fwrite(STDERR, "The test-only fake verification adapter must not be bundled in the PHAR.\n");
+                  exit(1);
+              }
+          }
+
+          $archivePath = realpath('build/php-modern-guidelines.phar');
+          $sourceSchema = file_get_contents('schemas/verification.schema.json');
+          $bundledSchema = is_string($archivePath)
+              ? file_get_contents('phar://' . $archivePath . '/schemas/verification.schema.json')
+              : false;
+          if (!is_string($sourceSchema) || $bundledSchema !== $sourceSchema) {
+              fwrite(STDERR, "The PHAR must contain the exact canonical verification schema.\n");
+              exit(1);
+          }
+          PHP
+
+          missing_executable=/definitely/not-installed/phpcs
+          if [[ -e "$missing_executable" ]]; then
+            echo "The PHAR smoke-test sentinel unexpectedly exists: $missing_executable" >&2
+            exit 1
+          fi
+
+          verify_stdout=build/verify-unavailable.json
+          verify_stderr=build/verify-unavailable.stderr
+          set +e
+          php "$phar" verify phpcompatibility \
+            --executable="$missing_executable" \
+            --project-root="$fixture" \
+            --json \
+            > "$verify_stdout" 2> "$verify_stderr"
+          verify_exit=$?
+          set -e
+
+          if [[ "$verify_exit" -ne 7 ]]; then
+            echo "Unavailable PHAR adapter exited $verify_exit, expected 7." >&2
+            cat "$verify_stderr" >&2
+            exit 1
+          fi
+          if [[ -s "$verify_stderr" ]]; then
+            echo "Unavailable PHAR adapter wrote to stderr." >&2
+            cat "$verify_stderr" >&2
+            exit 1
+          fi
+
+          VERIFY_STDOUT="$verify_stdout" MISSING_EXECUTABLE="$missing_executable" php <<'PHP'
+          <?php
+
+          require 'vendor/autoload.php';
+
+          $path = getenv('VERIFY_STDOUT');
+          $missingExecutable = getenv('MISSING_EXECUTABLE');
+          if (!is_string($path) || !is_string($missingExecutable)) {
+              fwrite(STDERR, "Missing PHAR smoke-test environment.\n");
+              exit(1);
+          }
+
+          $raw = file_get_contents($path);
+          if (!is_string($raw)) {
+              fwrite(STDERR, "Could not read the PHAR verification report.\n");
+              exit(1);
+          }
+
+          try {
+              $reportObject = json_decode($raw, false, 512, JSON_THROW_ON_ERROR);
+              $report = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+          } catch (JsonException $exception) {
+              fwrite(STDERR, sprintf("PHAR verification report is not valid JSON: %s\n", $exception->getMessage()));
+              exit(1);
+          }
+
+          $expectedTopLevelKeys = [
+              'output_version',
+              'status',
+              'exit_code',
+              'adapter',
+              'policy',
+              'invocations',
+              'summary',
+              'reason',
+              'rule_contexts',
+              'findings',
+          ];
+          $expectedAdapter = [
+              'id' => 'phpcompatibility',
+              'executable' => '<external>/phpcs',
+              'tool_version' => null,
+          ];
+          $expectedSummary = [
+              'invocation_count' => 0,
+              'finding_count' => 0,
+              'mapped_finding_count' => 0,
+              'unmapped_finding_count' => 0,
+              'mapping_count' => 0,
+              'mapped_rule_count' => 0,
+          ];
+
+          $valid = is_array($report)
+              && array_keys($report) === $expectedTopLevelKeys
+              && ($report['output_version'] ?? null) === '1.0.0'
+              && ($report['status'] ?? null) === 'unavailable'
+              && ($report['exit_code'] ?? null) === 7
+              && ($report['adapter'] ?? null) === $expectedAdapter
+              && ($report['policy']['projection_status'] ?? null) === 'not_evaluated'
+              && ($report['policy']['planned_invocations'] ?? null) === []
+              && ($report['invocations'] ?? null) === []
+              && ($report['summary'] ?? null) === $expectedSummary
+              && ($report['reason']['code'] ?? null) === 'adapter.executable_unavailable'
+              && is_string($report['reason']['message'] ?? null)
+              && $report['reason']['message'] !== ''
+              && ($report['rule_contexts'] ?? null) === []
+              && ($report['findings'] ?? null) === []
+              && !str_contains($raw, $missingExecutable)
+              && $reportObject instanceof stdClass
+              && (new \ModernPhpGuidelines\Support\JsonSchemaValidator(
+                  \ModernPhpGuidelines\Support\PackagePaths::verificationSchemaPath(),
+              ))->validate($reportObject) === [];
+
+          if (!$valid) {
+              fwrite(STDERR, "PHAR verification report does not match the unavailable-adapter contract.\n");
+              exit(1);
+          }
+          PHP
+
       - name: Compare PHAR output with the source checkout
         shell: bash
         run: |

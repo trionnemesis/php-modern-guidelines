@@ -12,6 +12,8 @@
 
 **M2 / alpha · v0.2.0.** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet，以及 CI 建置、checksum 驗證的 PHAR release asset。
 
+> **開發狀態：** `v0.2.0` 仍是最新正式 release。Current source tree 另外包含尚未發布的 M3-A verification foundation：canonical report contract 與 `verify <adapter> --executable=<path-or-name>`。Production registry 目前只有不執行程式的 `phpcompatibility` unavailable placeholder；M3-A 不會執行 PHPCompatibility、PHPStan、Rector 或其他真實 analyzer。
+
 ## Why
 
 AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」，但真正的專案常同時支援多個 PHP minor。若專案宣告 `require.php: ^8.2`，單純看到開發機是 PHP 8.5 並不足以證明可以使用 PHP 8.5-only 語法。
@@ -34,7 +36,8 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 | Rule registry | schema validation、deterministic ordering、16 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
-| Verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
+| Repository verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
+| Verification foundation | 尚未發布的 M3-A `verify` command、canonical JSON schema、deterministic statuses、exact-mapping model 與 test-only fake adapter | Production 只辨識 truthful unavailable placeholder；不執行真實 analyzer |
 | Agent distribution | `skills/php-modern-guidelines/` 下的 Claude Agent Skill，以及 `skills/agents-md/` 下 Codex 相容的 `AGENTS.md` snippet | 僅提供指令文字；沒有 marketplace 或 plugin manifest，也沒有 agent-runtime 註冊 |
 | PHAR distribution | 由 CI 建置並 smoke-test 的單一檔案封存，每次 release 附上 SHA-256 checksum | 只在 CI 建置；build tool 不是 Composer dependency |
 | Diagnostics | `doctor` 以 human 與 JSON 形式回報本工具實際讀到、載入的內容 | 診斷本工具自身的輸入與安裝狀態；不檢查或執行目標專案 |
@@ -43,7 +46,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 
 - Project-local configuration file；`policy.schema.json` 已保留 `project.config` 欄位，但 M2 不讀取此類設定檔。
 - Laravel、Symfony 等 framework rule pack。
-- PHPCompatibility、PHPStan deprecation、Rector target-project adapter。
+- 真實 PHPCompatibility、PHPStan deprecation、Rector target-project adapter；M3-A 只有不執行程式的 PHPCompatibility placeholder。
 - Auto-fix、target-project write、agent marketplace manifest、network rule fetching。
 
 `composer.json` 的 `conflict.php` 已支援：只有當 conflict constraint 覆蓋某個已知 PHP minor 的完整區間時，該 minor 才會從允許範圍排除。像 `8.3.5` 這種 patch-level conflict 不會直接移除整個 PHP 8.3。顯式 override（`--php`、`config.platform.php`、`composer.lock` platform override 或 `runtime-observed` mode）則直接決定有效版本，不再套用 `require.php` / `conflict.php` 的 range 推導。
@@ -137,6 +140,23 @@ php bin/php-modern-guidelines explain language.property_hooks --project-root=/pa
 php bin/php-modern-guidelines doctor --project-root=/path/to/app
 ```
 
+### 尚未發布的 M3-A verification foundation
+
+只有包含 M3-A 的 source checkout 具備新的 verification contract；正式發布的 `v0.2.0` PHAR
+沒有此功能。Explicit command shape 為：
+
+```bash
+php bin/php-modern-guidelines verify phpcompatibility \
+  --executable=/path/to/phpcs \
+  --project-root=/path/to/app \
+  --json
+```
+
+M3-A 不會啟動該 executable。若找不到 executable，`verify` 會以 exit `7` 回傳完整 unavailable
+report；若 executable 存在，同一 exit 會說明此 build 尚未實作 adapter capability。兩者都不
+代表已驗證 target code。只有在後續 M3 slice 完成並驗證 exact policy projection 與
+zero-mutation guarantee 後，才會開始執行真實 analyzer。
+
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
 ```text
@@ -177,8 +197,17 @@ composer check
 | `3` | `explain` 指定的 rule id 不存在 |
 | `4` | 有效 PHP constraint 沒有任何本工具已知的 PHP minor，因此無法解析 policy |
 | `5` | Rule data 無效，例如 malformed rule、duplicate id、filename/id mismatch |
+| `6` | Verification 已完成，並產生一筆以上 advisory finding |
+| `7` | 選定的 verification adapter 或 executable 不可用 |
+| `8` | Verification adapter 無法完成執行 |
+| `9` | Resolved PHP policy 無法精確投影到選定 analyzer |
 
 `resolve`、`list-rules`、`explain` 任何非零 exit 下，human output 會寫到 stderr，`--json` mode 的 stdout 保持 byte-empty，避免 JSON consumer 讀到半成品。`doctor` 是唯一有記載的例外：它的報告本身就是診斷結果，所以即使 exit 非零，也會把完整報告寫到 stdout、stderr 保持空白——唯一的例外是 `doctor` 自身 option 的呼叫錯誤，這種情況仍然在任何 check 執行前就被拒絕，且 stdout 保持 byte-empty。
+
+`verify` 是另一個會產生完整 report 的 surface。Outcome `0`、`6`、`7`、`8`、`9` 都會將一份
+完整 human 或 canonical JSON report 寫到 stdout，stderr 保持 byte-empty。Invalid invocation、
+policy、rule-data 與 internal error 維持既有 `2`、`4`、`5`、`1` 的 empty-stdout 語意；JSON
+consumer 不會收到 partial verification document。
 
 ### `list-rules`
 
@@ -188,7 +217,25 @@ composer check
 
 ### `doctor`
 
-`doctor` 對這個工具自身的輸入與安裝狀態，針對目標專案執行九個固定順序的 read-only check：執行中的 build（版本、以及是從 PHAR 還是從原始碼執行）、project root、`composer.json` 與 `composer.lock` 的存在性/可讀性/JSON 有效性、宣告的 PHP 值、resolve 出來的 policy 摘要、兩個內建 schema，以及有效的 rules 目錄與其載入結果。每個 check 都會回報一個 status（`ok` / `warn` / `fail` / `skipped`）、固定的一行 summary，以及固定的 detail key 集合，human 與 `--json` 兩種形式一一對應；JSON 形式與 `list-rules`、`explain` 一樣帶有 `output_version`。它不會引入新的 exit code——process 的 exit code 就是第一個失敗 check 原本就會產生的 `1` / `2` / `4` / `5`。如上所述，即使 exit 非零，`doctor` 仍會把完整報告寫到 stdout，因為報告本身就是診斷；`doctor` 自身 option 的呼叫錯誤是唯一仍然不印出任何內容的情況。
+`doctor` 對這個工具自身的輸入與安裝狀態，針對目標專案執行九個固定順序的 read-only check：執行中的 build（版本、以及是從 PHAR 還是從原始碼執行）、project root、`composer.json` 與 `composer.lock` 的存在性/可讀性/JSON 有效性、宣告的 PHP 值、resolve 出來的 policy 摘要、兩個 core rule/policy schema，以及有效的 rules 目錄與其載入結果。每個 check 都會回報一個 status（`ok` / `warn` / `fail` / `skipped`）、固定的一行 summary，以及固定的 detail key 集合，human 與 `--json` 兩種形式一一對應；JSON 形式與 `list-rules`、`explain` 一樣帶有 `output_version`。它不會引入新的 exit code——process 的 exit code 就是第一個失敗 check 原本就會產生的 `1` / `2` / `4` / `5`。如上所述，即使 exit 非零，`doctor` 仍會把完整報告寫到 stdout，因為報告本身就是診斷；`doctor` 自身 option 的呼叫錯誤是唯一仍然不印出任何內容的情況。
+
+### `verify`
+
+`verify` 需要一個 adapter argument、四個 shared policy option（`--project-root`、`--php`、
+`--mode`、`--json`），以及必要的 `--executable` path 或 `PATH` name。它會先 resolve policy，
+再向選定 adapter 取得 evidence。Canonical JSON document 必須符合
+[`verification.schema.json`](schemas/verification.schema.json)，並記錄 status、exit code、adapter、
+policy fingerprint 與 projection status、預先驗證的 invocation plan、實際嘗試的 invocation、
+deterministic counts、reason、
+mapped source-backed rule context，以及 mapped/unmapped external finding；不輸出 timestamp。
+Plan 會區分不參與 policy partition 的 tool probe 與 policy-partitioned analysis，並記錄固定的
+`project_root` working-directory role、bounded timeout 與 sanitized environment role；report evidence
+不會洩漏 machine-specific executable path prefix。
+
+這是 explicit adapter boundary，不是 arbitrary-command interface；caller 無法傳入 raw analyzer
+arguments。M3-A 只辨識 `phpcompatibility`，且該 registration 是 non-executing placeholder。
+Missing 或尚未實作的 capability 會保持 `unavailable`，不會自動安裝、近似處理或宣稱已成功
+掃描。完整決策見 [ADR-008](docs/adr/ADR-008-external-verification-adapters.md)。
 
 ## PHP coverage 與 fail-safe 行為
 
@@ -236,6 +283,12 @@ Core 的定位是「提供可驗證建議」，不是「執行或修改目標專
 
 完整設計見 [ADR-006](docs/adr/ADR-006-read-only-core.md)。
 
+尚未發布的 M3-A `verify` 是另一個 explicit boundary，受
+[ADR-008](docs/adr/ADR-008-external-verification-adapters.md) 約束。Current production placeholder
+只做 read-only executable discovery，不會啟動 analyzer。後續真實 adapter 必須以 isolated child
+process 執行、精確使用 resolved policy、禁止 network/configuration/install 行為、保留 unmapped
+evidence，並證明 target tree 執行前後 byte-identical；這不會削弱 metadata-only core commands。
+
 ## Source provenance
 
 PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authoritative PHP source，例如：
@@ -253,16 +306,16 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **M0 Foundation** | `v0.0.1` | ✅ 完成：repository contracts、CLI skeleton、schemas、CI、static Pages | Foundation contract 已建立 |
 | **M1 Core parity** | `v0.1.0` | ✅ 完成：Composer Semver resolver、two-axis policy、rule registry、`resolve` / `list-rules` / `explain`、16 條 seed rules | Framework pack 與 target analyzer 不進入 M1 |
 | **M2 Agent distribution** | `v0.2.0` | ✅ 完成：Agent Skill、Codex/AGENTS.md wrapper、附加在 release 上的 CI-built PHAR，以及 bounded `doctor` | 依賴穩定的 M1 CLI / JSON contract |
-| **M3 Verification adapters** | `v0.3.0` | 下一階段：PHPCompatibility、PHPStan-deprecation、Rector advisory integration | 預設保持 advisory / read-only |
+| **M3 Verification adapters** | `v0.3.0` | 🚧 M3-A foundation 已在 source 完成但尚未發布；真實 PHPCompatibility、PHPStan-deprecation、Rector advisory adapter 仍屬後續 slice | Explicit opt-in、exact policy projection、advisory evidence、zero target writes |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
 
 | Path | 用途 |
 |---|---|
-| `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine |
+| `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
 | `resources/rules/` | 16 個 source-backed seed rule JSON，一條 rule 一個檔案 |
-| `schemas/` | Versioned rule / policy contracts |
+| `schemas/` | Versioned rule、policy 與尚未發布的 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |
 | `site/` | Dependency-free GitHub Pages overview |

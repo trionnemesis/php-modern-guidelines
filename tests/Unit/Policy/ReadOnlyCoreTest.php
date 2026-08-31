@@ -8,30 +8,83 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * ADR-006 read-only-core scan of src/: forbidden execution/write/socket primitives, fopen read-mode-only,
- * file_get_contents never a literal http URL. Scans all of src/, so it keeps protecting slices C and D
- * as they land.
+ * ADR-006/ADR-008 trust-boundary scan of src/: writes, sockets and shell execution remain forbidden;
+ * the four reviewed native process primitives exist only in NativeProcessRunner; fopen stays read-only;
+ * file_get_contents never receives a literal http URL.
  */
 final class ReadOnlyCoreTest extends TestCase
 {
+    private const NATIVE_PROCESS_RUNNER = 'Verification/Process/NativeProcessRunner.php';
+
+    /** @var list<string> */
+    private const ALLOWED_PROCESS_PRIMITIVES = [
+        'proc_close',
+        'proc_get_status',
+        'proc_open',
+        'proc_terminate',
+    ];
+
     private const FORBIDDEN_ALTERNATION =
-        'exec|shell_exec|proc_open|proc_close|passthru|popen|pclose|system|eval'
+        'exec|shell_exec|passthru|popen|pclose|system|eval|proc_nice|pcntl_exec|pcntl_fork|posix_kill'
         . '|file_put_contents|fwrite|fputs|fputcsv|ftruncate|flock|unlink|rmdir|mkdir|rename|copy|touch'
         . '|chmod|chown|chgrp|symlink|link|umask|tempnam|tmpfile|move_uploaded_file'
         . '|fsockopen|pfsockopen|stream_socket_client|stream_socket_server|stream_context_create'
         . '|socket_create|curl_init|curl_setopt|curl_exec';
+
+    public function testM3AProductionAdaptersCannotReachTheNativeRunner(): void
+    {
+        $adapterDirectory = dirname(__DIR__, 3) . '/src/Verification/Adapter';
+        $paths = glob($adapterDirectory . '/*.php');
+        self::assertIsArray($paths);
+        self::assertNotSame([], $paths);
+
+        foreach ($paths as $path) {
+            $source = file_get_contents($path);
+            self::assertIsString($source);
+            self::assertStringNotContainsString('NativeProcessRunner', $source, $path);
+            self::assertStringNotContainsString('ProcessRequest', $source, $path);
+        }
+    }
 
     #[DataProvider('phpFiles')]
     public function testNoForbiddenPrimitiveCallSites(string $path): void
     {
         $stripped = $this->strippedSource($path);
 
-        $pattern = '/(?<![A-Za-z0-9_$>\\\\])(' . self::FORBIDDEN_ALTERNATION . ')\s*\(/';
-
         self::assertDoesNotMatchRegularExpression(
-            $pattern,
+            self::forbiddenCallPattern(),
             $stripped,
             sprintf('%s contains a forbidden execution/write/socket primitive call site.', $path),
+        );
+    }
+
+    #[DataProvider('phpFiles')]
+    public function testProcessPrimitivesHaveOneExactAllowListedImplementation(string $path): void
+    {
+        $stripped = $this->strippedSource($path);
+        preg_match_all(self::processCallPattern(), $stripped, $matches);
+
+        /** @var list<string> $calls */
+        $calls = array_values(array_unique($matches[1]));
+        sort($calls, SORT_STRING);
+
+        $root = dirname(__DIR__, 3) . '/src';
+        $relativePath = str_replace('\\', '/', substr($path, strlen($root) + 1));
+
+        if ($relativePath === self::NATIVE_PROCESS_RUNNER) {
+            self::assertSame(
+                self::ALLOWED_PROCESS_PRIMITIVES,
+                $calls,
+                'NativeProcessRunner must use exactly the reviewed process primitive set.',
+            );
+
+            return;
+        }
+
+        self::assertSame(
+            [],
+            $calls,
+            sprintf('%s uses a process primitive outside the one reviewed adapter boundary.', $path),
         );
     }
 
@@ -49,6 +102,18 @@ final class ReadOnlyCoreTest extends TestCase
             '/fopen\(\s*[\'"]https?/',
             $stripped,
             sprintf('%s calls fopen() with a literal remote URL.', $path),
+        );
+    }
+
+    public function testBoundaryPatternsCatchFullyQualifiedFunctionCalls(): void
+    {
+        self::assertMatchesRegularExpression(
+            self::forbiddenCallPattern(),
+            '\\file_put_contents($path, $bytes);',
+        );
+        self::assertMatchesRegularExpression(
+            self::processCallPattern(),
+            '\\proc_open($command, $descriptors, $pipes);',
         );
     }
 
@@ -159,5 +224,15 @@ final class ReadOnlyCoreTest extends TestCase
         }
 
         return $out;
+    }
+
+    private static function forbiddenCallPattern(): string
+    {
+        return '/(?<![A-Za-z0-9_$>:])(' . self::FORBIDDEN_ALTERNATION . ')\s*\(/';
+    }
+
+    private static function processCallPattern(): string
+    {
+        return '/(?<![A-Za-z0-9_$>:])(' . implode('|', self::ALLOWED_PROCESS_PRIMITIVES) . ')\s*\(/';
     }
 }

@@ -1,0 +1,272 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ModernPhpGuidelines\Tests\Unit\Verification\Process;
+
+use ModernPhpGuidelines\Verification\Process\NativeProcessRunner;
+use ModernPhpGuidelines\Verification\Process\ProcessRequest;
+use ModernPhpGuidelines\Verification\Process\ProcessResult;
+use ModernPhpGuidelines\Verification\Process\ProcessState;
+use PHPUnit\Framework\TestCase;
+
+final class NativeProcessRunnerTest extends TestCase
+{
+    public function testPlatformSupportIsExplicit(): void
+    {
+        self::assertSame(PHP_OS_FAMILY !== 'Windows', NativeProcessRunner::isSupportedOnCurrentPlatform());
+    }
+
+    public function testArgumentsArePassedVerbatimWithoutShellParsing(): void
+    {
+        $arguments = [
+            'plain',
+            'space separated',
+            '"double quoted"',
+            "'single quoted'",
+            '$HOME',
+            'semi;colon',
+            'amp&ersand',
+            'pipe|character',
+            'redirect>character',
+            'glob*?[abc]',
+            "line\nbreak",
+            '',
+            '繁體中文',
+        ];
+
+        $result = $this->runner()->run($this->request(['argv', ...$arguments]));
+
+        self::assertSame(ProcessState::Exited, $result->state);
+        self::assertSame(0, $result->exitCode);
+        self::assertSame('', $result->stderr);
+        self::assertSame($arguments, json_decode($result->stdout, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    public function testShellMetacharactersCannotCreateAnInjectedFile(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::markTestSkipped('This sentinel payload uses POSIX shell syntax.');
+        }
+
+        $sentinel = sys_get_temp_dir() . '/php-modern-guidelines-injection-' . bin2hex(random_bytes(12));
+        $payload = '; printf injected > ' . escapeshellarg($sentinel) . '; #';
+
+        try {
+            $result = $this->runner()->run($this->request(['argv', $payload]));
+
+            self::assertSame(ProcessState::Exited, $result->state);
+            self::assertSame([$payload], json_decode($result->stdout, true, 512, JSON_THROW_ON_ERROR));
+            self::assertFileDoesNotExist($sentinel);
+        } finally {
+            if (is_file($sentinel)) {
+                unlink($sentinel);
+            }
+        }
+    }
+
+    public function testStdoutAndStderrAreCapturedSeparately(): void
+    {
+        $result = $this->runner()->run($this->request(['output']));
+
+        self::assertSame(ProcessState::Exited, $result->state);
+        self::assertSame(0, $result->exitCode);
+        self::assertSame("stdout: first\nstdout: second\n", $result->stdout);
+        self::assertSame("stderr: first\nstderr: second\n", $result->stderr);
+    }
+
+    public function testChildReceivesOnlyTheSanitizedEnvironmentAllowList(): void
+    {
+        $previousSecret = getenv('PMG_PROCESS_SECRET');
+        putenv('PMG_PROCESS_SECRET=must-not-leak');
+
+        try {
+            $result = $this->runner()->run($this->request(['environment']));
+        } finally {
+            putenv($previousSecret === false ? 'PMG_PROCESS_SECRET' : 'PMG_PROCESS_SECRET=' . $previousSecret);
+        }
+
+        self::assertSame(ProcessState::Exited, $result->state);
+        /** @var array<string, string> $environment */
+        $environment = json_decode($result->stdout, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('C', $environment['LANG']);
+        self::assertSame('C', $environment['LC_ALL']);
+        self::assertSame('UTC', $environment['TZ']);
+        self::assertSame('1', $environment['NO_COLOR']);
+        self::assertArrayNotHasKey('PMG_PROCESS_SECRET', $environment);
+        self::assertArrayNotHasKey('HOME', $environment);
+        self::assertArrayNotHasKey('HTTP_PROXY', $environment);
+        self::assertArrayNotHasKey('HTTPS_PROXY', $environment);
+    }
+
+    public function testBothPipesAreDrainedBeyondTheirBufferSize(): void
+    {
+        $bytes = 262_144;
+        $result = $this->runner()->run($this->request(['flood', (string) $bytes], 5_000));
+
+        self::assertSame(ProcessState::Exited, $result->state);
+        self::assertSame(0, $result->exitCode);
+        self::assertSame($bytes, strlen($result->stdout));
+        self::assertSame($bytes, strlen($result->stderr));
+        self::assertSame(str_repeat('O', $bytes), $result->stdout);
+        self::assertSame(str_repeat('E', $bytes), $result->stderr);
+    }
+
+    public function testNonZeroExitStatusIsPreservedWithBothOutputs(): void
+    {
+        $result = $this->runner()->run($this->request(['exit', '23']));
+
+        self::assertSame(ProcessState::Exited, $result->state);
+        self::assertSame(23, $result->exitCode);
+        self::assertSame("before exit\n", $result->stdout);
+        self::assertSame("exit stderr\n", $result->stderr);
+    }
+
+    public function testMaximumPortableExitStatusIsPreserved(): void
+    {
+        $result = $this->runner()->run($this->request(['exit', '255']));
+
+        self::assertSame(ProcessState::Exited, $result->state);
+        self::assertSame(255, $result->exitCode);
+    }
+
+    public function testResultRejectsExitStatusAbovePortableRange(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('0 through 255');
+
+        new ProcessResult(ProcessState::Exited, 256, '', '');
+    }
+
+    public function testTimeoutTerminatesTheProcessAndPreservesOutputAlreadyWritten(): void
+    {
+        $startedAt = $this->monotonicNanoseconds();
+
+        $result = $this->runner()->run($this->request(['sleep', '4000'], 500));
+
+        $finishedAt = $this->monotonicNanoseconds();
+        self::assertSame(ProcessState::TimedOut, $result->state);
+        self::assertNull($result->exitCode);
+        self::assertSame("before timeout\n", $result->stdout);
+        self::assertSame("timeout stderr\n", $result->stderr);
+        self::assertLessThan(3.0, ($finishedAt - $startedAt) / 1_000_000_000.0);
+    }
+
+    public function testSignalTerminationIsNotMisreportedAsAStartFailure(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows' || !function_exists('posix_kill')) {
+            self::markTestSkipped('Signal termination requires a POSIX process runtime.');
+        }
+
+        $result = $this->runner()->run($this->request(['signal']));
+
+        self::assertSame(ProcessState::Signaled, $result->state);
+        self::assertNull($result->exitCode);
+        self::assertSame(15, $result->signal);
+        self::assertSame("before signal\n", $result->stdout);
+    }
+
+    public function testMissingExecutableIsAStartFailureWithoutShellDiagnostics(): void
+    {
+        $missing = $this->projectRoot() . '/tests/fixtures/process/does-not-exist';
+        $request = new ProcessRequest($missing, [], $this->projectRoot(), 1_000);
+
+        $result = $this->runner()->run($request);
+
+        self::assertSame(ProcessState::StartFailed, $result->state);
+        self::assertNull($result->exitCode);
+        self::assertSame('', $result->stdout);
+        self::assertSame('', $result->stderr);
+    }
+
+    public function testRequestRejectsNullBytesBeforeCallingProcOpen(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('must not contain null bytes');
+
+        new ProcessRequest(PHP_BINARY, ["bad\0argument"], $this->projectRoot(), 1_000);
+    }
+
+    public function testRequestRejectsRelativeExecutable(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('absolute path');
+
+        new ProcessRequest('php', [], $this->projectRoot(), 1_000);
+    }
+
+    public function testRequestRejectsNonListArguments(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('must be a list');
+
+        new ProcessRequest(PHP_BINARY, ['named' => 'argument'], $this->projectRoot(), 1_000);
+    }
+
+    public function testRequestRejectsNonStringArguments(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('must be a string');
+
+        new ProcessRequest(PHP_BINARY, [42], $this->projectRoot(), 1_000);
+    }
+
+    public function testRequestRejectsUnboundedZeroTimeout(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('at least one millisecond');
+
+        new ProcessRequest(PHP_BINARY, [], $this->projectRoot(), 0);
+    }
+
+    public function testRequestRejectsTimeoutAboveTheContractMaximum(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('must not exceed 3600000 milliseconds');
+
+        new ProcessRequest(
+            PHP_BINARY,
+            [],
+            $this->projectRoot(),
+            ProcessRequest::MAX_TIMEOUT_MILLISECONDS + 1,
+        );
+    }
+
+    private function runner(): NativeProcessRunner
+    {
+        if (!NativeProcessRunner::isSupportedOnCurrentPlatform()) {
+            self::markTestSkipped('The native process runner requires non-blocking POSIX pipes.');
+        }
+
+        return new NativeProcessRunner();
+    }
+
+    /** @param list<string> $childArguments */
+    private function request(array $childArguments, int $timeoutMilliseconds = 2_000): ProcessRequest
+    {
+        return new ProcessRequest(
+            PHP_BINARY,
+            [$this->childPath(), ...$childArguments],
+            $this->projectRoot(),
+            $timeoutMilliseconds,
+        );
+    }
+
+    private function childPath(): string
+    {
+        $path = realpath($this->projectRoot() . '/tests/fixtures/process/runner-child.php');
+        self::assertIsString($path);
+
+        return $path;
+    }
+
+    private function projectRoot(): string
+    {
+        return dirname(__DIR__, 4);
+    }
+
+    private function monotonicNanoseconds(): float
+    {
+        return (float) hrtime(true);
+    }
+}

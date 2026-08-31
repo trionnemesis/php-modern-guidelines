@@ -24,6 +24,11 @@ final class PackagePathsTest extends TestCase
         self::assertFileExists(PackagePaths::policySchemaPath());
     }
 
+    public function testVerificationSchemaPathExists(): void
+    {
+        self::assertFileExists(PackagePaths::verificationSchemaPath());
+    }
+
     public function testSchemasDirectoryExists(): void
     {
         self::assertDirectoryExists(PackagePaths::schemasDirectory());
