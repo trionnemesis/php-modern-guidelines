@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://trionnemesis.github.io/php-modern-guidelines/schemas/rule.schema.json",
   "title": "Modern PHP Guideline rule",
-  "description": "Contract for a source-backed PHP language, Core, or bundled-extension guideline. No rule instances ship in M0.",
+  "description": "Contract for a source-backed PHP language, Core, or bundled-extension guideline.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "id", "title", "summary", "category", "kind", "priority", "introduced_in", "deprecated_in", "removed_in", "extension", "package_constraints", "behavior_change_risk", "new_code_policy", "existing_code_policy", "guideline", "details", "examples", "verification", "sources", "notes"],
   "properties": {
-    "schema_version": {"const": "1.0.0"},
+    "schema_version": {"const": "1.1.0"},
     "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
     "title": {"type": "string", "minLength": 1},
     "summary": {"type": "string", "minLength": 1},
@@ -25,7 +25,7 @@
     "guideline": {"type": "string", "minLength": 1},
     "details": {"type": "string", "minLength": 1},
     "examples": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/example"}},
-    "verification": {"type": "object", "additionalProperties": false, "required": ["phpcompatibility", "phpstan", "rector"], "properties": {"phpcompatibility": {"type": ["string", "null"]}, "phpstan": {"type": ["string", "null"]}, "rector": {"type": ["string", "null"]}}},
+    "verification": {"type": "object", "additionalProperties": false, "required": ["phpcompatibility", "phpstan", "rector"], "properties": {"phpcompatibility": {"description": "Sorted, unique PHPCompatibility sniff identifiers; an empty list means no proven mapping.", "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}, "phpstan": {"type": ["string", "null"]}, "rector": {"type": ["string", "null"]}}},
     "sources": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source"}},
     "notes": {"type": "array", "items": {"type": "string"}},
     "superseded_by": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"}

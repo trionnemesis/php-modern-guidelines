@@ -96,8 +96,12 @@ final class RuleLoader
 
             $seenBy[$id] = $basename;
 
-            /** @var array<string, mixed> $data */
-            $rules[] = Rule::fromArray($data);
+            try {
+                /** @var array<string, mixed> $data */
+                $rules[] = Rule::fromArray($data);
+            } catch (\LogicException $e) {
+                throw new RuleDataException(sprintf('%s: %s', $basename, $e->getMessage()), 0, $e);
+            }
         }
 
         return new RuleRegistry($rules);

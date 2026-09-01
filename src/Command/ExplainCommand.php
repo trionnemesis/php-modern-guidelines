@@ -239,10 +239,16 @@ final class ExplainCommand extends Command
         array_push($lines, ...$this->renderExamples($rule));
 
         $verification = $rule->verification;
-        if ($verification->phpcompatibility !== null || $verification->phpstan !== null || $verification->rector !== null) {
+        if ($verification->phpcompatibility !== [] || $verification->phpstan !== null || $verification->rector !== null) {
             $lines[] = '';
             $lines[] = 'Verification';
-            $lines[] = OutputWriter::field(self::LABEL_WIDTH, 'phpcompatibility', OutputWriter::orDash($verification->phpcompatibility));
+            $lines[] = OutputWriter::field(
+                self::LABEL_WIDTH,
+                'phpcompatibility',
+                $verification->phpcompatibility === []
+                    ? '-'
+                    : implode(', ', $verification->phpcompatibility),
+            );
             $lines[] = OutputWriter::field(self::LABEL_WIDTH, 'phpstan', OutputWriter::orDash($verification->phpstan));
             $lines[] = OutputWriter::field(self::LABEL_WIDTH, 'rector', OutputWriter::orDash($verification->rector));
         }

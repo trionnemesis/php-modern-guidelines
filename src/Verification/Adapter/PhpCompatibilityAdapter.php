@@ -450,12 +450,46 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
                     '--severity=1',
                     '--no-cache',
                     '-q',
-                    '.',
+                    ...$this->scanOperands($request->policy->projectRoot),
                 ],
                 InvocationPurpose::Analysis,
                 timeoutMilliseconds: $this->timeoutMilliseconds,
             ),
         ];
+    }
+
+    /**
+     * Enumerate the target root explicitly instead of using PHPCS's unanchored `--ignore` matching.
+     * Prefixing every operand with `./` keeps option-like names inert, while omitting only the exact
+     * top-level vendor directory prevents dependency findings without suppressing a checkout whose
+     * ancestor path happens to contain a `vendor` component. The resulting operands are preserved
+     * verbatim in both the planned and executed invocation evidence.
+     *
+     * @return list<string>
+     */
+    private function scanOperands(string $projectRoot): array
+    {
+        $entries = @scandir($projectRoot);
+        if ($entries === false) {
+            throw new \LogicException('The resolved project root could not be enumerated for verification.');
+        }
+
+        $operands = [];
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            if ($entry === 'vendor' && is_dir($projectRoot . DIRECTORY_SEPARATOR . $entry)) {
+                continue;
+            }
+
+            $operands[] = './' . $entry;
+        }
+
+        sort($operands, SORT_STRING);
+
+        return $operands;
     }
 
     /** @param list<string> $minors ascending, non-empty */

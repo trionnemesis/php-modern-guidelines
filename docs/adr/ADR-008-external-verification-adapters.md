@@ -31,6 +31,12 @@ requires the target project's `vendor/autoload.php` and never loads target-proje
 runtime. Adapter argument vectors are constructed by committed adapter code; callers cannot pass an
 arbitrary command or unrestricted analyzer arguments through the public CLI.
 
+The PHPCompatibility adapter scopes analysis by enumerating deterministic top-level operands relative to
+the target root and omitting only the exact top-level `vendor/` directory. It does not use PHPCS's
+unanchored `--ignore` matching: that matching can suppress every source file when an ancestor checkout
+path happens to contain a `vendor` component. Planned and executed invocation arguments record the
+effective operands verbatim, so a dependency-scoped run remains distinguishable from a whole-root run.
+
 This isolation is a process boundary, not an operating-system filesystem or network sandbox. The project
 therefore does not claim that `proc_open()` by itself prevents a child from writing files or opening a
 network connection. A supported adapter must instead use a fixed, offline invocation whose documented
@@ -104,6 +110,12 @@ mapping. Message-text matching, fuzzy matching, regular-expression guesses over 
 are forbidden. Unmapped findings are retained with `mapping_status: unmapped`. Mapped internal ids are
 represented as an ordered list so one-to-many and many-to-one relationships are not encoded as ambiguous
 comma-separated strings.
+
+Rule schema `1.1.0` represents `verification.phpcompatibility` as a sorted, unique list of external sniff
+ids; an empty list means that no mapping has been proven. The adapter retains the external-to-internal
+lookup optimized for findings, while a contract test requires the rule-local internal-to-external lists
+to be its exact inverse. A sniff may therefore map to several rules, and a rule may name several sniffs,
+without either direction flattening identifiers into a scalar.
 
 Stable reports record the adapter id, detected tool version, the prevalidated normalized invocation plan,
 actual invocation arguments and external exit status or terminating signal, policy fingerprint,

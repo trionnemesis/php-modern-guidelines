@@ -10,7 +10,7 @@ use ModernPhpGuidelines\Support\PackagePaths;
 use ModernPhpGuidelines\Verification\Adapter\PhpCompatibilityAdapter;
 use PHPUnit\Framework\TestCase;
 
-/** The committed SNIFF_RULE_MAP (§8.3), tested as data: shape, rule-id existence, exact contents. */
+/** The committed exact mapping, tested in both sniff -> rule and rule -> sniff directions. */
 final class PhpCompatibilityMappingTest extends TestCase
 {
     public function testCommittedMapMatchesTheReviewedTable(): void
@@ -244,22 +244,36 @@ final class PhpCompatibilityMappingTest extends TestCase
         }
     }
 
-    public function testRuleJsonVerificationFieldsRemainUnpopulated(): void
+    public function testRuleVerificationListsAreTheExactInverseOfTheCommittedMap(): void
     {
-        $files = glob(PackagePaths::rulesDirectory() . '/*.json');
-        self::assertIsArray($files);
-        self::assertNotSame([], $files);
+        $rules = (new RuleLoader(new JsonSchemaValidator(PackagePaths::ruleSchemaPath())))
+            ->loadDirectory(PackagePaths::rulesDirectory());
 
-        foreach ($files as $file) {
-            $raw = file_get_contents($file);
-            self::assertIsString($raw);
-            $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-            self::assertIsArray($data);
-            self::assertArrayHasKey('verification', $data);
-            self::assertIsArray($data['verification']);
-            self::assertArrayHasKey('phpcompatibility', $data['verification']);
-            self::assertNull($data['verification']['phpcompatibility'], sprintf('%s: verification.phpcompatibility must stay null.', $file));
+        /** @var array<string, list<string>> $fromRuleFiles */
+        $fromRuleFiles = [];
+        foreach ($rules->all() as $rule) {
+            $sniffIds = $rule->verification->phpcompatibility;
+            $sorted = $sniffIds;
+            sort($sorted, SORT_STRING);
+            self::assertSame($sorted, $sniffIds, sprintf('%s mappings must be sorted.', $rule->id));
+            self::assertSame(
+                array_values(array_unique($sniffIds)),
+                $sniffIds,
+                sprintf('%s mappings must be unique.', $rule->id),
+            );
+
+            foreach ($sniffIds as $sniffId) {
+                $fromRuleFiles[$sniffId][] = $rule->id;
+            }
         }
+
+        ksort($fromRuleFiles, SORT_STRING);
+        foreach ($fromRuleFiles as &$ruleIds) {
+            sort($ruleIds, SORT_STRING);
+        }
+        unset($ruleIds);
+
+        self::assertSame(self::committedMap(), $fromRuleFiles);
     }
 
     /** @return array<string, list<string>> */

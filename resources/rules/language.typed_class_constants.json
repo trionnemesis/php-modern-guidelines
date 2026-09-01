@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.typed_class_constants",
     "title": "Typed class, interface, trait and enum constants",
     "summary": "PHP 8.3 lets constants declared on classes, interfaces, traits and enums carry an explicit type, checked at declaration and for covariance on override.",
@@ -49,7 +49,9 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.Classes.NewTypedConstants.Found"
+        ],
         "phpstan": null,
         "rector": null
     },

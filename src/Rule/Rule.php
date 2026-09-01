@@ -9,7 +9,7 @@ namespace ModernPhpGuidelines\Rule;
  */
 final class Rule
 {
-    public const SCHEMA_VERSION = '1.0.0';
+    public const SCHEMA_VERSION = '1.1.0';
 
     /**
      * @param array<string, string> $packageConstraints
@@ -210,7 +210,7 @@ final class Rule
         }
 
         return new RuleVerification(
-            phpcompatibility: self::nullableStr($value, 'phpcompatibility'),
+            phpcompatibility: self::stringList($value, 'phpcompatibility'),
             phpstan: self::nullableStr($value, 'phpstan'),
             rector: self::nullableStr($value, 'rector'),
         );

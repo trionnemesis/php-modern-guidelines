@@ -82,7 +82,7 @@ final class PhpCompatibilityProjectionTest extends TestCase
             '--severity=1',
             '--no-cache',
             '-q',
-            '.',
+            './composer.json',
         ], $analysis->arguments);
 
         foreach ($plan->invocations as $invocation) {
@@ -244,6 +244,45 @@ final class PhpCompatibilityProjectionTest extends TestCase
         self::assertSame('The selected executable is not available or executable.', $plan->reason->message);
     }
 
+    public function testVendorIsExcludedWithExplicitOperandsEvenWhenAnAncestorIsNamedVendor(): void
+    {
+        $base = sys_get_temp_dir()
+            . '/php-modern-guidelines-scope-'
+            . bin2hex(random_bytes(12));
+        $root = $base . '/vendor/checkout';
+        self::assertTrue(mkdir($root . '/src', 0700, true));
+        self::assertTrue(mkdir($root . '/vendor/package', 0700, true));
+        self::assertNotFalse(file_put_contents(
+            $root . '/composer.json',
+            '{"name":"fixture/scope","require":{"php":">=8.2 <8.5"}}',
+        ));
+        self::assertNotFalse(file_put_contents($root . '/src/Finding.php', "<?php\narray_find([], fn (): bool => true);\n"));
+        self::assertNotFalse(file_put_contents($root . '/vendor/package/Noise.php', "<?php\n"));
+
+        try {
+            $policy = (new PolicyResolver(new ComposerInputReader(), new MinorRangeCalculator()))
+                ->resolve(new PolicyRequest($root, ResolutionMode::RangeSafe));
+            $request = new VerificationRequest($policy, self::stub());
+
+            $plan = (new PhpCompatibilityAdapter())->plan($request);
+
+            self::assertSame(ProjectionStatus::Supported, $plan->projectionStatus);
+            $analysisArguments = $plan->invocations[2]->arguments;
+            self::assertSame(
+                ['./composer.json', './src'],
+                array_slice($analysisArguments, 11),
+            );
+            self::assertNotContains('.', $analysisArguments);
+            self::assertNotContains('./vendor', $analysisArguments);
+            self::assertSame([], array_values(array_filter(
+                $analysisArguments,
+                static fn(string $argument): bool => str_starts_with($argument, '--ignore'),
+            )));
+        } finally {
+            self::removeTree($base);
+        }
+    }
+
     public function testPlanStartsNoProcess(): void
     {
         $temporaryDirectory = sys_get_temp_dir()
@@ -309,5 +348,26 @@ final class PhpCompatibilityProjectionTest extends TestCase
     ): ResolvedPolicy {
         return (new PolicyResolver(new ComposerInputReader(), new MinorRangeCalculator()))
             ->resolve(new PolicyRequest(self::projectRoot($fixture), $mode));
+    }
+
+    private static function removeTree(string $root): void
+    {
+        if (!is_dir($root)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+        foreach ($iterator as $item) {
+            /** @var \SplFileInfo $item */
+            if ($item->isDir() && !$item->isLink()) {
+                rmdir($item->getPathname());
+            } else {
+                unlink($item->getPathname());
+            }
+        }
+        rmdir($root);
     }
 }

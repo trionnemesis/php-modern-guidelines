@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.dollar_brace_string_interpolation",
     "title": "\"${var}\"/\"${expr}\" string interpolation is deprecated",
     "summary": "PHP 8.2 deprecates the \"${var}\" and \"${expr}\" curly-brace string interpolation syntaxes in favor of \"$var\"/\"{$var}\" and \"{${expr}}\".",
@@ -41,7 +41,10 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [
+            "PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax",
+            "PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedVariableSyntax"
+        ],
         "phpstan": null,
         "rector": null
     },

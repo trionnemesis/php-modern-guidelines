@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "core.strtolower_locale_insensitive",
     "title": "`strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive",
     "summary": "As of PHP 8.2, `strtolower()`, `strtoupper()`, and a family of related case-conversion and case-insensitive functions no longer consult the current locale; they always perform ASCII-only case conversion as if the locale were \"C\", so previously locale-dependent behavior on non-ASCII bytes changes silently.",
@@ -22,7 +22,7 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [],
         "phpstan": null,
         "rector": null
     },

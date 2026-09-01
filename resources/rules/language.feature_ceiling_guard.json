@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.feature_ceiling_guard",
     "title": "Never emit syntax or APIs newer than the feature ceiling",
     "summary": "A cross-cutting compatibility guard: new code must never use a PHP language construct, function, class, attribute or constant whose `introduced_in` minor is newer than the resolved policy's feature ceiling, because PHP minor releases routinely introduce syntax an older, still-supported minor cannot parse at all.",
@@ -22,7 +22,7 @@
         }
     ],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [],
         "phpstan": null,
         "rector": null
     },

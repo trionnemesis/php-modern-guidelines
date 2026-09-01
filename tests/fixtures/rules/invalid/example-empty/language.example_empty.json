@@ -1,5 +1,5 @@
 {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "id": "language.example_empty",
     "title": "Fixture: language.example_empty",
     "summary": "Synthetic invalid fixture rule for RuleLoaderTest; not a real guideline.",
@@ -18,7 +18,7 @@
     "details": "Synthetic rule used solely by RuleLoaderTest.",
     "examples": [],
     "verification": {
-        "phpcompatibility": null,
+        "phpcompatibility": [],
         "phpstan": null,
         "rector": null
     },

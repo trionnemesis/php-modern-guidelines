@@ -15,6 +15,10 @@
 
 > **Verification:** `v0.3.0` adds an explicit, opt-in `verify <adapter> --executable=<path-or-name>` surface. Its production `phpcompatibility` adapter is a real PHPCompatibility implementation: it runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and reports advisory evidence — never an automatic fix. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from this release; see [Changelog](CHANGELOG.md) for why.
 
+> **Unreleased source update:** rule schema `1.1.0` stores PHPCompatibility mappings as sorted lists,
+> and verification scans explicit top-level operands while omitting the exact project-root `vendor/`
+> directory. The operands are recorded in the report; no unanchored PHPCS ignore pattern is used.
+
 ## Why
 
 AI coding agents often generate the newest PHP style based on their current runtime, while real projects commonly support several PHP minors. If a project declares `require.php: ^8.2`, seeing PHP 8.5 on the development machine does not prove that PHP 8.5-only syntax is safe to use.
@@ -171,18 +175,23 @@ analyzer that fails mid-run exits `8`.
 Every finding keeps the analyzer's own sniff identifier verbatim. Nine of this project's sixteen rules —
 including the whole `extension.imap_unbundled` surface — have a committed, reviewed mapping from sniff id
 to rule id; every other finding is preserved with `mapping_status: unmapped` rather than discarded.
-Findings are advisory evidence to weigh, never an automatic fix: `verify` only ever reads the target
-project through the selected external process, and tests prove the target tree is byte-identical before
-and after every success and failure path.
+The same mappings are stored as sorted `verification.phpcompatibility` lists on the rule files and tested
+as the exact inverse of the adapter map. Findings are advisory evidence to weigh, never an automatic fix:
+`verify` only ever reads the target project through the selected external process, and tests prove the
+target tree is byte-identical before and after every success and failure path.
+
+Analysis uses explicit, sorted top-level operands and omits only the exact project-root `vendor/`
+directory. Those operands are preserved in both planned and executed invocation evidence. The adapter
+does not use PHPCS's unanchored `--ignore` matching, so a checkout whose ancestor path is itself named
+`vendor` cannot be silently excluded.
 
 PHPStan deprecation evidence (M3-C) is deferred, and Rector advisory evidence (M3-D) is dropped from this
 release rather than broadening the product boundary further — the M3-B value gate found that mapping
 coverage and rule-catalogue depth, not a missing analyzer, are the binding constraint
-([issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)). Scoping `verify` away from
-`vendor/` findings is tracked as
-[issue #14](https://github.com/trionnemesis/php-modern-guidelines/issues/14), and moving the
-sniff-to-rule mapping into the rule schema itself, so coverage is reviewable per rule, is tracked as
-[issue #12](https://github.com/trionnemesis/php-modern-guidelines/issues/12).
+([issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)). The unreleased source tree
+now addresses the bounded follow-ups for explicit `vendor/` scoping and list-valued rule mappings; see
+[#14](https://github.com/trionnemesis/php-modern-guidelines/issues/14) and
+[#12](https://github.com/trionnemesis/php-modern-guidelines/issues/12).
 
 For a target project declaring `require.php: ^8.2`, representative `resolve` output is:
 
