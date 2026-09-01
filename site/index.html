@@ -33,9 +33,9 @@
           </div>
           <aside class="version-card" aria-label="Current release status">
             <span class="status-dot" aria-hidden="true"></span><span>Latest release · M3</span>
-            <strong>v0.3.0</strong>
-            <p>The published PHAR contains the M1–M3 engine, agent distribution, and the explicit <code>verify</code> surface: a real PHPCompatibility adapter that reports advisory evidence only.</p>
-            <p class="meta">Release: M3 · Adapter: PHPCompatibility</p>
+            <strong>v0.3.1</strong>
+            <p>The current PHAR contains the M1–M3 engine and real PHPCompatibility verify adapter, plus ordered rule-local verification mappings and deterministic project-root vendor exclusion.</p>
+            <p class="meta">Release: M3 patch · Adapter: PHPCompatibility</p>
           </aside>
         </div>
       </section>
@@ -50,13 +50,13 @@
       </section>
 
       <section class="container section" id="verification">
-        <div class="section-heading"><p class="eyebrow">Shipped in v0.3.0</p><h2>A real PHPCompatibility adapter reports advisory evidence.</h2></div>
+        <div class="section-heading"><p class="eyebrow">Shipped in v0.3.0 · hardened in v0.3.1</p><h2>A real PHPCompatibility adapter reports advisory evidence.</h2></div>
         <div class="cards">
           <article class="card"><h3>Released: M2</h3><ul><li><code>resolve</code> / <code>list-rules</code> / <code>explain</code> / <code>doctor</code></li><li>16 source-backed PHP 8.2–8.5 rules</li><li>Agent Skill + <code>AGENTS.md</code> wrapper</li><li>PHAR release asset + SHA-256</li></ul></article>
-          <article class="card"><h3>Released: M3</h3><ul><li>Real PHPCompatibility <code>verify</code> adapter</li><li>Canonical <code>verification.schema.json</code></li><li>Exact policy projection, incl. <code>single-target</code></li><li>Mapped and unmapped evidence model</li><li>PID-namespace process tree, bounded output and external temp root</li></ul></article>
-          <article class="card muted"><h3>Not included in v0.3.0</h3><ul><li>PHPStan deprecation adapter (deferred)</li><li>Rector dry-run advisory adapter (dropped)</li><li>Auto-fixing or target-project writes</li></ul></article>
+          <article class="card"><h3>Released: M3</h3><ul><li>Real PHPCompatibility <code>verify</code> adapter</li><li>Canonical <code>verification.schema.json</code></li><li>Exact policy projection, incl. <code>single-target</code></li><li>Mapped and unmapped evidence model</li><li>Rule-local ordered mapping lists in schema 1.1.0</li><li>Deterministic top-level scan operands with exact root <code>vendor/</code> exclusion</li></ul></article>
+          <article class="card muted"><h3>Still not included</h3><ul><li>PHPStan deprecation adapter (deferred)</li><li>Rector dry-run advisory adapter (dropped)</li><li>Auto-fixing or target-project writes</li></ul></article>
         </div>
-        <p class="caption"><code>v0.3.0</code> ships <code>verify</code>. The production <code>phpcompatibility</code> registration is a real PHPCompatibility implementation: it runs the caller-selected, already-installed PHP_CodeSniffer as an isolated child process and reports advisory evidence, never an automatic fix; missing or incompatible tools still return a truthful <code>unavailable</code> result instead of claiming a scan occurred.</p>
+        <p class="caption"><code>v0.3.1</code> keeps verification narrow and truthful: the production <code>phpcompatibility</code> adapter uses exact rule mappings and explicit scan operands, excludes only the project root's own <code>vendor/</code> directory, and never falls back to an unanchored ignore pattern that could produce a false clean.</p>
       </section>
 
       <section class="container section">
@@ -76,6 +76,7 @@
           <li><strong>M1 · v0.1.0 (complete)</strong><span>Implemented: Composer Semver resolver, two-axis policy, rule registry, the <code>resolve</code> / <code>list-rules</code> / <code>explain</code> commands, and 16 verified PHP seed rules.</span></li>
           <li><strong>M2 · v0.2.0 (complete)</strong><span>Implemented: a Claude Agent Skill, a Codex-compatible <code>AGENTS.md</code> snippet, a CI-built PHAR attached to each release, and a bounded, read-only <code>doctor</code> diagnostic.</span></li>
           <li><strong>M3 · v0.3.0 (complete)</strong><span>Implemented: the explicit <code>verify</code> surface and a real, policy-aware PHPCompatibility adapter reporting zero-mutation advisory evidence. A PHPStan deprecation adapter was deferred and a Rector dry-run adapter was dropped rather than broadening the product boundary.</span></li>
+          <li><strong>M3 patch · v0.3.1 (complete)</strong><span>Ordered rule-local PHPCompatibility mappings and deterministic vendor-safe scan scoping, closing issues #11, #12, and #14 without adding analyzer infrastructure.</span></li>
           <li class="current"><strong>Next · rule-catalogue expansion</strong><span>The M3-B value gate found mapping coverage and the 16-rule catalogue, not a missing analyzer, to be the binding constraint — so growing source-backed PHP rules is promoted ahead of further adapter work.</span></li>
           <li><strong>M4 · v0.4.x</strong><span>Isolated framework rule packs without mixing framework conventions into PHP Core policy.</span></li>
         </ol>
@@ -89,6 +90,6 @@
         <p class="attribution">Primary inspiration: <a href="https://github.com/JetBrains/go-modern-guidelines">JetBrains/go-modern-guidelines</a>. Modern PHP Guidelines is an independent implementation and is not affiliated with or endorsed by JetBrains. Its narrow version-policy focus is also distinct from <a href="https://github.com/netresearch/php-modernization-skill">netresearch/php-modernization-skill</a>.</p>
       </section>
     </main>
-    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M3 v0.3.0 release</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
+    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · M3 v0.3.1 release</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
   </body>
 </html>
