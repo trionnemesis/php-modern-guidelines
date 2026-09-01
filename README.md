@@ -11,11 +11,11 @@
 
 🌐 **[GitHub Pages overview](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md)** ・ [Quick start](#quick-start) ・ [Current capabilities](#current-capabilities) ・ [Agent distribution](#agent-distribution) ・ [Policy flow](#policy-flow) ・ [Trust boundary](#trust-boundary) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**Released: M3 · v0.3.0.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
+**Released: M3 · v0.3.1.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
 
-> **Verification:** `v0.3.0` adds an explicit, opt-in `verify <adapter> --executable=<path-or-name>` surface. Its production `phpcompatibility` adapter is a real PHPCompatibility implementation: it runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and reports advisory evidence — never an automatic fix. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from this release; see [Changelog](CHANGELOG.md) for why.
+> **Verification:** `v0.3.0` introduced the explicit, opt-in `verify <adapter> --executable=<path-or-name>` surface. Its production `phpcompatibility` adapter is a real PHPCompatibility implementation: it runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and reports advisory evidence — never an automatic fix. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from this release line; see [Changelog](CHANGELOG.md) for why.
 
-> **Unreleased source update:** rule schema `1.1.0` stores PHPCompatibility mappings as sorted lists,
+> **v0.3.1 hardening:** rule schema `1.1.0` stores PHPCompatibility mappings as sorted lists,
 > and verification scans explicit top-level operands while omitting the exact project-root `vendor/`
 > directory. The operands are recorded in the report; no unanchored PHPCS ignore pattern is used.
 
@@ -51,7 +51,7 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 
 - A project-local configuration file. `policy.schema.json` reserves `project.config`, but M2 does not read such a file.
 - Laravel, Symfony, or other framework rule packs.
-- PHPStan deprecation or Rector target-project adapters. The real PHPCompatibility adapter shipped in `v0.3.0`; PHPStan (M3-C) was deferred and Rector (M3-D) was dropped from this release — see [Changelog](CHANGELOG.md).
+- PHPStan deprecation or Rector target-project adapters. The real PHPCompatibility adapter shipped in `v0.3.0`; PHPStan (M3-C) was deferred and Rector (M3-D) was dropped from this release line — see [Changelog](CHANGELOG.md).
 - Auto-fixes, target-project writes, agent marketplace manifests, or network rule fetching.
 
 `composer.json` `conflict.php` constraints are supported. A known PHP minor is removed only when the conflict covers that minor's complete interval; a patch-level conflict such as `8.3.5` does not remove all of PHP 8.3. An explicit override—`--php`, `config.platform.php`, a Composer lock platform override, or `runtime-observed` mode—directly determines the effective version and bypasses range inference from `require.php` and `conflict.php`.
@@ -132,7 +132,7 @@ php bin/php-modern-guidelines version
 Expected output:
 
 ```text
-php-modern-guidelines 0.3.0
+php-modern-guidelines 0.3.1
 ```
 
 Resolve a target-project policy, list applicable rules, explain one rule, and diagnose the tool's own inputs:
@@ -147,7 +147,7 @@ php bin/php-modern-guidelines doctor --project-root=/path/to/app
 
 ### Verifying with PHPCompatibility
 
-Both the source checkout and the published `v0.3.0` PHAR expose the `verify` command. The explicit
+Both the source checkout and the published `v0.3.1` PHAR expose the `verify` command. The explicit
 shape is:
 
 ```bash
@@ -186,10 +186,10 @@ does not use PHPCS's unanchored `--ignore` matching, so a checkout whose ancesto
 `vendor` cannot be silently excluded.
 
 PHPStan deprecation evidence (M3-C) is deferred, and Rector advisory evidence (M3-D) is dropped from this
-release rather than broadening the product boundary further — the M3-B value gate found that mapping
+release line rather than broadening the product boundary further — the M3-B value gate found that mapping
 coverage and rule-catalogue depth, not a missing analyzer, are the binding constraint
-([issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)). The unreleased source tree
-now addresses the bounded follow-ups for explicit `vendor/` scoping and list-valued rule mappings; see
+([issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)). `v0.3.1` closes the bounded
+follow-ups for explicit `vendor/` scoping and list-valued rule mappings tracked in
 [#14](https://github.com/trionnemesis/php-modern-guidelines/issues/14) and
 [#12](https://github.com/trionnemesis/php-modern-guidelines/issues/12).
 
@@ -275,7 +275,7 @@ hosts that cannot provide it fail closed.
 This is an explicit adapter boundary, not an arbitrary-command interface: the caller cannot supply raw
 analyzer arguments. Production recognizes only `phpcompatibility`, a real PHPCompatibility
 implementation. A PHPStan deprecation adapter and a Rector dry-run adapter are not included in this
-release ([Changelog](CHANGELOG.md)). Missing tools and unsupported policy projections remain
+release line ([Changelog](CHANGELOG.md)). Missing tools and unsupported policy projections remain
 `unavailable` or refused; they are never installed, approximated, or presented as a successful scan. See
 [ADR-008](docs/adr/ADR-008-external-verification-adapters.md).
 
@@ -350,6 +350,7 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | **M1 Core parity** | `v0.1.0` | ✅ Complete: Composer Semver resolver, two-axis policy, rule registry, `resolve` / `list-rules` / `explain`, and 16 seed rules | Framework packs and target analyzers do not enter M1 |
 | **M2 Agent distribution** | `v0.2.0` | ✅ Complete: Agent Skill, Codex/AGENTS.md wrapper, CI-built PHAR attached to releases, and bounded `doctor` | Depends on the stable M1 CLI and JSON contract |
 | **M3 Verification adapters** | `v0.3.0` | ✅ Complete: a real PHPCompatibility adapter shipped as advisory evidence; PHPStan deprecation ([#9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)) deferred and Rector dropped rather than broadening the product | Explicit opt-in, exact policy projection, advisory evidence, and zero target writes |
+| **M3 patch hardening** | `v0.3.1` | ✅ Complete: rule-local ordered verification mappings and deterministic vendor-safe scan scoping | No new analyzer infrastructure; closes #11, #12, and #14 |
 | **Next: rule-catalogue expansion** | — | Planned: the M3-B value gate found mapping coverage and the 16-rule catalogue, not a missing analyzer, to be the binding constraint, so growing source-backed PHP rules is promoted ahead of further adapter work | Catalogue and mapping work only; introduces no new adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
