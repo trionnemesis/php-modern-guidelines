@@ -1,0 +1,104 @@
+{
+    "schema_version": "1.1.0",
+    "id": "language.dynamic_class_constant_fetch",
+    "title": "Dynamic class constant fetch (`C::{$name}`)",
+    "summary": "PHP 8.3 lets a class constant's name be computed at runtime and fetched with `C::{$name}`, closing the one gap in PHP's dynamic-access syntax that the long-available `$obj->{$prop}`/`$obj->{$method}()` dynamic property/method syntax did not cover, and replacing the `constant(C::class . '::' . $name)` workaround for that case.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.3 or above, when a class constant needs to be looked up by a name known only at runtime and the class itself is already statically known, write `C::{$expr}` directly instead of building a `'ClassName::CONST_NAME'` string for `constant()`. Never emit `C::{$expr}` syntax while the feature ceiling is 8.2 or lower: the curly-brace form after `::` is new syntax the parser does not recognize there, so it is a parse error that fails the whole file, not a runtime failure confined to the one lookup.",
+    "existing_code_policy": "Do not rewrite every `constant()` call as a matter of course - `constant()` also accepts fully dynamic input (a class name that is itself a runtime variable, a global constant name, a name assembled from configuration), which `C::{$expr}` cannot express, since the class part of `C::{$expr}` must still be a compile-time-known class reference (a literal class name, `self`/`static`/`parent`, or a `::class` expression). Migrate a call site only where the class is already statically known in the source and only the constant name is dynamic, and only once the feature ceiling is confirmed to be 8.3 or newer.",
+    "guideline": "Prefer `C::{$expr}` over `constant(C::class . '::' . $expr)` once the feature ceiling reaches PHP 8.3, whenever the class itself is statically known and only the constant's name varies at runtime. Keep using `constant()` when the class name is also dynamic, since dynamic class constant fetch syntax still requires a compile-time-known class reference before the `::`.",
+    "details": "PHP 8.3 (UPGRADING-8.3.0, \"2. New Features\" -> Core: \"Class constants can now be accessed dynamically using the C::{$name} syntax.\"; RFC dynamic_class_constant_fetch) lets the constant name after `::` be an arbitrary expression in curly braces, `C::{$expr}`, evaluated at runtime to a string and looked up as a constant name on `C`. This closes a specific, narrow gap in PHP's dynamic-access syntax: dynamic property access (`$obj->{$expr}`) and dynamic method calls (`$obj->{$expr}()`) have both been available since long before PHP 8.3, and a dynamic class name paired with a literal constant (`$class::CONST`) was already possible too - only a dynamic constant *name* on an otherwise statically-known class (`C::{$expr}`) was missing, and had to be worked around with `constant(C::class . '::' . $expr)`, building a `'ClassName::CONST_NAME'` string for the `constant()` function to parse back apart. The two forms are not fully interchangeable: `constant()` takes a single string built however the caller likes, including a fully dynamic class name (`constant($className . '::' . $constName)`), while the class part of `C::{$expr}` must still be a compile-time-known reference - a literal class name, `self`/`static`/`parent`, or a `::class` expression - with only the constant *name* computed at runtime; a lookup where the class itself is also dynamic still needs `constant()`. Where both forms do apply to the same lookup, they behave identically on a missing constant: verified locally on PHP 8.4.19, both `Status::{$name}` and `constant(Status::class . '::' . $name)` throw the identical Error, with the identical message, on an undefined constant name (for example, both raise `Error: Undefined constant Status::Archived` when `$name` is `'Archived'` and `Status` declares no such constant) - migrating a call site to the new syntax does not change what happens on a typo'd or absent name, only how the lookup is written. This is purely additive new syntax: it changes no behavior for any code that does not use it, so `behavior_change_risk` is \"none\". Below a feature ceiling of 8.3, the `::{` token sequence in this position is new syntax the parser does not recognize: writing it against PHP 8.2 or earlier is a parse error that fails the entire file, not a runtime failure confined to the one constant lookup, so this construct must never be emitted unless the feature ceiling is already 8.3 or above. This rule is about class constants specifically; it is distinct from, and does not extend, the long-standing dynamic property and dynamic method-call syntax.",
+    "examples": [
+        {
+            "before": [
+                "class Status",
+                "{",
+                "    public const Draft = 'draft';",
+                "    public const Published = 'published';",
+                "}",
+                "",
+                "function label(string $name): string",
+                "{",
+                "    return constant(Status::class . '::' . $name);",
+                "}"
+            ],
+            "after": [
+                "class Status",
+                "{",
+                "    public const Draft = 'draft';",
+                "    public const Published = 'published';",
+                "}",
+                "",
+                "function label(string $name): string",
+                "{",
+                "    return Status::{$name};",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "enum Tier",
+                "{",
+                "    case Free;",
+                "    case Pro;",
+                "}",
+                "",
+                "final class TierLimits",
+                "{",
+                "    public const Free = 10;",
+                "    public const Pro = 1000;",
+                "}",
+                "",
+                "function limitFor(Tier $tier): int",
+                "{",
+                "    return constant(TierLimits::class . '::' . $tier->name);",
+                "}"
+            ],
+            "after": [
+                "enum Tier",
+                "{",
+                "    case Free;",
+                "    case Pro;",
+                "}",
+                "",
+                "final class TierLimits",
+                "{",
+                "    public const Free = 10;",
+                "    public const Pro = 1000;",
+                "}",
+                "",
+                "function limitFor(Tier $tier): int",
+                "{",
+                "    return TierLimits::{$tier->name};",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Syntax.NewDynamicClassConstantFetch.Found"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "C::{$expr}'s class part must be a compile-time-known reference (a literal class name, self/static/parent, or ::class); it does not make the class itself dynamic. A lookup where the class name is also only known at runtime still needs constant($className . '::' . $constName) or an equivalent, which remains the only way to express that fully-dynamic case; nothing about PHP 8.3 deprecates or discourages constant() itself outside of this narrower, both-parts-already-known case.",
+        "Confirmed locally on PHP 8.4.19: fetching a missing class constant throws the identical Error, with the identical message, whether written as Status::{$name} or as constant(Status::class . '::' . $name) - both raise \"Undefined constant Status::Archived\" when $name is 'Archived' and Status declares no such constant. Migrating a call site to the new syntax does not change how a typo'd or absent constant name is reported.",
+        "Evidence: UPGRADING-8.3.0.txt, '2. New Features' -> Core: \"Class constants can now be accessed dynamically using the C::{$name} syntax.\""
+    ]
+}
