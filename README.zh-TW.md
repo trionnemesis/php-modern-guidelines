@@ -11,13 +11,19 @@
 
 🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Agent distribution](#agent-distribution) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**已發布：M3 · v0.3.1。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
+**已發布：Rule-catalogue expansion · v0.3.2。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
 
 > **Verification：** `v0.3.0` 導入了明確、opt-in 的 `verify <adapter> --executable=<path-or-name>` surface。其 production `phpcompatibility` adapter 是真實的 PHPCompatibility 實作：它會以 isolated child process 執行 caller 選定、已安裝好的 PHP_CodeSniffer 與 PHPCompatibility standard，回報 advisory evidence——絕非自動修復。PHPStan deprecation adapter（M3-C）已被延後，Rector dry-run adapter（M3-D）則未納入此 release line；原因見 [Changelog](CHANGELOG.md)。
 
 > **v0.3.1 hardening：** rule schema `1.1.0` 已將 PHPCompatibility mapping 改為排序 list；
 > verification 會列出明確的 top-level operands，並只省略 project root 下精確的 `vendor/`
 > directory。Report 會保留這些 operands，不使用未錨定的 PHPCS ignore pattern。
+
+> **v0.3.2 rule-catalogue expansion：** 新增八條 source-backed 規則（16 → 24），涵蓋 PHP
+> 8.2–8.5 的 deprecation 與 feature；並新增十二筆通過驗證的 PHPCompatibility sniff mapping，
+> 使有 mapping 的規則從 16 條中的 9 條成長為 24 條中的 16 條。沒有新增 adapter，也沒有新增 PHP
+> 版本涵蓋範圍；mapping coverage 依設計仍是 partial——`core.partially_supported_callables`
+> 因為 PHPCompatibility 對它沒有任何 finding，所以以空 mapping 上線，如實記錄而非臆測。
 
 ## Why
 
@@ -38,7 +44,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 |---|---|---|
 | Policy resolver | 解析 `require.php`、`conflict.php`、`config.platform.php`、`composer.lock` platform override 與 `--php` | 只讀取目標專案輸入，不執行目標專案 |
 | Two-axis policy | 分離 `feature_ceiling` / `lifecycle_ceiling`，輸出 `coverage`、`confidence`、`warnings` | 已知 PHP coverage 為 8.2–8.5 |
-| Rule registry | schema validation、deterministic ordering、16 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
+| Rule registry | schema validation、deterministic ordering、24 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
 | Repository verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
@@ -147,7 +153,7 @@ php bin/php-modern-guidelines doctor --project-root=/path/to/app
 
 ### 使用 PHPCompatibility 進行 verify
 
-Source checkout 與正式發布的 `v0.3.1` PHAR 都具備 `verify` command。Explicit command shape 為：
+Source checkout 與正式發布的 `v0.3.2` PHAR 都具備 `verify` command。Explicit command shape 為：
 
 ```bash
 php bin/php-modern-guidelines verify phpcompatibility \
@@ -169,7 +175,7 @@ analyzer 精確表達（例如存在 coverage gap 或 allowed minor 不連續）
 以取得可執行的 plan。執行完成會回傳 exit `0`（無 finding）或 exit `6`（一筆以上 advisory
 finding）；analyzer 執行中途失敗則是 exit `8`。
 
-每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 16 條規則中有 9 條——包含整個
+每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 24 條規則中有 16 條——包含整個
 `extension.imap_unbundled` 範圍——具備已提交、經過審查的 sniff id 對 rule id mapping；其餘 finding
 則保留為 `mapping_status: unmapped`，不會被捨棄。同一組 mapping 也以排序後的
 `verification.phpcompatibility` list 儲存在 rule files，並以測試保證它與 adapter map 互為精確反向。
@@ -186,7 +192,12 @@ release line，而非持續擴張產品邊界——M3-B 的 value gate 發現，
 （[issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)）。`v0.3.1` 已完成明確
 `vendor/` scoping 與 list-valued rule mapping 這兩個 bounded follow-up；詳見
 [#14](https://github.com/trionnemesis/php-modern-guidelines/issues/14) 與
-[#12](https://github.com/trionnemesis/php-modern-guidelines/issues/12)。
+[#12](https://github.com/trionnemesis/php-modern-guidelines/issues/12)。`v0.3.2` 直接回應這項發現：
+新增八條 source-backed 規則（16 → 24），並新增十二筆通過驗證的 sniff mapping（有 mapping 的規則從
+16 條中的 9 條成長為 24 條中的 16 條），同樣沒有新增 adapter、也沒有新增 PHP 版本涵蓋範圍。
+`core.partially_supported_callables` 是唯一一條沒有已驗證 mapping 的新規則，因為 PHPCompatibility
+對它任何一種已棄用 callable 寫法都沒有回報 finding；其餘 unmapped finding 一樣會被保留，不會被
+捨棄。
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
@@ -346,7 +357,8 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **M2 Agent distribution** | `v0.2.0` | ✅ 完成：Agent Skill、Codex/AGENTS.md wrapper、附加在 release 上的 CI-built PHAR，以及 bounded `doctor` | 依賴穩定的 M1 CLI / JSON contract |
 | **M3 Verification adapters** | `v0.3.0` | ✅ 完成：真實 PHPCompatibility adapter 已上線，提供 advisory evidence；PHPStan deprecation（[#9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)）已延後，Rector 則未納入，避免持續擴張產品邊界 | Explicit opt-in、exact policy projection、advisory evidence、zero target writes |
 | **M3 patch hardening** | `v0.3.1` | ✅ 完成：rule-local ordered verification mappings 與 deterministic vendor-safe scan scoping | 不新增 analyzer infrastructure；關閉 #11、#12、#14 |
-| **Next：rule-catalogue expansion** | — | 規劃：M3-B 的 value gate 發現，真正的瓶頸是 mapping coverage 與 16 條規則的 catalogue 深度，而非缺少 analyzer，因此擴充 source-backed PHP rule 已被排在後續 adapter 工作之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
+| **Rule-catalogue expansion** | `v0.3.2` | ✅ 完成：回應 M3-B value gate 的發現——真正的瓶頸是 mapping coverage 與 16 條規則的 catalogue 深度，而非缺少 analyzer——新增 8 條 source-backed 規則（16 → 24），並新增 12 筆通過驗證的 PHPCompatibility sniff mapping（有 mapping 的規則從 16 條中的 9 條成長為 24 條中的 16 條） | 不新增 adapter infrastructure；mapping coverage 更深，但仍為 partial |
+| **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前仍只涵蓋 24 條規則中的 16 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping，仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
@@ -354,7 +366,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | Path | 用途 |
 |---|---|
 | `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
-| `resources/rules/` | 16 個 source-backed seed rule JSON，一條 rule 一個檔案 |
+| `resources/rules/` | 24 個 source-backed seed rule JSON，一條 rule 一個檔案 |
 | `schemas/` | Versioned rule、policy 與 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |

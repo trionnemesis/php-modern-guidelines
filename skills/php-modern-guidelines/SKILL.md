@@ -84,16 +84,28 @@ Then filter the rule catalogue to what you are about to write:
 ```console
 $ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 4 of 16 shown
+Rules: 10 of 24 shown
 
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
+  [deprecated_in_range]              P2  deprecated           core.get_class_without_arguments
+      `get_class()`/`get_parent_class()` without arguments is deprecated
+  [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
+      Partially supported callables are deprecated
+  [deprecated_in_range]              P2  deprecated           core.trigger_error_e_user_error
+      Passing `E_USER_ERROR` to `trigger_error()` is deprecated
+  [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
+      `utf8_encode()` and `utf8_decode()` are deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated
+  [deprecated_in_range]              P2  deprecated           language.backtick_shell_exec
+      Backtick shell-execution operator is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
       "${var}"/"${expr}" string interpolation is deprecated
   [deprecated_in_range]              P2  deprecated           language.implicitly_nullable_parameter_types
       Implicitly nullable parameter types are deprecated
+  [deprecated_in_range]              P2  deprecated           language.non_canonical_cast_names
+      (boolean), (integer), (double) and (binary) casts are deprecated
 ```
 
 Before acting on a specific rule, read its full explanation — see `references/cli-contract.md` for a
@@ -112,8 +124,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage coverage_gap (known 8.2-8.5, open upper bound), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 16 rule file(s)
-  [ok]      rules.load               16 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 24 rule file(s)
+  [ok]      rules.load               24 rule(s) loaded
 
 Details
   cli.build
@@ -155,9 +167,9 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              16
+    file_count              24
   rules.load
-    loaded                  16
+    loaded                  24
     error                   -
 ```
 
