@@ -233,6 +233,46 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         'PHPCompatibility.TypeCasts.RemovedTypeCasts.integerDeprecated',
     ];
 
+    /**
+     * The 25 distinct sniff ids `src/catalogue_expansion_r2_findings.php` proves — one v0.3.3 (round 2)
+     * mapping each: the readonly-anonymous-class marker, the five `assert_*` constants plus
+     * `assert_options()`, the `E_STRICT` constant, the ten `MYSQLI_REFRESH_*` constants plus
+     * `mysqli_kill()`/`mysqli_ping()`/`mysqli_refresh()`, `curl_share_close()`, `finfo_close()`, the
+     * dynamic class constant fetch syntax (`C::{$name}`), and the static asymmetric-visibility property
+     * marker. That last construct (`public private(set) static string $x`) also reports
+     * `Keywords.NewKeywords.t_private_setFound` — an already-mapped `language.asymmetric_property_visibility`
+     * finding, not one of these 25 — see the second-order accounting below.
+     *
+     * @var list<string>
+     */
+    private const CATALOGUE_EXPANSION_R2_SNIFF_IDS = [
+        'PHPCompatibility.Classes.NewReadonlyClasses.AnonClass',
+        'PHPCompatibility.Classes.NewStaticAvizProperties.Found',
+        'PHPCompatibility.Constants.RemovedConstants.assert_activeDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.assert_bailDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.assert_callbackDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.assert_exceptionDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.assert_warningDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.e_strictDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_backup_logDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_grantDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_hostsDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_logDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_masterDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_replicaDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_slaveDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_statusDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_tablesDeprecated',
+        'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_threadsDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.assert_optionsDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.curl_share_closeDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_killDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_pingDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_refreshDeprecated',
+        'PHPCompatibility.Syntax.NewDynamicClassConstantFetch.Found',
+    ];
+
     private string $executable = '';
 
     private string $findingsProject = '';
@@ -312,11 +352,11 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame(
             [
                 'invocation_count' => 3,
-                'finding_count' => 177,
-                'mapped_finding_count' => 174,
+                'finding_count' => 203,
+                'mapped_finding_count' => 200,
                 'unmapped_finding_count' => 3,
-                'mapping_count' => 174,
-                'mapped_rule_count' => 16,
+                'mapping_count' => 200,
+                'mapped_rule_count' => 24,
             ],
             $report['summary'],
         );
@@ -357,32 +397,45 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // pre-floor "removed since PHP 8.0" fact that must not be swept into the map. The v0.3.2
         // catalogue expansion then adds CATALOGUE_EXPANSION_SNIFF_IDS's 10 further mapped ids, proved by
         // catalogue_expansion_findings.php (the other 2 of the 12 new mappings are the utf8 ids already
-        // present in $preImapIds above).
-        $expectedIds = array_merge($preImapIds, self::imapUnbundledSniffIds(), self::CATALOGUE_EXPANSION_SNIFF_IDS, [
-            'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
-            'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
-        ]);
+        // present in $preImapIds above). The v0.3.3 (round 2) catalogue expansion then adds
+        // CATALOGUE_EXPANSION_R2_SNIFF_IDS's 25 further mapped ids, proved by
+        // catalogue_expansion_r2_findings.php.
+        $expectedIds = array_merge(
+            $preImapIds,
+            self::imapUnbundledSniffIds(),
+            self::CATALOGUE_EXPANSION_SNIFF_IDS,
+            self::CATALOGUE_EXPANSION_R2_SNIFF_IDS,
+            [
+                'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
+                'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
+            ],
+        );
         sort($expectedIds, SORT_STRING);
 
-        // (a) the sorted set of external rule ids: 173 distinct ids (170 mapped + 3 unmapped).
+        // (a) the sorted set of external rule ids: 198 distinct ids (195 mapped + 3 unmapped).
         $sortedSet = array_values(array_unique($ids));
         sort($sortedSet, SORT_STRING);
         self::assertSame($expectedIds, $sortedSet);
 
-        // (b) the sorted 177-element multiset: the same 173 distinct ids with four ids each appearing
+        // (b) the sorted 203-element multiset: the same 198 distinct ids with five ids each appearing
         // once more, because each is triggered from two distinct locations (or tokens) that dedupe must
         // not collapse: the dollar-brace expression syntax id (once from mapped_findings.php, once from
         // duplicate_findings.php — different files, so different sortKey()s), the IMAP\Connection class
         // id (the parameter type and the return type of the same function signature, in
         // imap_all_surfaces.php — same file and line, different columns), the imap.enable_insecure_rsh
-        // ini-directive id (ini_set() then ini_get(), in imap_ini.php — same file, different lines), and
-        // the backtick operator id (the opening and closing backtick of the one expression in
-        // catalogue_expansion_findings.php — same file and line, different columns).
+        // ini-directive id (ini_set() then ini_get(), in imap_ini.php — same file, different lines), the
+        // backtick operator id (the opening and closing backtick of the one expression in
+        // catalogue_expansion_findings.php — same file and line, different columns), and the
+        // `private(set)` keyword id (once from catalogue_expansion_findings.php's instance property,
+        // once more from catalogue_expansion_r2_findings.php's static property — different files, and a
+        // legitimate second-order finding of the round-2 static-asymmetric-visibility construct rather
+        // than anything this round deliberately triggered twice).
         $expectedMultiset = $expectedIds;
         $expectedMultiset[] = 'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax';
         $expectedMultiset[] = 'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved';
         $expectedMultiset[] = 'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved';
         $expectedMultiset[] = 'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated';
+        $expectedMultiset[] = 'PHPCompatibility.Keywords.NewKeywords.t_private_setFound';
         sort($expectedMultiset, SORT_STRING);
         $sortedMultiset = $ids;
         sort($sortedMultiset, SORT_STRING);
@@ -442,6 +495,47 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             }
         }
 
+        // Every one of the 25 v0.3.3 (round 2) mappings, proved end-to-end through the real analyzer by
+        // catalogue_expansion_r2_findings.php.
+        foreach ([
+            'PHPCompatibility.Classes.NewReadonlyClasses.AnonClass' => ['language.readonly_anonymous_classes'],
+            'PHPCompatibility.Classes.NewStaticAvizProperties.Found' => ['language.static_asymmetric_visibility'],
+            'PHPCompatibility.Constants.RemovedConstants.assert_activeDeprecated' => ['core.assert_options'],
+            'PHPCompatibility.Constants.RemovedConstants.assert_bailDeprecated' => ['core.assert_options'],
+            'PHPCompatibility.Constants.RemovedConstants.assert_callbackDeprecated' => ['core.assert_options'],
+            'PHPCompatibility.Constants.RemovedConstants.assert_exceptionDeprecated' => ['core.assert_options'],
+            'PHPCompatibility.Constants.RemovedConstants.assert_warningDeprecated' => ['core.assert_options'],
+            'PHPCompatibility.Constants.RemovedConstants.e_strictDeprecated' => ['core.e_strict_constant'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_backup_logDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_grantDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_hostsDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_logDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_masterDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_replicaDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_slaveDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_statusDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_tablesDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_threadsDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.assert_optionsDeprecated' => ['core.assert_options'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.curl_share_closeDeprecated' => ['extension.curl_share_close'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated' => ['extension.finfo_close'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_killDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_pingDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_refreshDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+            'PHPCompatibility.Syntax.NewDynamicClassConstantFetch.Found' => ['language.dynamic_class_constant_fetch'],
+        ] as $sniffId => $expectedRuleIds) {
+            foreach ($mappedRuleIdsBySniffId[$sniffId] as $mapped) {
+                self::assertSame($expectedRuleIds, $mapped, $sniffId);
+            }
+        }
+
+        // The static-asymmetric-visibility construct's legitimate second-order finding: still mapped to
+        // the round-1 instance-property rule, never to language.static_asymmetric_visibility itself
+        // (WORK-SPEC-R2.md's "critical for rule 8").
+        foreach ($mappedRuleIdsBySniffId['PHPCompatibility.Keywords.NewKeywords.t_private_setFound'] as $mapped) {
+            self::assertSame(['language.asymmetric_property_visibility'], $mapped);
+        }
+
         // The two imap boundary ids prove the "must stay unmapped" decision: imap_is_open() was itself
         // added in PHP 8.2.1 (a fact this catalogue does not track) and imap_header() was removed in PHP
         // 8.0 (a different, pre-floor fact) — neither is part of the 75-entry unbundling family.
@@ -470,19 +564,27 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             [
                 'core.array_find_functions',
                 'core.array_first_last',
+                'core.assert_options',
+                'core.e_strict_constant',
                 'core.get_class_without_arguments',
                 'core.json_validate',
                 'core.trigger_error_e_user_error',
                 'core.utf8_encode_decode',
                 'extension.curl_close',
+                'extension.curl_share_close',
+                'extension.finfo_close',
                 'extension.imap_unbundled',
                 'extension.mysqli_driver_reconnect',
+                'extension.mysqli_ping_kill_refresh',
                 'language.asymmetric_property_visibility',
                 'language.backtick_shell_exec',
                 'language.dollar_brace_string_interpolation',
+                'language.dynamic_class_constant_fetch',
                 'language.implicitly_nullable_parameter_types',
                 'language.new_without_parentheses',
                 'language.non_canonical_cast_names',
+                'language.readonly_anonymous_classes',
+                'language.static_asymmetric_visibility',
                 'language.typed_class_constants',
             ],
             $ruleContextIds,
@@ -653,8 +755,8 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertStringContainsString('Verification: findings (exit 6)', $human);
         self::assertStringContainsString('Planned invocations: 3', $human);
         self::assertStringContainsString('Invocations: 3', $human);
-        self::assertStringContainsString('Findings: 177', $human);
-        self::assertStringContainsString('mapped findings        174', $human);
+        self::assertStringContainsString('Findings: 203', $human);
+        self::assertStringContainsString('mapped findings        200', $human);
         self::assertStringContainsString('unmapped findings      3', $human);
 
         [$jsonExitCode, $report] = $this->verifyReport($this->findingsProject);
@@ -662,7 +764,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame($humanExitCode, $jsonExitCode);
         self::assertSame('findings', $report['status']);
         self::assertSame(ExitCode::VERIFICATION_FINDINGS, $report['exit_code']);
-        self::assertSame(177, $report['summary']['finding_count']);
+        self::assertSame(203, $report['summary']['finding_count']);
     }
 
     public function testJsonOutputIsByteIdenticalAcrossTwoRuns(): void

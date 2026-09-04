@@ -1,12 +1,16 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 24 of 24 shown
+Rules: 32 of 32 shown
 
   [not_in_range]                     P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
   [not_in_range]                     P3  modern_preference    core.array_first_last
       Prefer array_first() and array_last()
+  [applicable]                       P2  deprecated           core.assert_options
+      assert_options() and its ASSERT_* constants are deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
+  [applicable]                       P2  deprecated           core.e_strict_constant
+      The E_STRICT constant is deprecated
   [applicable]                       P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [not_in_range]                     P3  modern_preference    core.json_validate
@@ -23,16 +27,24 @@ Rules: 24 of 24 shown
       `utf8_encode()` and `utf8_decode()` are deprecated
   [applicable]                       P2  deprecated           extension.curl_close
       curl_close() is deprecated
+  [applicable]                       P2  deprecated           extension.curl_share_close
+      curl_share_close() is deprecated
+  [applicable]                       P2  deprecated           extension.finfo_close
+      finfo_close() is deprecated
   [applicable]                       P0  removed              extension.imap_unbundled
       The IMAP extension was unbundled from php-src
   [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
+  [applicable]                       P2  deprecated           extension.mysqli_ping_kill_refresh
+      `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` are deprecated
   [not_in_range]                     P1  feature              language.asymmetric_property_visibility
       Asymmetric property visibility
   [applicable]                       P2  deprecated           language.backtick_shell_exec
       Backtick shell-execution operator is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
       "${var}"/"${expr}" string interpolation is deprecated
+  [not_in_range]                     P1  feature              language.dynamic_class_constant_fetch
+      Dynamic class constant fetch (`C::{$name}`)
   [applicable]                       P1  compatibility_guard  language.feature_ceiling_guard
       Never emit syntax or APIs newer than the feature ceiling
   [applicable]                       P2  deprecated           language.implicitly_nullable_parameter_types
@@ -45,7 +57,11 @@ Rules: 24 of 24 shown
       Pipe operator (`|>`)
   [not_in_range]                     P1  feature              language.property_hooks
       Property hooks
+  [not_in_range]                     P1  feature              language.readonly_anonymous_classes
+      Readonly anonymous classes
   [applicable]                       P1  feature              language.readonly_classes
       Readonly classes
+  [not_in_range]                     P1  feature              language.static_asymmetric_visibility
+      Asymmetric visibility for static properties
   [not_in_range]                     P1  feature              language.typed_class_constants
       Typed class, interface, trait and enum constants

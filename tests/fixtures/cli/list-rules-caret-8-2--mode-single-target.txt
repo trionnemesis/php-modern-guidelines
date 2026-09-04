@@ -1,8 +1,12 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 15 of 24 shown
+Rules: 20 of 32 shown
 
+  [applicable]                       P2  deprecated           core.assert_options
+      assert_options() and its ASSERT_* constants are deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
+  [applicable]                       P2  deprecated           core.e_strict_constant
+      The E_STRICT constant is deprecated
   [applicable]                       P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
@@ -15,10 +19,16 @@ Rules: 15 of 24 shown
       `utf8_encode()` and `utf8_decode()` are deprecated
   [applicable]                       P2  deprecated           extension.curl_close
       curl_close() is deprecated
+  [applicable]                       P2  deprecated           extension.curl_share_close
+      curl_share_close() is deprecated
+  [applicable]                       P2  deprecated           extension.finfo_close
+      finfo_close() is deprecated
   [applicable]                       P0  removed              extension.imap_unbundled
       The IMAP extension was unbundled from php-src
   [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
+  [applicable]                       P2  deprecated           extension.mysqli_ping_kill_refresh
+      `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` are deprecated
   [applicable]                       P2  deprecated           language.backtick_shell_exec
       Backtick shell-execution operator is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation

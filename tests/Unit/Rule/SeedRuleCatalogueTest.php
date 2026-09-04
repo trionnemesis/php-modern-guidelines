@@ -17,17 +17,17 @@ use PHPUnit\Framework\TestCase;
  * Every shipped seed rule under resources/rules/: schema-valid (already proven by loading it at all),
  * id == basename, id-prefix == category, source URL shape, checked_at, kind/lifecycle consistency,
  * package_constraints rendered as {} / \stdClass, byte-identity with its canonical re-encoding, and
- * the round-trip claim. Plus the exactly-24-files count and the two rule-16 (WORK-ORDER.md §6.3)
+ * the round-trip claim. Plus the exactly-32-files count and the two rule-16 (WORK-ORDER.md §6.3)
  * assertions.
  */
 final class SeedRuleCatalogueTest extends TestCase
 {
-    private const EXPECTED_COUNT = 24;
+    private const EXPECTED_COUNT = 32;
 
     /** Pinned review dates carried by the catalogue's sources[0].checked_at (WORK-ORDER.md §6.3). */
     private const REVIEW_DATES = ['2026-08-30', '2026-09-04'];
 
-    public function testExactlyTwentyFourRuleFilesAreShipped(): void
+    public function testExactlyThirtyTwoRuleFilesAreShipped(): void
     {
         $registry = $this->loader()->loadDirectory(PackagePaths::rulesDirectory());
 
@@ -125,7 +125,9 @@ final class SeedRuleCatalogueTest extends TestCase
         $ids = [
             'core.array_find_functions',
             'core.array_first_last',
+            'core.assert_options',
             'core.dynamic_properties',
+            'core.e_strict_constant',
             'core.get_class_without_arguments',
             'core.json_validate',
             'core.override_attribute',
@@ -134,18 +136,24 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.trigger_error_e_user_error',
             'core.utf8_encode_decode',
             'extension.curl_close',
+            'extension.curl_share_close',
+            'extension.finfo_close',
             'extension.imap_unbundled',
             'extension.mysqli_driver_reconnect',
+            'extension.mysqli_ping_kill_refresh',
             'language.asymmetric_property_visibility',
             'language.backtick_shell_exec',
             'language.dollar_brace_string_interpolation',
+            'language.dynamic_class_constant_fetch',
             'language.feature_ceiling_guard',
             'language.implicitly_nullable_parameter_types',
             'language.new_without_parentheses',
             'language.non_canonical_cast_names',
             'language.pipe_operator',
             'language.property_hooks',
+            'language.readonly_anonymous_classes',
             'language.readonly_classes',
+            'language.static_asymmetric_visibility',
             'language.typed_class_constants',
         ];
 
