@@ -1,0 +1,84 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.get_class_without_arguments",
+    "title": "`get_class()`/`get_parent_class()` without arguments is deprecated",
+    "summary": "PHP 8.3 deprecates calling `get_class()` or `get_parent_class()` with no arguments from inside a method; `get_class($object)`/`get_parent_class($object)` are unaffected, and the no-argument form of `get_class()` is exactly equivalent to `self::class`, not `static::class`, since it was always bound to the class where the method is defined.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.3",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Never call `get_class()` or `get_parent_class()` with zero arguments, even though the no-argument form remains valid PHP syntax inside a method body today. Write `self::class` when the class where the code is written is what is needed, `static::class` when the actual runtime (late-static-bound) class is what is needed, and `get_parent_class($this)` (inside a non-static method) or `get_parent_class(self::class)` (inside a static method, or to mirror `self::class`'s exact lexical scoping) for the parent class name - choose deliberately between the lexical and runtime variants instead of relying on an implicit zero-argument call that never told the reader which one it meant.",
+    "existing_code_policy": "Do not replace every bare `get_class()` with `static::class` reflexively just because it looks more modern: the historical no-argument form of `get_class()` is exactly equivalent to `self::class` (the class where the calling method is defined), not `static::class` (the actual class of the object at runtime) - the two only coincide when the method is never inherited unchanged into a subclass. `self::class` is the literal behavior-preserving substitution. That said, most bare `get_class()` call sites are logging, error messages, or debug output inside a base class, where the author likely wanted to identify the object's actual class rather than the class where the method happens to be written - so treat each site as a deliberate choice between `self::class` (preserve old behavior exactly) and `static::class` (very likely fix the original intent), not a mechanical rename. Apply the same reasoning to `get_parent_class()`: `get_parent_class($this)` matches the old no-argument behavior only when the calling method is not inherited unchanged into a further subclass, and diverges from it - the same way `static::class` diverges from `self::class` - once it is; a static method has no $this at all and must use `get_parent_class(self::class)` (or `get_parent_class(static::class)` for the late-bound variant) instead.",
+    "guideline": "Do not call `get_class()` or `get_parent_class()` with no arguments. Use `self::class` for the lexically-defining class or `static::class` for the late-static-bound runtime class, and `get_parent_class($this)`, `get_parent_class(self::class)`, or `get_parent_class(static::class)` for the parent's name, choosing deliberately between the lexical and runtime variants rather than letting the implicit, now-deprecated zero-argument form pick one for you.",
+    "details": "UPGRADING-8.3.0 lists this under Deprecated Functionality -> Core: \"Calling get_class() and get_parent_class() without arguments is now deprecated.\" Calling either function with zero arguments is only meaningful syntax at all when the call appears lexically inside a class's method body, where it implicitly operates on the enclosing class rather than on an object; that in-class, no-argument form still resolves successfully today, exactly as it always has, and PHP 8.3 only adds an E_DEPRECATED diagnostic to it. `get_class($object)` and `get_parent_class($object)` - the ordinary, one-argument forms - are entirely unaffected by this deprecation and remain the correct way to ask for an actual object's class or its parent. The no-argument form of `get_class()` is exactly equivalent to `self::class`: both name the class in which the currently-executing method is textually defined, regardless of what the actual runtime object's class is - this is early (lexical) binding, the same as `self::` anywhere else, and is distinct from `static::class`, which is late-static-bound to whatever class was actually used to make the call and can differ from `self::class` the moment the method is inherited into a subclass without being overridden there. `get_parent_class()`'s no-argument form is the same idea one level removed: it returns the parent of the class enclosing the call, which is exactly `get_parent_class(self::class)` (equivalently `get_parent_class(__CLASS__)`) and, in the common case where the calling method is not inherited unchanged into a subclass, also equals `get_parent_class($this)` - though the two diverge for an inherited, un-overridden method called on a subclass instance, for the same lexical-versus-runtime reason `self::class` and `static::class` diverge. Neither function is removed on any minor this tool tracks (PHP 8.2 through 8.5): the no-argument form keeps working exactly as before, only now with a deprecation notice, so `introduced_in` and `removed_in` both stay null.",
+    "examples": [
+        {
+            "before": [
+                "abstract class AbstractRepository",
+                "{",
+                "    protected function logQuery(string $sql): void",
+                "    {",
+                "        error_log(get_class() . ': ' . $sql);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "abstract class AbstractRepository",
+                "{",
+                "    protected function logQuery(string $sql): void",
+                "    {",
+                "        error_log(self::class . ': ' . $sql);",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "class Widget extends BaseComponent",
+                "{",
+                "    public function describe(): string",
+                "    {",
+                "        return sprintf('%s extends %s', static::class, get_parent_class());",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "class Widget extends BaseComponent",
+                "{",
+                "    public function describe(): string",
+                "    {",
+                "        return sprintf('%s extends %s', static::class, get_parent_class($this));",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.ParameterValues.RemovedGetClassNoArgs.ArgMissing"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "This deprecation targets the no-argument form of `get_class()`/`get_parent_class()` used from inside a class; the ordinary one-argument forms, `get_class($object)` and `get_parent_class($object)`, are unaffected and remain the correct way to ask about an actual object's class.",
+        "A `parent::class` expression is also available and, where the enclosing class actually has a parent, is a direct compile-time equivalent to `get_parent_class(self::class)`; unlike the function call, though, `parent::class` is a compile-time fatal error in a class with no parent, whereas the old no-argument `get_parent_class()` simply returned false at runtime, so it is not a drop-in replacement everywhere the function call was.",
+        "behavior_change_risk is \"medium\" rather than \"low\": the tempting fix - replacing every bare `get_class()` with `static::class` because it looks more modern - is very often not behavior-preserving, and the divergence is silent (a wrong class name computed, not an error), which matters wherever the result feeds a log message, a cache key, a service lookup, or any other class-name-keyed behavior.",
+        "Evidence: UPGRADING-8.3.0.txt, '4. Deprecated Functionality' -> Core: \"Calling get_class() and get_parent_class() without arguments is now deprecated.\" Grepping the 8.2, 8.4 and 8.5 UPGRADING files for \"get_class\" and \"get_parent_class\" found no matches, so no later escalation to removal is recorded."
+    ]
+}
