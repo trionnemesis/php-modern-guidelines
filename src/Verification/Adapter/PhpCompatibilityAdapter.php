@@ -201,11 +201,27 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.FunctionUse.RemovedFunctions.imap_utf7_encodeRemoved' => ['extension.imap_unbundled'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.imap_utf8Removed' => ['extension.imap_unbundled'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.imap_utf8_to_mutf7Removed' => ['extension.imap_unbundled'],
+        'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_decodeDeprecated' => ['core.utf8_encode_decode'],
+        'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_encodeDeprecated' => ['core.utf8_encode_decode'],
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved' => [
             'extension.imap_unbundled',
         ],
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.mysqli_reconnectRemoved' => [
             'extension.mysqli_driver_reconnect',
+        ],
+        'PHPCompatibility.Keywords.NewKeywords.t_private_setFound' => ['language.asymmetric_property_visibility'],
+        'PHPCompatibility.Keywords.NewKeywords.t_protected_setFound' => ['language.asymmetric_property_visibility'],
+        'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated' => [
+            'language.backtick_shell_exec',
+        ],
+        'PHPCompatibility.ParameterValues.RemovedGetClassNoArgs.ArgMissing' => [
+            'core.get_class_without_arguments',
+        ],
+        'PHPCompatibility.ParameterValues.RemovedTriggerErrorLevel.Deprecated' => [
+            'core.trigger_error_e_user_error',
+        ],
+        'PHPCompatibility.Syntax.NewClassMemberAccessWithoutParentheses.Found' => [
+            'language.new_without_parentheses',
         ],
         'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax' => [
             'language.dollar_brace_string_interpolation',
@@ -213,6 +229,10 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedVariableSyntax' => [
             'language.dollar_brace_string_interpolation',
         ],
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.binaryDeprecated' => ['language.non_canonical_cast_names'],
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.booleanDeprecated' => ['language.non_canonical_cast_names'],
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.doubleDeprecated' => ['language.non_canonical_cast_names'],
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.integerDeprecated' => ['language.non_canonical_cast_names'],
     ];
 
     private readonly ExecutableLocator $locator;

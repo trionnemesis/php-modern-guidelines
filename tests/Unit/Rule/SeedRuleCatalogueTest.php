@@ -17,14 +17,17 @@ use PHPUnit\Framework\TestCase;
  * Every shipped seed rule under resources/rules/: schema-valid (already proven by loading it at all),
  * id == basename, id-prefix == category, source URL shape, checked_at, kind/lifecycle consistency,
  * package_constraints rendered as {} / \stdClass, byte-identity with its canonical re-encoding, and
- * the round-trip claim. Plus the exactly-16-files count and the two rule-16 (WORK-ORDER.md §6.3)
+ * the round-trip claim. Plus the exactly-24-files count and the two rule-16 (WORK-ORDER.md §6.3)
  * assertions.
  */
 final class SeedRuleCatalogueTest extends TestCase
 {
-    private const EXPECTED_COUNT = 16;
+    private const EXPECTED_COUNT = 24;
 
-    public function testExactlySixteenRuleFilesAreShipped(): void
+    /** Pinned review dates carried by the catalogue's sources[0].checked_at (WORK-ORDER.md §6.3). */
+    private const REVIEW_DATES = ['2026-08-30', '2026-09-04'];
+
+    public function testExactlyTwentyFourRuleFilesAreShipped(): void
     {
         $registry = $this->loader()->loadDirectory(PackagePaths::rulesDirectory());
 
@@ -75,7 +78,7 @@ final class SeedRuleCatalogueTest extends TestCase
             '#^https://raw\.githubusercontent\.com/php/php-src/php-8\.[2-5]\.0/UPGRADING$#',
             $source->url,
         );
-        self::assertSame('2026-08-30', $source->checkedAt);
+        self::assertContains($source->checkedAt, self::REVIEW_DATES, sprintf('%s: unexpected checked_at review date.', $id));
 
         // Kind -> required non-null lifecycle field (WORK-ORDER.md §6.2).
         match ($rule->kind) {
@@ -123,15 +126,23 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.array_find_functions',
             'core.array_first_last',
             'core.dynamic_properties',
+            'core.get_class_without_arguments',
             'core.json_validate',
             'core.override_attribute',
+            'core.partially_supported_callables',
             'core.strtolower_locale_insensitive',
+            'core.trigger_error_e_user_error',
+            'core.utf8_encode_decode',
             'extension.curl_close',
             'extension.imap_unbundled',
             'extension.mysqli_driver_reconnect',
+            'language.asymmetric_property_visibility',
+            'language.backtick_shell_exec',
             'language.dollar_brace_string_interpolation',
             'language.feature_ceiling_guard',
             'language.implicitly_nullable_parameter_types',
+            'language.new_without_parentheses',
+            'language.non_canonical_cast_names',
             'language.pipe_operator',
             'language.property_hooks',
             'language.readonly_classes',
