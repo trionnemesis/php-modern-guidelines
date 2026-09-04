@@ -1,0 +1,91 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.finfo_close",
+    "title": "finfo_close() is deprecated",
+    "summary": "PHP 8.5 deprecates finfo_close() because finfo objects are freed automatically, the same mechanism behind curl_close()/curl_share_close(); unlike those, the object-oriented finfo class never declared a close() method, so only the procedural call is affected.",
+    "category": "extension",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": "fileinfo",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Do not call finfo_close() on a finfo handle, whether it came from finfo_open() or new finfo(...). Let the variable go out of scope, or unset() it if it needs to be released sooner; PHP frees the underlying finfo object automatically, the same mechanism this catalogue's extension.curl_close and extension.curl_share_close rules rely on for cURL handles.",
+    "existing_code_policy": "On PHP 8.5+, finfo_close() calls raise a deprecation notice; remove them once the codebase no longer needs to run on PHP 8.2-8.4, where the call remains valid, non-deprecated, and already a functional no-op - verified locally that calling finfo_close() and then continuing to call methods on the same handle behaves identically to never having closed it. Removing the call only ever deletes dead code; there is no companion method call to migrate it to, since the finfo class never declared a close() method for the object-oriented API.",
+    "guideline": "Stop calling finfo_close() on handles from finfo_open() or new finfo(...). Since PHP 8.1, fileinfo's functions accept and return finfo objects rather than resources, and PHP's normal object lifecycle already frees a finfo object once nothing references it, so the explicit close call is redundant and, on PHP 8.5+, deprecated - matching extension.curl_close and extension.curl_share_close's identical reasoning for cURL's handle types.",
+    "details": "PHP 8.5 deprecates finfo_close(). The official UPGRADING text gives the same kind of reason this catalogue's curl_close and curl_share_close rules already document for cURL: \"The finfo_close() function has been deprecated. As finfo objects are freed automatically,\" linking the deprecations_php_8_5 RFC. finfo objects have been the accept/return type of every fileinfo function since PHP 8.1 (the PHP 8.1.0 UPGRADING file, outside this tool's tracked 8.2-8.5 range but fetched directly for this rule: \"The fileinfo functions now accept and return, respectively, finfo objects instead of resources\"), so finfo_close() has already been calling into an object whose release PHP's own refcounting and garbage collector handle, not a resource with manual-close semantics. This was confirmed directly on this tool's local PHP 8.4.19: finfo_close($f) returns true and leaves $f fully usable afterward - a subsequent $f->buffer(...) call on the same handle succeeds identically to one made before the \"close\" - so the call is already a functional no-op before 8.5; that minor only adds the diagnostic saying so. Unlike curl_close()/curl_share_close(), whose object-oriented handle types (CurlHandle, CurlShareHandle) likewise never declared a close() method, fileinfo's story is the same: method_exists('finfo', 'close') is false, also confirmed directly on the local interpreter, so there is no \\finfo::close() for this rule to also flag - finfo_close($handle), the procedural call, is the entire deprecated surface, whether $handle came from finfo_open() or from new finfo(...). finfo_close() is not removed by this change: on every currently known minor it stays callable with its prior no-op-but-successful behavior, only starting to emit E_DEPRECATED once code runs under PHP 8.5, so introduced_in and removed_in both stay null.",
+    "examples": [
+        {
+            "before": [
+                "$finfo = finfo_open(FILEINFO_MIME_TYPE);",
+                "$mimeType = finfo_file($finfo, $uploadedFilePath);",
+                "finfo_close($finfo);"
+            ],
+            "after": [
+                "$finfo = finfo_open(FILEINFO_MIME_TYPE);",
+                "$mimeType = finfo_file($finfo, $uploadedFilePath);",
+                "// finfo_close($finfo) removed: PHP frees the finfo object automatically once $finfo goes out of scope."
+            ]
+        },
+        {
+            "before": [
+                "final class MimeTypeDetector",
+                "{",
+                "    private $finfo;",
+                "",
+                "    public function __construct()",
+                "    {",
+                "        $this->finfo = finfo_open(FILEINFO_MIME_TYPE);",
+                "    }",
+                "",
+                "    public function detect(string $path): string|false",
+                "    {",
+                "        return finfo_file($this->finfo, $path);",
+                "    }",
+                "",
+                "    public function __destruct()",
+                "    {",
+                "        finfo_close($this->finfo);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class MimeTypeDetector",
+                "{",
+                "    private \\finfo $finfo;",
+                "",
+                "    public function __construct()",
+                "    {",
+                "        $this->finfo = new finfo(FILEINFO_MIME_TYPE);",
+                "    }",
+                "",
+                "    public function detect(string $path): string|false",
+                "    {",
+                "        return $this->finfo->file($path);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "Unlike this catalogue's extension.curl_close and extension.curl_share_close rules, whose procedural functions have OO handle types (CurlHandle, CurlShareHandle) that also never declared a close() method, fileinfo's OO class tells the same story: method_exists('finfo', 'close') is false, confirmed locally on PHP 8.4.19. There is no \\finfo::close() call for this rule to also flag - finfo_close() is the entire deprecated surface, procedural call sites only.",
+        "finfo_close() has been a functional no-op since fileinfo's functions began accepting and returning finfo objects instead of resources in PHP 8.1; confirmed locally that calling finfo_close() and then continuing to call methods on the same handle behaves identically to never having called it. PHP 8.5 adds the diagnostic; it does not change this pre-existing no-op behavior.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> FileInfo: \"The finfo_close() function has been deprecated. As finfo objects are freed automatically.\" (RFC deprecations_php_8_5#deprecate_finfo_close). The same FileInfo section separately deprecates finfo_buffer()'s ignored $context parameter, an unrelated finding this rule does not cover. Grepping the 8.2, 8.3 and 8.4 UPGRADING files for \"finfo\" found no mention, so nothing beyond this 8.5 deprecation is on record."
+    ]
+}

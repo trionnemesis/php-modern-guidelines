@@ -1,0 +1,58 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.e_strict_constant",
+    "title": "The E_STRICT constant is deprecated",
+    "summary": "PHP 8.4 deprecates the E_STRICT constant and removes the error level it named; since no diagnostic on any PHP version this tool tracks is emitted at that level, the fix for expressions like E_ALL & ~E_STRICT is deleting the constant, not substituting a replacement.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Never reference E_STRICT in new code, including inside error_reporting() bitmask expressions. Use E_ALL directly, or an explicit narrower bitmask of the levels actually wanted, instead of building one up from E_STRICT; no diagnostic on any PHP version this tool tracks (8.2-8.5) is emitted at the E_STRICT level, so there is no level being added back by simply omitting it.",
+    "existing_code_policy": "Search for the literal token E_STRICT wherever it appears, most commonly inside an error_reporting() call such as error_reporting(E_ALL & ~E_STRICT) or the less common error_reporting(E_ALL | E_STRICT). Delete the constant from the expression rather than substituting a different constant in its place: E_ALL & ~E_STRICT reduces to plain E_ALL bit-for-bit, because E_ALL no longer includes E_STRICT's bit for the mask to clear. E_ALL | E_STRICT does not reduce to a bit-for-bit identical value - it sets a bit E_ALL currently omits - but no diagnostic on any tracked minor is ever emitted at that bit's level, so the two remain indistinguishable in every observable respect and E_ALL is still the correct rewrite. Also check any custom error handler or logging map that branches on error-level constants by name; drop an E_STRICT case from it the same way, since that branch can never be reached on a supported PHP version.",
+    "guideline": "Delete E_STRICT from error-level expressions instead of replacing it with something else. Its constant is deprecated and the error level it named is gone: error_reporting(E_ALL & ~E_STRICT) and error_reporting(E_ALL | E_STRICT) both become error_reporting(E_ALL), and neither rewrite changes what gets reported, because nothing has emitted a diagnostic at the E_STRICT level for a long time.",
+    "details": "UPGRADING-8.4.0 packs two distinct facts into one line under Deprecated Functionality -> Core: \"The E_STRICT constant was deprecated and its corresponding error level was removed.\" First: referencing the E_STRICT constant anywhere in source now raises its own diagnostic - verified locally on this tool's PHP 8.4.19, evaluating a plain error_reporting(E_ALL & ~E_STRICT) prints \"Deprecated: Constant E_STRICT is deprecated,\" while a script that only calls assert() with no E_STRICT and no assert_options() involved raises nothing. Second, and separately: E_ALL's own bitmask value no longer includes E_STRICT's bit. On the local interpreter, constant('E_STRICT') still evaluates to 2048 (kept for backward compatibility, e.g. code with the literal integer hardcoded), but E_ALL evaluates to 30719 rather than 32767 - bit 2048 is already absent. That makes the rule's two idiomatic rewrites behave slightly differently at the bit level, which matters for stating them precisely rather than by analogy: E_ALL & ~E_STRICT is bit-for-bit identical to plain E_ALL today (clearing an already-clear bit is a no-op; both verified locally to equal 30719), but E_ALL | E_STRICT is not bit-for-bit identical to E_ALL (verified locally: 32767 versus 30719, since ORing in E_STRICT's bit sets one E_ALL currently omits). Neither difference is observable in practice, because no diagnostic on any PHP minor this tool tracks (8.2-8.5) is emitted at the E_STRICT level - a fact this tool could directly verify only for 8.4.19, the one interpreter installed in this environment. The RFC this UPGRADING line links (deprecations_php_8_4#remove_e_strict_error_level_and_deprecate_e_strict_constant) dates the last core diagnostic actually emitted at the E_STRICT level to PHP 8.0; that specific historical claim reflects established PHP release history rather than something this tool executed against a PHP 8.0-8.3 interpreter, none of which is installed here alongside 8.4.19. No later UPGRADING file escalates this to removing the constant itself, and the constant keeps its prior numeric value rather than being redefined or removed outright, so introduced_in and removed_in both stay null; the only lifecycle fact on record for E_STRICT across the versions this tool tracks is the 8.4 deprecation of the name.",
+    "examples": [
+        {
+            "before": [
+                "error_reporting(E_ALL & ~E_STRICT);"
+            ],
+            "after": [
+                "error_reporting(E_ALL);"
+            ]
+        },
+        {
+            "before": [
+                "error_reporting(E_ALL | E_STRICT);",
+                "ini_set('display_errors', '1');"
+            ],
+            "after": [
+                "error_reporting(E_ALL);",
+                "ini_set('display_errors', '1');"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Constants.RemovedConstants.e_strictDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "behavior_change_risk is \"none\" rather than \"low\": although error_reporting(E_ALL | E_STRICT) and error_reporting(E_ALL) are not bit-for-bit identical after this change (verified locally: 32767 versus 30719 on PHP 8.4.19), no diagnostic on any PHP minor this tool tracks (8.2-8.5) is emitted at the E_STRICT level, so the two calls are indistinguishable in every observable respect - which diagnostics actually get reported. Unlike extension.curl_close's object-release timing, there is no scenario here where the rewrite could plausibly change runtime behavior.",
+        "The PHPCompatibility sniff fires on the literal token E_STRICT wherever it appears in source, not on the value the surrounding expression evaluates to; it flags E_STRICT inside error_reporting(E_ALL & ~E_STRICT) the same way it would flag a bare $level = E_STRICT; assignment or an E_STRICT case in a hand-written error-level-to-string map.",
+        "Evidence: UPGRADING-8.4.0, \"4. Deprecated Functionality\" -> Core: \"The E_STRICT constant was deprecated and its corresponding error level was removed.\" (RFC deprecations_php_8_4#remove_e_strict_error_level_and_deprecate_e_strict_constant). Grepping the 8.2, 8.3 and 8.5 UPGRADING files for \"E_STRICT\" found no matches, so no earlier mention and no later escalation are on record."
+    ]
+}

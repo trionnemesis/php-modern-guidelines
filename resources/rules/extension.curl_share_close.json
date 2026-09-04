@@ -1,0 +1,63 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.curl_share_close",
+    "title": "curl_share_close() is deprecated",
+    "summary": "PHP 8.5 deprecates curl_share_close() for the same reason it deprecates curl_close(): CurlShareHandle objects, like CurlHandle objects, are freed automatically once nothing references them, making the explicit close call unnecessary.",
+    "category": "extension",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": "curl",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Do not call curl_share_close() on a cURL share handle returned by curl_share_init(). Let the variable go out of scope, or unset() it if it needs to be released sooner; PHP frees the underlying CurlShareHandle object automatically, exactly as this catalogue's extension.curl_close rule already documents for the CurlHandle objects curl_init() returns.",
+    "existing_code_policy": "On PHP 8.5+, curl_share_close() calls raise a deprecation notice; remove them once the codebase no longer needs to run on PHP 8.2-8.4, where the call remains valid and non-deprecated. Review any curl_close() calls in the same file at the same time: code that shares state across multiple cURL handles via curl_share_init() and CURLOPT_SHARE almost always calls curl_init() too, and this project's extension.curl_close rule covers that half of the same cleanup.",
+    "guideline": "Stop calling curl_share_close() on share handles returned by curl_share_init(), for the same reason this catalogue's extension.curl_close rule retires curl_close(): since PHP 8.0, curl_share_init() returns a CurlShareHandle object rather than a resource, and PHP's normal object lifecycle already frees it once nothing references it, so the explicit close call is redundant and, on PHP 8.5+, deprecated.",
+    "details": "PHP 8.5 deprecates curl_share_close() in the same UPGRADING section, and for the reason worded almost identically to, this catalogue's extension.curl_close rule: \"The curl_share_close() function has been deprecated, as CurlShareHandle objects are freed automatically,\" linking the deprecations_php_8_5 RFC. The parallel goes deeper than shared wording: curl_share_init() adopted the object-instead-of-resource change in the very same PHP 8.0 release as curl_init(). The PHP 8.0.0 UPGRADING file (outside this tool's tracked 8.2-8.5 range, fetched directly for this rule rather than cited as a source) states plainly: \"curl_share_init() will now return a CurlShareHandle object rather than a resource... The curl_share_close() function no longer has an effect, instead the CurlShareHandle instance is automatically destroyed if it is no longer referenced.\" In other words, curl_share_close() has already been a documented no-op on every PHP minor this tool tracks (8.2-8.5); PHP 8.5 adds the E_DEPRECATED diagnostic on top of behavior that has been true since 8.0, it does not change what calling the function does. This was confirmed directly on this tool's local PHP 8.4.19: curl_share_init() returns an object of class CurlShareHandle, and calling curl_share_close() on it neither errors nor raises any notice on that version, matching this rule's deprecated_in of \"8.5\" rather than an earlier minor. curl_share_close() is not removed by this change: it stays callable with its prior (no-op) behavior on every known minor, only emitting E_DEPRECATED once code runs under PHP 8.5, so introduced_in and removed_in both stay null and this rule is gated purely on the lifecycle axis through deprecated_in, exactly like extension.curl_close.",
+    "examples": [
+        {
+            "before": [
+                "$share = curl_share_init();",
+                "curl_share_setopt($share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);",
+                "$ch = curl_init($url);",
+                "curl_setopt($ch, CURLOPT_SHARE, $share);",
+                "curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);",
+                "$response = curl_exec($ch);",
+                "curl_close($ch);",
+                "curl_share_close($share);"
+            ],
+            "after": [
+                "$share = curl_share_init();",
+                "curl_share_setopt($share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);",
+                "$ch = curl_init($url);",
+                "curl_setopt($ch, CURLOPT_SHARE, $share);",
+                "curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);",
+                "$response = curl_exec($ch);",
+                "// curl_close($ch) and curl_share_close($share) removed: PHP frees the CurlHandle and",
+                "// CurlShareHandle automatically once $ch and $share go out of scope."
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctions.curl_share_closeDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "curl_share_close() has been a documented no-op since PHP 8.0, the same release that turned curl_share_init()'s return value from a resource into a CurlShareHandle object: the PHP 8.0.0 UPGRADING file already stated \"The curl_share_close() function no longer has an effect, instead the CurlShareHandle instance is automatically destroyed if it is no longer referenced.\" PHP 8.5 adds the diagnostic; it does not change that pre-existing behavior. PHP 8.0 predates this tool's tracked 8.2-8.5 range, so it is not cited in sources.",
+        "Removing a curl_share_close() call changes only when the underlying handle is released, from immediately to whenever PHP's garbage collector frees the CurlShareHandle object - the same low-risk timing change extension.curl_close documents for CurlHandle, which is why behavior_change_risk is \"low\" rather than \"none\" here too: it is worth a second look in code that opens many share handles in a tight loop without reusing or unsetting them.",
+        "curl_share_close() remains valid, callable and non-deprecated on PHP 8.2-8.4; only code that must also run on PHP 8.5+ needs to stop calling it. See extension.curl_close for the identical guidance covering curl_close() itself.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Curl: \"The curl_share_close() function has been deprecated, as CurlShareHandle objects are freed automatically.\" (RFC deprecations_php_8_5#deprecate_curl_share_close). Grepping the 8.2, 8.3 and 8.4 UPGRADING files for \"curl_share\" and \"CurlShareHandle\" found no mention, so nothing beyond this 8.5 deprecation is on record."
+    ]
+}

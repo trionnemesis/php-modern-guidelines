@@ -1,0 +1,74 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.assert_options",
+    "title": "assert_options() and its ASSERT_* constants are deprecated",
+    "summary": "PHP 8.3 deprecates the assert_options() function together with the five ASSERT_ACTIVE, ASSERT_BAIL, ASSERT_CALLBACK, ASSERT_EXCEPTION and ASSERT_WARNING constants it accepts, pushing assertion configuration onto the zend.assertions and assert.exception INI directives instead of this runtime API.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.3",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never call assert_options() and never reference ASSERT_ACTIVE, ASSERT_BAIL, ASSERT_CALLBACK, ASSERT_EXCEPTION or ASSERT_WARNING in new code. Enable or disable assertion evaluation through the zend.assertions INI directive in php.ini (1 to evaluate assertions, 0 to compile them in but skip evaluation, -1 to strip them out entirely at zero cost) rather than a runtime call, and let a failed assert($condition, $description) throw \\AssertionError - assert.exception's default since PHP 8.0 - catching it with a plain try/catch at the one call site that actually needs custom handling instead of registering a global ASSERT_CALLBACK handler.",
+    "existing_code_policy": "Search for assert_options( calls and for ASSERT_ACTIVE/ASSERT_BAIL/ASSERT_CALLBACK/ASSERT_EXCEPTION/ASSERT_WARNING references, then check which axis each one actually touches before changing it. A call that only ever reads or sets ASSERT_ACTIVE can simply be deleted: since PHP 7.0 introduced zend.assertions, ASSERT_ACTIVE has not controlled whether assert() runs, so removing the call changes nothing observable - if the project needs assertions on, add a zend.assertions setting to php.ini, do not replace the call with an ini_set() that mimics it. A call that sets ASSERT_BAIL, ASSERT_CALLBACK or ASSERT_WARNING is different: on every PHP minor this tool tracks (8.2-8.5), those axes remain fully functional whenever assert.exception is off, so deleting the call without a replacement silences or changes real failure-handling behavior. Do not \"fix\" it by moving the same setting into an assert.bail/assert.callback/assert.warning php.ini line either - those directives are separately deprecated in the same PHP 8.3 release whenever set away from their default. Migrate the call site to the modern model instead: leave assert.exception at its default (1) so a failed assertion throws \\AssertionError, and replace an ASSERT_CALLBACK handler with a try/catch around the assert() call.",
+    "guideline": "Stop calling assert_options() and stop referencing ASSERT_ACTIVE, ASSERT_BAIL, ASSERT_CALLBACK, ASSERT_EXCEPTION or ASSERT_WARNING. Configure the on/off axis through the zend.assertions INI directive (php.ini, or ini_set() when only toggling between its 0 and 1 states within a request) and let a failed assert() throw \\AssertionError - assert.exception's modern default - catching it with an ordinary try/catch instead of registering an ASSERT_CALLBACK handler or relying on ASSERT_BAIL/ASSERT_WARNING's legacy semantics.",
+    "details": "UPGRADING-8.3.0 lists two related deprecations under Deprecated Functionality -> Standard: \"The assert_options() function is now deprecated\" and \"The ASSERT_ACTIVE, ASSERT_BAIL, ASSERT_CALLBACK, ASSERT_EXCEPTION, and ASSERT_WARNING constants have been deprecated,\" citing the assert-string-eval-cleanup RFC. They are one rule here because they are one API: assert_options() is a getter/setter whose single argument (or first of two) is always one of those five constants, and calling it with two arguments returns the previous value while setting a new one - verified locally by calling assert_options(ASSERT_ACTIVE, 1) and observing it return the value that was in effect beforehand. assert() itself is not part of this deprecation and raises no diagnostic on its own; only the assert_options() function and the five named constants are affected, regardless of whether they appear together or independently (a bare ASSERT_ACTIVE reference with no assert_options() call still raises its own \"Constant ASSERT_ACTIVE is deprecated\" diagnostic, verified locally). The stated replacement is the zend.assertions and assert.exception INI directives, but the two work differently and neither is a drop-in substitute for all five constants. zend.assertions governs whether assert() evaluates its condition at all (1 executes it, 0 compiles the check in but skips it, -1 removes the check from the compiled code entirely) and is PHP_INI_ALL, but with a verified asymmetry: toggling it between 0 and 1 with ini_set() inside a running request does change whether a later assert() call in that same file evaluates and can throw - confirmed locally both directions - but it cannot be moved into or out of -1 at runtime; a request compiled with zend.assertions=-1 that calls ini_set('zend.assertions', '1') gets false back and PHP emits \"zend.assertions may be completely enabled or disabled only in php.ini\" (verified locally), leaving assertions compiled out for the rest of that request regardless. assert.exception selects the failure-handling model (1, the default since PHP 8.0, throws \\AssertionError; 0 restores the legacy assert.bail/assert.callback/assert.warning behavior) and showed no such runtime-toggle limit in the same local testing. Crucially, and this is the part a mechanical migration gets wrong: assert_options(ASSERT_ACTIVE, ...) does not actually control the zend.assertions axis at all on this tool's local PHP 8.4.19 - setting ASSERT_ACTIVE to 1 at runtime left a request compiled with zend.assertions=-1 or zend.assertions=0 just as unable to evaluate assert() as before, and setting it to 0 did nothing to suppress an assert() in a request compiled with zend.assertions=1 (all verified locally); ASSERT_ACTIVE has been vestigial since PHP 7.0 introduced zend.assertions as the real switch, so a call that only ever touched ASSERT_ACTIVE can be deleted outright. ASSERT_BAIL, ASSERT_CALLBACK and ASSERT_WARNING are not vestigial in the same way: with assert.exception=0, all three were confirmed locally to still take full effect (a set callback runs, assert.bail halts the script after a failed assertion, assert.warning=0 suppresses the failure warning), so a call setting one of those needs an actual replacement plan, not a delete. No PHP 8.2, 8.4 or 8.5 UPGRADING file mentions assert_options() or any ASSERT_* constant, so this stays an isolated PHP 8.3 event with no later escalation to removal on record; introduced_in and removed_in both stay null.",
+    "examples": [
+        {
+            "before": [
+                "assert_options(ASSERT_ACTIVE, 1);",
+                "assert_options(ASSERT_WARNING, 1);",
+                "assert($config->isValid(), 'Application config failed validation');"
+            ],
+            "after": [
+                "// assert_options(ASSERT_ACTIVE, ...) has had no effect on whether assert() runs since PHP 7.0;",
+                "// enable assertions via zend.assertions=1 in php.ini instead. ASSERT_WARNING's default already",
+                "// matches modern behavior, so nothing needs to replace either call.",
+                "assert($config->isValid(), 'Application config failed validation');"
+            ]
+        },
+        {
+            "before": [
+                "assert_options(ASSERT_CALLBACK, static function (string $file, int $line, ?string $code, string $desc = ''): void {",
+                "    Logger::warning(\"Assertion failed: {$desc} at {$file}:{$line}\");",
+                "});",
+                "assert($response->isValid(), 'Upstream response failed validation');"
+            ],
+            "after": [
+                "try {",
+                "    assert($response->isValid(), 'Upstream response failed validation');",
+                "} catch (\\AssertionError $e) {",
+                "    Logger::warning(\"Assertion failed: {$e->getMessage()}\");",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Constants.RemovedConstants.assert_activeDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.assert_bailDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.assert_callbackDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.assert_exceptionDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.assert_warningDeprecated",
+            "PHPCompatibility.FunctionUse.RemovedFunctions.assert_optionsDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "assert_options(ASSERT_ACTIVE, ...) has been confirmed locally (PHP 8.4.19) to have no effect on whether assert() evaluates: neither setting it to 1 under a request compiled with zend.assertions=-1 or zend.assertions=0, nor setting it to 0 under zend.assertions=1, changed whether a subsequent assert() in the same file ran its condition. assert_options(ASSERT_BAIL, ...), assert_options(ASSERT_CALLBACK, ...) and assert_options(ASSERT_WARNING, ...) were separately confirmed to remain fully functional whenever assert.exception=0. Treat ASSERT_ACTIVE call sites as safe to delete and the other three as needing a real replacement, not the same treatment for all five.",
+        "zend.assertions can be toggled between 0 and 1 with ini_set() within a single request - verified locally, in both directions - but cannot be moved into or out of -1 at runtime; a request that starts at -1 stays at -1 no matter what ini_set('zend.assertions', ...) is called afterward, and PHP says so explicitly (\"zend.assertions may be completely enabled or disabled only in php.ini\"). assert.exception showed no equivalent runtime-toggle limit in the same testing.",
+        "The same PHP 8.3 UPGRADING file separately deprecates the assert.active, assert.bail, assert.callback, assert.exception and assert.warning INI settings themselves when their configured value differs from the default (the \"11. Changes to INI File Handling\" section), recommending zend.assertions \"instead.\" That is a distinct, ini-parse-time deprecation with no source-code pattern for PHPCompatibility to sniff, so it carries no sniff id and sits outside this rule's mapped scope - but it is why this rule's existing_code_policy steers existing ASSERT_BAIL/CALLBACK/WARNING call sites toward the modern assert.exception=1 model instead of toward relocating the same legacy settings into php.ini.",
+        "Evidence: UPGRADING-8.3.0, \"4. Deprecated Functionality\" -> Standard: \"The assert_options() function is now deprecated.\" and \"The ASSERT_ACTIVE, ASSERT_BAIL, ASSERT_CALLBACK, ASSERT_EXCEPTION, and ASSERT_WARNING constants have been deprecated.\" (RFC assert-string-eval-cleanup). Grepping the 8.2, 8.4 and 8.5 UPGRADING files for \"assert_options\", each ASSERT_* name, and \"assert.active\"/\"assert.bail\"/\"assert.callback\"/\"assert.exception\"/\"assert.warning\"/\"zend.assertions\" found no further mention (the sole 8.2 hit, for \"zend.assertions\", is an unrelated listing of INI directives that must now parse as valid integers), so no later escalation to removal is recorded."
+    ]
+}
