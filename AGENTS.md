@@ -1,17 +1,17 @@
 # Agent instructions
 
-## v0.3.2 release and verification adapter boundary
+## v0.3.3 release and verification adapter boundary
 
-The published release is `0.3.2`. Implemented there: the `version`, `resolve`, `list-rules`,
+The published release is `0.3.3`. Implemented there: the `version`, `resolve`, `list-rules`,
 `explain`, `doctor` and `verify` commands, the Composer Semver policy resolver, the two-axis
-applicability engine, the 24-rule seed catalogue in `resources/rules/`, a CI-built PHAR attached to each
+applicability engine, the 32-rule seed catalogue in `resources/rules/`, a CI-built PHAR attached to each
 release, the agent-distribution surfaces in `skills/`, and the explicit `verify` boundary with its one
 real adapter.
 
 `verify`'s production registry recognizes only `phpcompatibility`: a real PHPCompatibility
 implementation that runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility
 standard as an isolated child process, reports advisory evidence, and never installs, writes under, or
-mutates the target project. Its committed sniff-to-rule mapping covers 16 of the 24 catalogue rules,
+mutates the target project. Its committed sniff-to-rule mapping covers 24 of the 32 catalogue rules,
 including the whole `extension.imap_unbundled` surface; every other finding is preserved unmapped rather
 than discarded. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D)
 was dropped from `0.3.0` on value-gate evidence — see issue #9 and its linked follow-ups — so do not add

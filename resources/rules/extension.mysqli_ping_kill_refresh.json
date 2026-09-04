@@ -1,0 +1,114 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.mysqli_ping_kill_refresh",
+    "title": "`mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` are deprecated",
+    "summary": "PHP 8.4 deprecates the mysqli functions `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` (and their `mysqli::ping()`/`mysqli::kill()`/`mysqli::refresh()` object-oriented equivalents) along with every `MYSQLI_REFRESH_*` constant, each with a different replacement: `mysqli_ping()` has none and should simply be dropped, `mysqli_kill()` becomes a SQL `KILL` statement, and `mysqli_refresh()` becomes a SQL `FLUSH` statement.",
+    "category": "extension",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": "mysqli",
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "On a target that must run on PHP 8.4+, never call `mysqli_ping()`, `mysqli_kill()` or `mysqli_refresh()` - procedurally or as `$mysqli->ping()`/`->kill()`/`->refresh()` - and never reference a `MYSQLI_REFRESH_*` constant. Do not write a `mysqli_ping()`-based liveness check at all: since PHP 8.2 removed automatic reconnection (`extension.mysqli_driver_reconnect`), pinging first buys nothing that catching the failure of the real query does not already give you, and the check is racy besides (the connection can still die between the ping and the query it was meant to protect). Replace a `mysqli_kill($link, $threadId)` call with `mysqli_query($link, 'KILL ' . $threadId)`. Replace `mysqli_refresh($link, $flags)` with the matching `FLUSH` statement run through `mysqli_query()` - for example `mysqli_refresh($link, MYSQLI_REFRESH_TABLES)` becomes `mysqli_query($link, 'FLUSH TABLES')` - since the `MYSQLI_REFRESH_*` constants no longer have a function that accepts them.",
+    "existing_code_policy": "Search for `mysqli_ping(`, `mysqli_kill(`, `mysqli_refresh(`, and for `->ping(`, `->kill(`, `->refresh(` called on a mysqli connection, plus any `MYSQLI_REFRESH_*` constant. Once the project's floor reaches PHP 8.4, remove every `mysqli_ping()` call and replace the liveness check it was performing with error handling around the query that actually needed the connection; migrate `mysqli_kill()` call sites to the SQL `KILL` statement and `mysqli_refresh()` call sites (with their `MYSQLI_REFRESH_*` arguments) to the matching SQL `FLUSH` statement, double-checking the flag-to-statement mapping for anything more exotic than `MYSQLI_REFRESH_TABLES`. Treat the three migrations as independent: they share a deprecation minor and a single UPGRADING paragraph, but not a common replacement shape, so a mechanical find-and-replace across all three is not safe.",
+    "guideline": "Stop calling `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` - procedural or object-oriented form - and stop referencing any `MYSQLI_REFRESH_*` constant once the lifecycle ceiling reaches PHP 8.4. Drop `mysqli_ping()` outright and detect a lost connection by catching the failure of a real query instead of pinging beforehand; issue the equivalent SQL `KILL` statement in place of `mysqli_kill()`; issue the equivalent SQL `FLUSH` statement in place of `mysqli_refresh()`.",
+    "details": "PHP 8.4 deprecates three mysqli functions together in the same UPGRADING-8.4.0 Mysqli section, each for a different reason and with a different replacement, so they must not be treated as one interchangeable fix. `mysqli_ping()` (and its `mysqli::ping()` method form) is deprecated \"as the reconnect feature was removed in PHP 8.2\": mysqli's automatic-reconnect support - the `mysqli_driver::$reconnect` property and the `mysqli.reconnect` INI directive covered by the shipped `extension.mysqli_driver_reconnect` rule - no longer exists on any minor this catalogue tracks, so a `mysqli_ping()` call written to decide whether to reconnect has nothing left to enable. It has no replacement function: the fix is to drop the proactive check and instead detect a lost connection by catching the failure of the query that actually needed it, then reconnecting explicitly at that point. `mysqli_kill()` (and `mysqli::kill()`) is deprecated with a direct substitute: \"If this functionality is needed a SQL \"KILL\" command can be used instead,\" i.e. `mysqli_query($link, 'KILL ' . $threadId)` in place of `mysqli_kill($link, $threadId)`. `mysqli_refresh()` (and `mysqli::refresh()`) is deprecated the same way, with its own substitute: \"If this functionality is needed a SQL \"FLUSH\" command can be used instead. All MYSQLI_REFRESH_* constants have been deprecated as well.\" The ten `MYSQLI_REFRESH_*` constants (`MYSQLI_REFRESH_BACKUP_LOG`, `MYSQLI_REFRESH_GRANT`, `MYSQLI_REFRESH_HOSTS`, `MYSQLI_REFRESH_LOG`, `MYSQLI_REFRESH_MASTER`, `MYSQLI_REFRESH_REPLICA`, `MYSQLI_REFRESH_SLAVE`, `MYSQLI_REFRESH_STATUS`, `MYSQLI_REFRESH_TABLES`, `MYSQLI_REFRESH_THREADS`) exist solely as the bitmask argument vocabulary of `mysqli_refresh()`; deprecating the only function that consumes them deprecates the constants along with it, which is why all thirteen identifiers - three functions plus ten constants - are mapped by this one rule rather than splitting the constants out on their own. This is a deprecation, not a removal: no PHP 8.2-8.5 UPGRADING file removes any of the three functions or the ten constants, so `removed_in` stays null; `introduced_in` also stays null, since this rule makes no feature-availability claim, only a lifecycle one. The same UPGRADING-8.4.0 Mysqli section separately deprecates passing the `$mode` parameter to `mysqli_store_result()`, and the `MYSQLI_STORE_RESULT_COPY_DATA` constant that parameter accepted - that is a distinct deprecation with its own call sites and its own fix (stop passing the parameter), it is out of this rule's scope, and it has no rule of its own yet.",
+    "examples": [
+        {
+            "before": [
+                "function fetchAll(mysqli $link, string $sql): array",
+                "{",
+                "    if (!mysqli_ping($link)) {",
+                "        throw new RuntimeException('Database connection lost.');",
+                "    }",
+                "",
+                "    $result = mysqli_query($link, $sql);",
+                "",
+                "    return mysqli_fetch_all($result, MYSQLI_ASSOC);",
+                "}"
+            ],
+            "after": [
+                "function fetchAll(mysqli $link, string $sql): array",
+                "{",
+                "    try {",
+                "        $result = mysqli_query($link, $sql);",
+                "    } catch (mysqli_sql_exception $e) {",
+                "        // mysqli_ping() is deprecated with no replacement function; PHP 8.2",
+                "        // already removed automatic reconnection, so detect a lost connection",
+                "        // by catching the query failure here instead of pinging beforehand.",
+                "        throw new RuntimeException('Database connection lost.', previous: $e);",
+                "    }",
+                "",
+                "    return mysqli_fetch_all($result, MYSQLI_ASSOC);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "function killLongRunningQuery(mysqli $link, int $threadId): void",
+                "{",
+                "    mysqli_kill($link, $threadId);",
+                "}"
+            ],
+            "after": [
+                "function killLongRunningQuery(mysqli $link, int $threadId): void",
+                "{",
+                "    // mysqli_kill() is deprecated; UPGRADING-8.4.0 points to a SQL KILL",
+                "    // statement instead. $threadId is typed int, so this concatenation",
+                "    // cannot inject arbitrary SQL.",
+                "    mysqli_query($link, 'KILL ' . $threadId);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "function flushTableCache(mysqli $link): bool",
+                "{",
+                "    return mysqli_refresh($link, MYSQLI_REFRESH_TABLES);",
+                "}"
+            ],
+            "after": [
+                "function flushTableCache(mysqli $link): bool",
+                "{",
+                "    // mysqli_refresh() and MYSQLI_REFRESH_TABLES are both deprecated;",
+                "    // UPGRADING-8.4.0 points to a SQL FLUSH statement instead.",
+                "    return (bool) mysqli_query($link, 'FLUSH TABLES');",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_backup_logDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_grantDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_hostsDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_logDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_masterDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_replicaDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_slaveDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_statusDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_tablesDeprecated",
+            "PHPCompatibility.Constants.RemovedConstants.mysqli_refresh_threadsDeprecated",
+            "PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_killDeprecated",
+            "PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_pingDeprecated",
+            "PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_refreshDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "Confirmed locally with the pinned PHPCompatibility stack: the RemovedFunctions sniff fires on the procedural call form (mysqli_ping($link), mysqli_kill($link, $id), mysqli_refresh($link, $flags)) but produced no finding at all for the equivalent method-call form on a mysqli object ($link->ping(), $link->kill($id), $link->refresh($flags)), even though UPGRADING-8.4.0 deprecates both forms identically (\"The mysqli_ping() function and mysqli::ping() method are now deprecated\", and likewise for kill/refresh). A MYSQLI_REFRESH_* constant used as an argument is still caught regardless of call form, since constant detection does not depend on how the enclosing call is written. This is an analyzer coverage gap, not a lifecycle difference: verify's advisory evidence under-reports the object-oriented form of this deprecation, and this rule's guidance applies equally to both forms even though only the procedural one is provably detected.",
+        "Confirmed locally with the pinned PHPCompatibility stack: probing mysqli_store_result($link, MYSQLI_STORE_RESULT_COPY_DATA) reports the $mode parameter itself \"deprecated since PHP 8.4\" (matching UPGRADING-8.4.0), but reports the MYSQLI_STORE_RESULT_COPY_DATA constant \"deprecated since PHP 8.1\" - a full version off from the UPGRADING text, via sniff ids (PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated, PHPCompatibility.Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated) that are neither among the thirteen this rule maps. That dating disagreement is one more reason the constant is deliberately left out of this rule rather than folded in as an eleventh MYSQLI_REFRESH_*-style entry: even the proven mapping for it is internally inconsistent.",
+        "Evidence: UPGRADING-8.4.0.txt, '4. Deprecated Functionality' -> Mysqli: \"The mysqli_ping() function and mysqli::ping() method are now deprecated, as the reconnect feature was removed in PHP 8.2.\" \"The mysqli_kill() function and mysqli::kill() method are now deprecated. If this functionality is needed a SQL \"KILL\" command can be used instead.\" \"The mysqli_refresh() function and mysqli::refresh() method are now deprecated. If this functionality is needed a SQL \"FLUSH\" command can be used instead. All MYSQLI_REFRESH_* constants have been deprecated as well.\""
+    ]
+}

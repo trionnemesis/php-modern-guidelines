@@ -1,0 +1,98 @@
+{
+    "schema_version": "1.1.0",
+    "id": "language.static_asymmetric_visibility",
+    "title": "Asymmetric visibility for static properties",
+    "summary": "PHP 8.5 extends asymmetric property visibility (`private(set)`/`protected(set)`) to static properties, so a static property can be declared publicly readable but writable only from inside the declaring class (or a subclass, for `protected(set)`) - the same capability PHP 8.4 gave instance properties, now available for `static` ones too.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.5 or above, when a static property should be publicly readable but writable only from inside the declaring class (or, for `protected(set)`, a subclass), declare it `public private(set) static Type $prop` (or the bare `private(set) static Type $prop` shorthand) instead of a private static property paired with a public static getter written solely to expose read access. Never emit `private(set) static`/`protected(set) static` while the feature ceiling is 8.4 or below: PHP 8.4 already parses `private(set)`/`protected(set)` for instance properties, but rejects that same modifier combined with `static` as a compile-time error (\"Static property may not have asymmetric visibility\"), so on 8.4 it is not merely unavailable, it is refused outright.",
+    "existing_code_policy": "Do not bulk-convert every private-static-property-plus-getter pair; migrate one only when it is already being touched for another reason, and only after confirming the feature ceiling is 8.5 or newer. As with the instance-property version of this feature (`language.asymmetric_property_visibility`), a set-restricted static property is a genuine public-API change for any code outside the declaring class (and, for `protected(set)`, outside its subclasses) that currently writes to the static property directly; every such external write site must be found and moved onto the class's own API before the migration is safe.",
+    "guideline": "Once the feature ceiling reaches PHP 8.5, prefer asymmetric visibility on a static property (`public private(set) static Type $prop`, or the bare `private(set) static Type $prop` shorthand) over a private static property paired with a public static getter written only to expose read access - the same preference `language.asymmetric_property_visibility` already states for instance properties, extended to statics. Never emit it below a feature ceiling of 8.5, where it is rejected at compile time.",
+    "details": "PHP 8.5 (UPGRADING-8.5.0, \"2. New Features\" -> Core: \"Added asymmetric visibility support for static properties.\"; RFC static-aviz) extends asymmetric property visibility to `static` properties. Everything about what the `private(set)`/`protected(set)` modifiers mean - a write visibility that must be equal to or more restrictive than the read visibility, the bare `private(set) Type $prop` shorthand defaulting its read visibility to public, and the requirement for an explicit property type - is documented by the shipped `language.asymmetric_property_visibility` rule for the instance-property feature PHP 8.4 introduced; this rule covers only the narrower PHP 8.5 extension of that same modifier onto `static` properties, and does not restate the underlying mechanics. What PHP 8.4 did not allow was combining the two: a `static` property carrying `private(set)` or `protected(set)` was rejected at compile time on 8.4, confirmed locally (\"Static property may not have asymmetric visibility\"), even though both `static` and `private(set)`/`protected(set)` were already independently valid syntax on 8.4. This is not a parse error the way using `private(set)` at all is on PHP 8.3 and earlier, since the tokens themselves are already recognized on 8.4; it is a semantic compile-time rejection of that specific combination, lifted only in 8.5. Verifying this construct against the pinned PHPCompatibility stack surfaces a mapping subtlety: a single `public private(set) static string $x` declaration reports two sniffs together - the general `Keywords.NewKeywords.t_private_setFound` (or `t_protected_setFound` for the other modifier) alongside the static-specific `Classes.NewStaticAvizProperties.Found`; across a class exercising both `private(set) static` and `protected(set) static`, three unique sniff ids are involved in total. The two `Keywords.NewKeywords` ids fire on the modifier itself regardless of whether the property is static, and are already committed to `language.asymmetric_property_visibility` as the PHP 8.4 instance-property fact; they are not distinguishing evidence for the static-only feature this rule documents, so this rule maps only `Classes.NewStaticAvizProperties.Found`, the one sniff id that is actually specific to the PHP 8.5 case. Claiming either `Keywords.NewKeywords` id here too would misrepresent what they detect and would conflict with that already-shipped mapping. This is purely additive new syntax with no effect on code that does not use it, so `behavior_change_risk` is \"none\".",
+    "examples": [
+        {
+            "before": [
+                "final class RequestCounter",
+                "{",
+                "    private static int $count = 0;",
+                "",
+                "    public static function count(): int",
+                "    {",
+                "        return self::$count;",
+                "    }",
+                "",
+                "    public static function increment(): void",
+                "    {",
+                "        self::$count++;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class RequestCounter",
+                "{",
+                "    public private(set) static int $count = 0;",
+                "",
+                "    public static function increment(): void",
+                "    {",
+                "        self::$count++;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "class Metric",
+                "{",
+                "    protected static int $total = 0;",
+                "",
+                "    public static function total(): int",
+                "    {",
+                "        return static::$total;",
+                "    }",
+                "",
+                "    protected static function record(int $amount): void",
+                "    {",
+                "        static::$total += $amount;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "class Metric",
+                "{",
+                "    protected(set) static int $total = 0;",
+                "",
+                "    protected static function record(int $amount): void",
+                "    {",
+                "        static::$total += $amount;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Classes.NewStaticAvizProperties.Found"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "Confirmed locally on PHP 8.4.19: public private(set) static string $x; fails to compile with \"Static property may not have asymmetric visibility\" - the identical fatal error for protected(set) static. On 8.4, static and private(set)/protected(set) are each already valid syntax on their own; only combining them is rejected, and only at compile time, not at parse time.",
+        "A single private(set) static (or protected(set) static) property declaration reports two PHPCompatibility sniffs together: the matching Keywords.NewKeywords.t_private_setFound/t_protected_setFound plus Classes.NewStaticAvizProperties.Found; across both modifier forms, three unique sniff ids are involved in total. Only Classes.NewStaticAvizProperties.Found is mapped here, since it is the one signal specific to the PHP 8.5 static case; both Keywords.NewKeywords ids stay on language.asymmetric_property_visibility, where they were already committed as the PHP 8.4 instance-property fact. Verified locally against the pinned PHPCompatibility stack.",
+        "Evidence: UPGRADING-8.5.0.txt, '2. New Features' -> Core: \"Added asymmetric visibility support for static properties.\""
+    ]
+}

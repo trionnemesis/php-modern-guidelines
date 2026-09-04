@@ -84,10 +84,14 @@ Then filter the rule catalogue to what you are about to write:
 ```console
 $ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 10 of 24 shown
+Rules: 15 of 32 shown
 
+  [deprecated_in_range]              P2  deprecated           core.assert_options
+      assert_options() and its ASSERT_* constants are deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
+  [deprecated_in_range]              P2  deprecated           core.e_strict_constant
+      The E_STRICT constant is deprecated
   [deprecated_in_range]              P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
@@ -98,6 +102,12 @@ Rules: 10 of 24 shown
       `utf8_encode()` and `utf8_decode()` are deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated
+  [deprecated_in_range]              P2  deprecated           extension.curl_share_close
+      curl_share_close() is deprecated
+  [deprecated_in_range]              P2  deprecated           extension.finfo_close
+      finfo_close() is deprecated
+  [deprecated_in_range]              P2  deprecated           extension.mysqli_ping_kill_refresh
+      `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` are deprecated
   [deprecated_in_range]              P2  deprecated           language.backtick_shell_exec
       Backtick shell-execution operator is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
@@ -124,8 +134,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage coverage_gap (known 8.2-8.5, open upper bound), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 24 rule file(s)
-  [ok]      rules.load               24 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 32 rule file(s)
+  [ok]      rules.load               32 rule(s) loaded
 
 Details
   cli.build
@@ -167,9 +177,9 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              24
+    file_count              32
   rules.load
-    loaded                  24
+    loaded                  32
     error                   -
 ```
 
