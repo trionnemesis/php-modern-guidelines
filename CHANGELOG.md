@@ -2,6 +2,66 @@
 
 All notable changes will be documented in this file.
 
+## [0.3.3] - 2026-09-04
+
+### Added
+
+- Eight source-backed rules, growing the catalogue from 24 to 32, all drawn from the Tier A candidates
+  registered in [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) — the tier
+  whose PHPCompatibility mapping had already been measured, which is why every one of them ships mapped.
+  Five are lifecycle rules: `core.assert_options` (8.3), `core.e_strict_constant` and
+  `extension.mysqli_ping_kill_refresh` (8.4), and `extension.curl_share_close` and
+  `extension.finfo_close` (8.5). Three are feature-axis rules for syntax that is a parse error below its
+  minor: `language.readonly_anonymous_classes` and `language.dynamic_class_constant_fetch` (8.3), and
+  `language.static_asymmetric_visibility` (8.5).
+- Twenty-five PHPCompatibility sniff mappings, raising coverage from 16 of 24 rules to 24 of 32. Every
+  sniff id was produced by running the CI-pinned analyzer — PHP_CodeSniffer 3.13.6 with
+  PHPCompatibility 10.0.0-alpha2 — against a probe file rather than read out of the analyzer's sources.
+  The committed map now holds 195 entries and the rule files carry the same 195 sniff ids, kept as exact
+  inverses of each other by test. `extension.mysqli_ping_kill_refresh` alone carries 13: the three
+  deprecated functions plus all ten `MYSQLI_REFRESH_*` constants, which are that function's argument
+  vocabulary and are deprecated with it.
+- `tests/fixtures/verification/projects/phpcompatibility-findings/src/catalogue_expansion_r2_findings.php`,
+  which triggers each of the 25 new sniffs once, so every mapping is proven end to end through a real
+  child process. Two of its lines deliberately pass a literal option value and a literal bitmask so they
+  do not re-trigger an `assert_*` or `mysqli_refresh_*` constant finding already proven elsewhere in the
+  file.
+
+### Changed
+
+- The fixture's verification summary becomes 200 mapped and 3 unmapped findings across 24 rules.
+  `split()` and the two IMAP boundary ids stay unmapped and keep proving that a finding with no internal
+  rule is preserved rather than discarded.
+- `extension.curl_close` said `curl_share_close()` was "a separate rule candidate and out of this rule's
+  scope"; that candidate now exists, so the note names `extension.curl_share_close`. Likewise
+  `language.asymmetric_property_visibility` said the PHP 8.5 static-property addition had "no rule of its
+  own yet", and both its note and its details now name `language.static_asymmetric_visibility` while
+  keeping that rule's own scope statement intact.
+- Corrected a factual error in the shipped `extension.mysqli_driver_reconnect`. Its evidence note claimed
+  that grepping the 8.3, 8.4 and 8.5 `UPGRADING` files for "reconnect" found no further mention. That is
+  false: `UPGRADING-8.4.0` reads "as the reconnect feature was removed in PHP 8.2", the stated rationale
+  for deprecating `mysqli_ping()`. The note now records what the grep actually returns — no mention in
+  8.3 or 8.5, exactly one in 8.4 — and cross-links the new rule.
+- The Agent Skill's two executed console examples, both READMEs, `AGENTS.md` and the Pages site report
+  the 32-rule catalogue and the 24-of-32 mapping coverage. The skill's goldens were regenerated from real
+  command output.
+
+### Not included
+
+- Any new analyzer. Catalogue depth and mapping coverage remain the binding constraint the M3-B value
+  gate measured, so the PHPStan deprecation adapter (M3-C) stays deferred and the Rector dry-run adapter
+  (M3-D) stays dropped. See [issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9).
+- New PHP version coverage. The known minors are still 8.2–8.5.
+- The Tier B candidates in [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) —
+  among them the PHP 8.4 resource-to-object `is_resource()` behavior change and the `__sleep()` /
+  `__wakeup()` soft deprecation. They remain worth adding for catalogue depth, but this round was scoped
+  to Tier A so that every rule shipped with a proven mapping.
+- A mapping for the eight rules that still carry none. Attribute-availability rules in particular are
+  structurally unmappable at this tool's PHP 8.2 floor, because PHPCompatibility's `NewAttributesSniff`
+  returns early unless the scanned policy includes PHP 7.4 or below; issue #18 records the measurement.
+- Framework rule packs, auto-fixes, target-project writes, network rule fetching, and Packagist
+  publication.
+
 ## [0.3.2] - 2026-09-04
 
 ### Added
