@@ -2,6 +2,57 @@
 
 All notable changes will be documented in this file.
 
+## [0.3.2] - 2026-09-04
+
+### Added
+
+- Eight source-backed rules, growing the catalogue from 16 to 24 without widening PHP coverage beyond
+  the known 8.2–8.5 minors. Six are lifecycle rules — `core.utf8_encode_decode` and
+  `core.partially_supported_callables` (8.2), `core.get_class_without_arguments` (8.3),
+  `core.trigger_error_e_user_error` (8.4), `language.non_canonical_cast_names` and
+  `language.backtick_shell_exec` (8.5) — and two are feature-axis rules that guard against emitting
+  syntax newer than a project's feature ceiling: `language.asymmetric_property_visibility` and
+  `language.new_without_parentheses` (8.4), both of which are parse errors on PHP 8.3 and earlier
+  rather than recoverable warnings. Each rule carries exactly one pinned php-src `UPGRADING` source
+  and a review date, and every `before`/`after` example was checked with `php -l`.
+- Twelve PHPCompatibility sniff mappings, raising coverage from 9 of 16 rules to 16 of 24. Every sniff
+  id was produced by running the CI-pinned analyzer — PHP_CodeSniffer 3.13.6 with
+  PHPCompatibility 10.0.0-alpha2, the versions the `verification-analyzer` job installs — against a
+  probe file, rather than read out of the analyzer's sources. The committed map now holds 170 entries
+  and the rule files carry the same 170 sniff ids, kept as exact inverses of each other by test.
+- `tests/fixtures/verification/projects/phpcompatibility-findings/src/catalogue_expansion_findings.php`,
+  which triggers each newly mapped sniff the fixture tree did not already exercise, so all twelve
+  mappings are proven end to end through a real child process. Its backtick line reports
+  `t_backtickDeprecated` twice, once per backtick token; that second-order behaviour is asserted as
+  measured rather than as expected.
+
+### Changed
+
+- `utf8_encode()` and `utf8_decode()` findings in the verification fixture move from unmapped to
+  mapped, so the fixture's summary becomes 174 mapped and 3 unmapped findings across 16 rules.
+  `split()` stays unmapped and continues to prove that a finding with no internal rule is preserved
+  rather than discarded.
+- `SeedRuleCatalogueTest`'s single pinned review date becomes the committed set
+  `['2026-08-30', '2026-09-04']`, preserving the rule that every catalogue entry carries exactly one
+  source with a reviewed date.
+- The Agent Skill's two executed console examples, both READMEs, `AGENTS.md` and the Pages site report
+  the 24-rule catalogue and the 16-of-24 mapping coverage. The skill's goldens were regenerated from
+  real command output.
+
+### Not included
+
+- Any new analyzer. This release acts on the M3-B value gate's own finding — that catalogue depth and
+  mapping coverage, not a missing analyzer, are the binding constraint on end-user value — so the
+  PHPStan deprecation adapter (M3-C) stays deferred and the Rector dry-run adapter (M3-D) stays
+  dropped. See [issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9).
+- New PHP version coverage. The known minors are still 8.2–8.5, and no rule claims a lifecycle fact
+  outside that range.
+- A proven mapping for `core.partially_supported_callables`. PHPCompatibility 10.0.0-alpha2 reports no
+  finding for any of the seven deprecated callable shapes, including inside a class body, so the rule
+  ships with an empty `verification.phpcompatibility` list and says so rather than guessing one.
+- Framework rule packs, auto-fixes, target-project writes, network rule fetching, and Packagist
+  publication.
+
 ## [0.3.1] - 2026-09-01
 
 ### Changed
