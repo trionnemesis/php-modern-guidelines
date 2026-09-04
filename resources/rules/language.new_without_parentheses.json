@@ -1,0 +1,57 @@
+{
+    "schema_version": "1.1.0",
+    "id": "language.new_without_parentheses",
+    "title": "`new` expressions with constructor arguments are dereferencable",
+    "summary": "PHP 8.4 lets a `new X(...)` expression be dereferenced directly - chaining a method call, property access, array access or static access - without wrapping the whole expression in parentheses first, so `new Foo()->bar()` is now valid alongside the older `(new Foo())->bar()`.",
+    "category": "language",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, new code may dereference a `new X(...)` expression directly - `new Foo()->bar()`, `new Foo()->prop`, `new Foo()[0]`, `new Foo()::CONST` - without wrapping it in an extra pair of parentheses. Never emit the parentheses-free form while the feature ceiling is 8.3 or lower: `new Foo()->bar()` is a parse error there, not merely an unsupported runtime construct - it fails to parse the entire file. The `new` expression must include its own parenthesized argument list (even an empty `()`) to be dereferencable this way; the paren-less `new Foo` shorthand (valid PHP on its own) still cannot be dereferenced directly on any known minor and still needs the same `(new Foo())->bar()` wrapping it always required.",
+    "existing_code_policy": "Leave working `(new Foo(...))->bar()`-style parenthesised code alone. That form remains fully valid syntax on PHP 8.4 and 8.5; this is a purely additive parsing capability, not a deprecation of the old form, so there is nothing to migrate and no reason to strip the wrapping parentheses from code that already works. Reach for the parentheses-free form only in newly written code once the feature ceiling allows it.",
+    "guideline": "Once the feature ceiling reaches PHP 8.4, either spelling is correct: `new Foo()->bar()` needs no wrapping parentheses, and `(new Foo())->bar()` still works exactly as before. Do not rewrite existing parenthesised `new` expressions merely for style, and do not emit the parentheses-free form at all while the feature ceiling is 8.3 or below, since it is a parse error there.",
+    "details": "PHP 8.4 made `new` expressions with a parenthesized constructor-argument list dereferencable in place. The official UPGRADING text describes exactly this: \"new expressions with constructor arguments are now dereferencable, meaning they allow chaining method calls, property accesses, etc. without enclosing the expression in parentheses.\" Concretely, `new Foo()->bar()`, `new Foo()->prop`, `new Foo()[0]` and `new Foo()::CONST` are all now valid without an enclosing `(...)` around the `new` expression - verified locally on PHP 8.4.19, this covers method calls, property access, array access, and static access (a class constant, and by the same mechanism a static method or property) chained directly off the constructed object. The trigger for dereferencability is the presence of the constructor call's own parenthesized argument list, not whether any arguments are actually passed: `new Foo()->bar()` with an empty argument list is exactly as dereferencable as `new Foo(1, 2)->bar()` (both confirmed locally), and named or variadic arguments work the same way. What is still not covered, on 8.4 or 8.5, is the paren-less `new Foo` shorthand for a zero-argument constructor call: `new Foo->bar()`, with no parentheses at all after the class name, remains a parse error (confirmed locally: \"syntax error, unexpected token \\\"->\\\"\"), because the feature specifically extends the parenthesized call form, not the bare class-name form. The older, fully-parenthesised style, `(new Foo())->bar()`, is unaffected by this change and remains valid on every known minor (8.2-8.5): 8.4 only removes the requirement to write those wrapping parentheses, it does not deprecate or invalidate them, so this is purely an additive parsing relaxation with no behavior change either way - both forms construct the same object and evaluate the same chained access.",
+    "examples": [
+        {
+            "before": [
+                "$result = (new PriceCalculator($items))->total();"
+            ],
+            "after": [
+                "$result = new PriceCalculator($items)->total();"
+            ]
+        },
+        {
+            "before": [
+                "$firstTag = (new Article($title, $tags))->tags[0];"
+            ],
+            "after": [
+                "$firstTag = new Article($title, $tags)->tags[0];"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Syntax.NewClassMemberAccessWithoutParentheses.Found"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "Dereferencability requires the constructor call's own parenthesized argument list, not any particular number of arguments: an empty `new Foo()->bar()` is exactly as valid as `new Foo($a, $b)->bar()` (both confirmed locally on PHP 8.4.19), and named arguments work the same way.",
+        "The paren-less `new Foo` shorthand (valid on its own since long before 8.4) still cannot be dereferenced directly - `new Foo->bar()` remains a parse error on 8.4 and 8.5 (confirmed locally: \"syntax error, unexpected token \\\"->\\\"\") - because this feature extends the parenthesized `new Foo(...)` call form specifically, not the bare class-name form.",
+        "The pre-8.4 `(new Foo())->bar()` wrapping remains valid, unchanged syntax on 8.4 and 8.5; this rule's existing_code_policy is therefore to leave it alone rather than to rewrite it, unlike a typical deprecation cleanup.",
+        "Evidence: UPGRADING-8.4.0.txt, '2. New Features' -> Core: \"new expressions with constructor arguments are now dereferencable, meaning they allow chaining method calls, property accesses, etc. without enclosing the expression in parentheses.\""
+    ]
+}

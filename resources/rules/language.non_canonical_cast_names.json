@@ -1,0 +1,65 @@
+{
+    "schema_version": "1.1.0",
+    "id": "language.non_canonical_cast_names",
+    "title": "(boolean), (integer), (double) and (binary) casts are deprecated",
+    "summary": "PHP 8.5 deprecates the non-canonical cast names (boolean), (integer), (double) and (binary) in favor of (bool), (int), (float) and (string); each pair is a pure spelling alias with identical runtime semantics, so the rewrite is purely mechanical.",
+    "category": "language",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Never write (boolean), (integer), (double) or (binary) in new code, in any letter casing; always use the canonical (bool), (int), (float) and (string) cast spellings.",
+    "existing_code_policy": "Rewrite every (boolean)/(integer)/(double)/(binary) cast found in existing code - including any differently-cased spelling such as (Boolean) or (INTEGER) - to its canonical replacement ((bool)/(int)/(float)/(string) respectively). Unlike most deprecation cleanups, this one is safe to apply mechanically and in bulk across a whole codebase: each of the four pairs is a pure alias with identical runtime behavior, so there is no case-by-case judgment call to make and no need to inspect surrounding code before rewriting. Do not treat a (real) cast as part of this rule: (real) was already removed outright - not merely deprecated - in PHP 8.0, two minors before this catalogue's known range (8.2-8.5) begins, so code still containing it is already fatal on every version this catalogue tracks and needs a different fix (a plain (float) cast) that this rule does not cover.",
+    "guideline": "Use the canonical (bool), (int), (float) and (string) cast spellings; never emit (boolean), (integer), (double) or (binary), nor any other letter-casing of them, since PHP matches cast keywords case-insensitively.",
+    "details": "PHP 8.5 deprecates four non-canonical cast-name spellings. The official UPGRADING text states it in one line: \"Non-canonical cast names (boolean), (integer), (double), and (binary) have been deprecated, use (bool), (int), (float), and (string) respectively.\" Each deprecated name maps to exactly one canonical replacement - (boolean) to (bool), (integer) to (int), (double) to (float), (binary) to (string) - and every one of the four has always been a pure alias: the deprecated and canonical spellings compile to the identical cast operation with identical runtime semantics, so swapping the keyword changes nothing about the resulting value, only which E_DEPRECATED diagnostic PHP does or does not emit starting on 8.5. PHP's cast keywords, like its other keywords, are matched case-insensitively by the parser, so (Boolean), (INTEGER), (Double), (Binary) and any other letter-casing of these four names are exactly as deprecated as the lowercase spellings the UPGRADING text uses. This deprecation has nothing to do with the (real) cast: (real) was already removed outright - not merely deprecated - in PHP 8.0, two minors before this catalogue's known range (8.2-8.5) begins, so it has no place in this rule's four-name list and no canonical replacement recorded here; a codebase that still contains (real) is already fatal on every PHP version this catalogue tracks and needs its own, different fix. As of PHP 8.5 none of (boolean)/(integer)/(double)/(binary) has been removed, only deprecated, so removed_in stays null on this rule; each of the four remains fully valid, non-deprecated syntax on every other known minor (8.2-8.4), and only code actually running on the PHP 8.5 engine sees the new diagnostic.",
+    "examples": [
+        {
+            "before": [
+                "$isActive = (boolean) $row['active'];",
+                "$id = (integer) $_GET['id'];",
+                "$price = (double) $row['price'];",
+                "$raw = (binary) $value;"
+            ],
+            "after": [
+                "$isActive = (bool) $row['active'];",
+                "$id = (int) $_GET['id'];",
+                "$price = (float) $row['price'];",
+                "$raw = (string) $value;"
+            ]
+        },
+        {
+            "before": [
+                "$count = (Integer) $input;"
+            ],
+            "after": [
+                "$count = (int) $input;"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.TypeCasts.RemovedTypeCasts.binaryDeprecated",
+            "PHPCompatibility.TypeCasts.RemovedTypeCasts.booleanDeprecated",
+            "PHPCompatibility.TypeCasts.RemovedTypeCasts.doubleDeprecated",
+            "PHPCompatibility.TypeCasts.RemovedTypeCasts.integerDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "The (real) cast is a separate, earlier matter: it was removed outright in PHP 8.0, before this catalogue's known range (8.2-8.5) begins, so it is out of scope for this rule and has no canonical-replacement mapping recorded here.",
+        "Cast keywords are matched case-insensitively, so (Boolean), (INTEGER), (Double) and (Binary) - and any other letter-casing - trigger the identical deprecation as the lowercase spellings the official text uses; a text search for this rule's four names should be case-insensitive to find every occurrence.",
+        "Evidence: UPGRADING-8.5.0.txt, '4. Deprecated Functionality' -> Core: \"Non-canonical cast names (boolean), (integer), (double), and (binary) have been deprecated, use (bool), (int), (float), and (string) respectively.\""
+    ]
+}
