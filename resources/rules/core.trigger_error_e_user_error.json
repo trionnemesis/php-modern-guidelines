@@ -1,0 +1,85 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.trigger_error_e_user_error",
+    "title": "Passing `E_USER_ERROR` to `trigger_error()` is deprecated",
+    "summary": "PHP 8.4 deprecates passing `E_USER_ERROR` to `trigger_error()` (and its alias `user_error()`), which halts the entire script; the replacement - throwing an exception, or downgrading to `E_USER_WARNING` plus explicit control flow - changes control flow and is not a safe mechanical substitution.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "Never pass `E_USER_ERROR` to `trigger_error()` (or its alias `user_error()`) in new code. When a condition is truly unrecoverable, throw an exception of a type that describes what went wrong (a built-in SPL exception such as InvalidArgumentException/RuntimeException/LogicException, or a project-specific one) so the failure can be caught, logged with a stack trace, and tested like any other error condition. When the intent is genuinely to log-and-halt a top-level script with no meaningful caller to unwind to, use `trigger_error($message, E_USER_WARNING)` (or `E_USER_NOTICE`) followed by an explicit exit/return rather than relying on `E_USER_ERROR`'s implicit script-terminating side effect.",
+    "existing_code_policy": "Do not mechanically replace `trigger_error($message, E_USER_ERROR)` with `throw new SomeException($message)` everywhere it appears: the old call unconditionally halted the entire script (barring a registered error handler that itself exits or throws), while a thrown exception only unwinds the call stack until something catches it - if any caller up the chain has a broad catch (\\Throwable)/catch (\\Error), code that used to hard-stop the whole process now continues running past a state the original author considered fatal, which is a fundamentally different, and potentially unsafe, program behavior. Trace each call site's actual callers before choosing a replacement: throw a specific exception type when a caller catching and recovering is actually desirable; keep `trigger_error()` with `E_USER_WARNING` plus an explicit exit/return when the original all-or-nothing halt is still what is wanted. Do the same check for `user_error()` calls, since it is a plain alias of `trigger_error()` and is deprecated identically when passed `E_USER_ERROR`.",
+    "guideline": "Do not pass `E_USER_ERROR` to `trigger_error()` or `user_error()`. Throw a specifically-typed exception when the failure should be catchable and recoverable by some caller, or keep `trigger_error()` with `E_USER_WARNING`/`E_USER_NOTICE` plus an explicit exit/return when an unconditional halt is genuinely still the intended behavior - and verify which of the two a given call site actually needs before changing it, since the two replacements have different control-flow consequences.",
+    "details": "UPGRADING-8.4.0 lists this under Deprecated Functionality -> Core: \"Passing E_USER_ERROR to trigger_error() is now deprecated.\" Only the E_USER_ERROR error level is affected; `trigger_error()` itself is not deprecated, and calling it with E_USER_WARNING, E_USER_NOTICE, or E_USER_DEPRECATED remains completely normal. The reason E_USER_ERROR specifically is singled out is behavioral: unlike the other user-level error constants, which just report and let execution continue, E_USER_ERROR is treated like a fatal error - after any registered error handler runs, PHP halts the rest of the script outright, without unwinding the stack the way a thrown exception does, without a chance for a caller's try/finally to run its cleanup, and without a Throwable object a caller could inspect or log with context. Since PHP has had a full exception hierarchy since long before 8.4, `trigger_error($message, E_USER_ERROR)` predates - and is a strictly weaker version of - simply throwing an exception, which is the direction this deprecation pushes code towards. The check is on the numeric value of the error-level argument (256), not on the literal token E_USER_ERROR in source code, so code that passes the raw integer 256 instead of the named constant is equally affected. `user_error()` is a plain alias of `trigger_error()` and is deprecated identically when passed E_USER_ERROR. This is not removed on any minor this tool tracks (PHP 8.2 through 8.5): `trigger_error($message, E_USER_ERROR)` keeps halting the script exactly as before, only now with an added E_DEPRECATED notice, so `introduced_in` and `removed_in` both stay null.",
+    "examples": [
+        {
+            "before": [
+                "final class Money",
+                "{",
+                "    public function __construct(private readonly int $cents)",
+                "    {",
+                "        if ($cents < 0) {",
+                "            trigger_error('Money amount cannot be negative', E_USER_ERROR);",
+                "        }",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class Money",
+                "{",
+                "    public function __construct(private readonly int $cents)",
+                "    {",
+                "        if ($cents < 0) {",
+                "            throw new \\InvalidArgumentException('Money amount cannot be negative');",
+                "        }",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "if (!isset($_ENV['APP_SECRET'])) {",
+                "    trigger_error('APP_SECRET environment variable is required', E_USER_ERROR);",
+                "}",
+                "",
+                "runApplication();"
+            ],
+            "after": [
+                "if (!isset($_ENV['APP_SECRET'])) {",
+                "    trigger_error('APP_SECRET environment variable is required', E_USER_WARNING);",
+                "    exit(1);",
+                "}",
+                "",
+                "runApplication();"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.ParameterValues.RemovedTriggerErrorLevel.Deprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "Only the E_USER_ERROR level is deprecated; `trigger_error()`/`user_error()` calls using E_USER_WARNING, E_USER_NOTICE, or E_USER_DEPRECATED are unaffected and need no change.",
+        "The check is on the resolved numeric value of the error-level argument (E_USER_ERROR is 256), not on the source-code token, so a call that passes the literal integer 256 is deprecated exactly the same as one that writes the E_USER_ERROR constant.",
+        "behavior_change_risk is \"high\": throwing an exception instead of calling `trigger_error(E_USER_ERROR)` changes whether a failure can be caught and execution continued by some caller up the stack, which is a genuine control-flow change, not merely a cosmetic one - this is why a no-automatic-replacement example is included alongside the two illustrative examples above rather than presenting either fix as a safe default.",
+        "Evidence: UPGRADING-8.4.0.txt, '4. Deprecated Functionality' -> Core: \"Passing E_USER_ERROR to trigger_error() is now deprecated.\" (RFC deprecations_php_8_4#deprecate_passing_e_user_error_to_trigger_error). Grepping the 8.2, 8.3 and 8.5 UPGRADING files for \"E_USER_ERROR\" found no matches, so no later escalation to removal is recorded."
+    ]
+}

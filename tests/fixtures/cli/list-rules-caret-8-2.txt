@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 16 of 16 shown
+Rules: 24 of 24 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -7,24 +7,40 @@ Rules: 16 of 16 shown
       Prefer array_first() and array_last()
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
+  [deprecated_in_range]              P2  deprecated           core.get_class_without_arguments
+      `get_class()`/`get_parent_class()` without arguments is deprecated
   [forbidden_above_feature_ceiling]  P3  modern_preference    core.json_validate
       Prefer `json_validate()` over decode-and-check
   [forbidden_above_feature_ceiling]  P1  feature              core.override_attribute
       #[\Override] attribute
+  [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
+      Partially supported callables are deprecated
   [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
       `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
+  [deprecated_in_range]              P2  deprecated           core.trigger_error_e_user_error
+      Passing `E_USER_ERROR` to `trigger_error()` is deprecated
+  [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
+      `utf8_encode()` and `utf8_decode()` are deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated
   [removed_in_range]                 P0  removed              extension.imap_unbundled
       The IMAP extension was unbundled from php-src
   [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
+  [forbidden_above_feature_ceiling]  P1  feature              language.asymmetric_property_visibility
+      Asymmetric property visibility
+  [deprecated_in_range]              P2  deprecated           language.backtick_shell_exec
+      Backtick shell-execution operator is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
       "${var}"/"${expr}" string interpolation is deprecated
   [applicable]                       P1  compatibility_guard  language.feature_ceiling_guard
       Never emit syntax or APIs newer than the feature ceiling
   [deprecated_in_range]              P2  deprecated           language.implicitly_nullable_parameter_types
       Implicitly nullable parameter types are deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              language.new_without_parentheses
+      `new` expressions with constructor arguments are dereferencable
+  [deprecated_in_range]              P2  deprecated           language.non_canonical_cast_names
+      (boolean), (integer), (double) and (binary) casts are deprecated
   [forbidden_above_feature_ceiling]  P1  feature              language.pipe_operator
       Pipe operator (`|>`)
   [forbidden_above_feature_ceiling]  P1  feature              language.property_hooks

@@ -1,0 +1,56 @@
+{
+    "schema_version": "1.1.0",
+    "id": "language.backtick_shell_exec",
+    "title": "Backtick shell-execution operator is deprecated",
+    "summary": "PHP 8.5 deprecates the backtick operator, a language-level alias for shell_exec() that runs its contents as a shell command and evaluates to the command's output (or null); the replacement is an explicit shell_exec() call, a pure spelling change since the two have always meant exactly the same thing.",
+    "category": "language",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Never use the backtick execution operator in new code; call shell_exec() explicitly with the same command string instead. This rule is about the operator's spelling only - it takes no position on whether running a shell command is the right approach for a given piece of code. If new code does need to run an external command (through either spelling), prefer building the command safely with escapeshellarg()/escapeshellcmd(), or use proc_open() with an argument array, since that safety concern is unrelated to which of these two equivalent spellings is used.",
+    "existing_code_policy": "Rewrite a backtick-delimited command to an equivalent shell_exec() call wherever found; because the two spellings have always executed identically and returned an identical result, this is safe to do mechanically and in bulk. The one thing to get right when rewriting is escaping, since the two forms use different delimiters: content inside backticks needs an escaped backtick (\\`) for a literal backtick character and no escaping for a literal double quote, while the same content as a double-quoted string argument to shell_exec() needs the reverse (an escaped double quote, and no escaping for a literal backtick) - a naive delimiter-only substitution can silently change what the resulting string contains. Leave alone any backtick character that appears inside an ordinary double-quoted string or heredoc: only the standalone backtick-delimited expression is the deprecated operator, and a backtick occurring as a literal character inside a string has no special meaning there.",
+    "guideline": "Prefer an explicit shell_exec($command) call over the backtick operator, treating this purely as a spelling change. Separately, whenever code needs to run a shell command at all - through either spelling - prefer constructing the command safely with escapeshellarg()/escapeshellcmd(), or use proc_open() with an argument array, since both the backtick operator and shell_exec() pass their string to the shell unescaped.",
+    "details": "PHP 8.5 deprecates the backtick operator. The official UPGRADING text states it in one line: \"The backtick operator as an alias for shell_exec() has been deprecated.\" That line is a precise description of what the operator has always done: a backtick-delimited expression, `command`, executes its contents as a command through the platform shell and evaluates to the command's captured output, or null if the command produced no output or could not be run - exactly shell_exec($command)'s documented behavior, because backticks have only ever been a language-level alias for that function, not merely a similar construct. Backtick content is interpolated the same way a double-quoted string is (variables are substituted, and the same escape sequences apply), so `ls $dir` and shell_exec(\"ls $dir\") run the identical command with the identical result; this deprecation is about which of those two equivalent spellings the parser is asked to accept, not about whether shelling out to run a command was the right design choice, which this rule takes no position on either way. Only the standalone backtick execution operator is affected: a backtick character that appears inside an ordinary double-quoted string or a heredoc is just a literal byte there, carries no special meaning, and does not trigger this deprecation no matter what surrounds it. As of PHP 8.5 the operator is deprecated, not removed - it keeps working with unchanged behavior on 8.5+, emitting only the new E_DEPRECATED diagnostic - and no later UPGRADING file exists among this catalogue's known minors (8.2-8.5) to record a removal, so removed_in stays null; the operator remains fully valid, non-deprecated syntax on every earlier known minor (8.2-8.4).",
+    "examples": [
+        {
+            "before": [
+                "$files = `ls -la $directory`;"
+            ],
+            "after": [
+                "$files = shell_exec(\"ls -la $directory\");"
+            ]
+        },
+        {
+            "before": [
+                "$result = `grep \"TODO\" $file`;"
+            ],
+            "after": [
+                "$result = shell_exec(\"grep \\\"TODO\\\" $file\");"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "Both the backtick operator and shell_exec() pass their command string to the underlying shell without escaping any interpolated values; when a command incorporates untrusted input, use escapeshellarg() to quote each argument (or escapeshellcmd() for the whole command), or better, use proc_open() with a separate argument array so the shell never has to parse concatenated input at all. This shell-safety concern is equally true of both spellings, and this rule's backtick-to-shell_exec() rewrite does not change it one way or the other.",
+        "Only the standalone backtick-delimited expression is the deprecated operator; a backtick character written inside a double-quoted string or heredoc is an ordinary literal byte there and is not affected by this deprecation.",
+        "Evidence: UPGRADING-8.5.0.txt, '4. Deprecated Functionality' -> Core: \"The backtick operator as an alias for shell_exec() has been deprecated.\""
+    ]
+}

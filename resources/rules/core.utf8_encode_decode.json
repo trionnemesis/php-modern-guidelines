@@ -1,0 +1,80 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.utf8_encode_decode",
+    "title": "`utf8_encode()` and `utf8_decode()` are deprecated",
+    "summary": "PHP 8.2 deprecates `utf8_encode()` and `utf8_decode()`, which despite their generic-sounding names convert only between ISO-8859-1 (Latin-1) and UTF-8; the replacement is `mb_convert_encoding()` or `iconv()` with the source and target encodings spelled out explicitly, not a blind rename.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.2",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never call `utf8_encode()` or `utf8_decode()` in new code. When a value genuinely needs converting between ISO-8859-1 and UTF-8, call `mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1')` (in place of `utf8_encode()`) or `mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8')` (in place of `utf8_decode()`), or the equivalent `iconv()` call, with both encodings written out explicitly. Confirm ext-mbstring (for `mb_convert_encoding()`) or ext-iconv (for `iconv()`) is actually enabled on every target runtime before depending on it, since neither ships enabled everywhere by default.",
+    "existing_code_policy": "Do not rename every `utf8_encode()`/`utf8_decode()` call to its `mb_convert_encoding()`/`iconv()` equivalent without checking the call site first: confirm the data really is ISO-8859-1 (for `utf8_encode()`) or UTF-8 (for `utf8_decode()`) before replacing the call, since these functions are commonly misused as a generic \"make sure this is UTF-8\" step on strings of unknown, already-UTF-8, or otherwise non-Latin-1 origin. When the assumption holds, `mb_convert_encoding()`/`iconv()` with the matching explicit encodings is an exact, safe substitution. When it does not, do not paper over the call site by keeping the same (wrong) encoding assumption; that call site needs a real encoding-detection or normalization decision, which is a case-by-case judgment call, not a rename.",
+    "guideline": "Do not call `utf8_encode()`/`utf8_decode()`; they are not general-purpose encoding converters, only fixed-direction ISO-8859-1-to-UTF-8 converters. Use `mb_convert_encoding()` or `iconv()` with the source and target encodings spelled out explicitly, and verify the data's actual encoding before replacing a call rather than assuming the original ISO-8859-1 assumption was correct.",
+    "details": "PHP 8.2's UPGRADING file lists this under Deprecated Functionality -> Standard: \"utf8_encode() and utf8_decode() have been deprecated.\" Both functions predate PHP's general-purpose encoding-conversion tools and, despite their generic-sounding names, are narrowly scoped: `utf8_encode(string $string): string` converts a string from ISO-8859-1 (Latin-1) to UTF-8, and `utf8_decode(string $string): string` converts the other direction, from UTF-8 to ISO-8859-1. Neither takes an encoding argument, and neither can be pointed at any other charset. Because ISO-8859-1 maps every byte 0-255 to a Unicode code point one-to-one, `utf8_encode()` never fails on any input; `utf8_decode()`, going the other way, must handle UTF-8 sequences that have no ISO-8859-1 equivalent. The manual points to `mb_convert_encoding()` or `iconv()` as the general-purpose replacements, both of which require the source and target encodings to be named explicitly instead of assuming ISO-8859-1. `mb_convert_encoding()` needs the mbstring extension and `iconv()` needs the iconv extension; both are common but not universal, so a replacement must confirm the target runtime actually has one enabled - a PHP-extension availability question, not a Composer package constraint, which is why `package_constraints` stays empty here. In practice these two functions are very often reached for as a generic \"ensure this string is UTF-8\" step on data whose real encoding is unknown, already UTF-8, or some other 8-bit encoding such as Windows-1252, so a call site's existing ISO-8859-1 assumption is not automatically trustworthy just because the code has always called `utf8_encode()`/`utf8_decode()`. Neither function is removed on any minor this tool tracks (PHP 8.2 through 8.5): both remain fully callable with unchanged output, only emitting an E_DEPRECATED diagnostic starting on PHP 8.2, so `introduced_in` and `removed_in` both stay null.",
+    "examples": [
+        {
+            "before": [
+                "final class LegacyCustomerImporter",
+                "{",
+                "    public function importName(array $row): string",
+                "    {",
+                "        // $row['name'] comes from a Latin-1 (ISO-8859-1) legacy export file.",
+                "        return utf8_encode($row['name']);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class LegacyCustomerImporter",
+                "{",
+                "    public function importName(array $row): string",
+                "    {",
+                "        // $row['name'] comes from a Latin-1 (ISO-8859-1) legacy export file.",
+                "        return mb_convert_encoding($row['name'], 'UTF-8', 'ISO-8859-1');",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "function writeLegacyExport(string $utf8Text): void",
+                "{",
+                "    file_put_contents('export.txt', utf8_decode($utf8Text), FILE_APPEND);",
+                "}"
+            ],
+            "after": [
+                "function writeLegacyExport(string $utf8Text): void",
+                "{",
+                "    file_put_contents('export.txt', mb_convert_encoding($utf8Text, 'ISO-8859-1', 'UTF-8'), FILE_APPEND);",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctions.utf8_decodeDeprecated",
+            "PHPCompatibility.FunctionUse.RemovedFunctions.utf8_encodeDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "`utf8_encode()` always succeeds because ISO-8859-1 maps every byte 0-255 to a Unicode code point; `utf8_decode()` must instead handle UTF-8 sequences with no ISO-8859-1 equivalent, so its replacement's handling of unmappable characters (`mb_substitute_character()` for `mb_convert_encoding()`, or the //IGNORE//TRANSLIT suffix for `iconv()`) may need to be set explicitly to match the original call's expectations.",
+        "These functions are frequently misused as a generic \"make this UTF-8\" cleanup step on data of unknown or already-UTF-8 encoding; calling `utf8_encode()` on text that is already UTF-8 (or Windows-1252, or another 8-bit encoding) corrupts it rather than fixing it, so confirming the call site's actual input encoding matters more than picking the right replacement function.",
+        "Evidence: UPGRADING-8.2.0.txt, '4. Deprecated Functionality' -> Standard: \"utf8_encode() and utf8_decode() have been deprecated.\" Grepping the 8.3, 8.4 and 8.5 UPGRADING files for \"utf8_encode\" and \"utf8_decode\" found no matches, so no later escalation to removal is recorded."
+    ]
+}

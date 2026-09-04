@@ -211,6 +211,28 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved',
     ];
 
+    /**
+     * The 10 distinct sniff ids `src/catalogue_expansion_findings.php` proves — one v0.3.2 mapping each
+     * (get_class-no-args, trigger_error(E_USER_ERROR), the four non-canonical casts, the backtick
+     * operator, `private(set)`, `protected(set)`, and `new Foo()->bar()`). The two remaining v0.3.2
+     * mappings (utf8_encode()/utf8_decode()) need no new fixture: `unmapped_findings.php` already calls
+     * both, and they simply move from unmapped to mapped (see $preImapIds below).
+     *
+     * @var list<string>
+     */
+    private const CATALOGUE_EXPANSION_SNIFF_IDS = [
+        'PHPCompatibility.Keywords.NewKeywords.t_private_setFound',
+        'PHPCompatibility.Keywords.NewKeywords.t_protected_setFound',
+        'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated',
+        'PHPCompatibility.ParameterValues.RemovedGetClassNoArgs.ArgMissing',
+        'PHPCompatibility.ParameterValues.RemovedTriggerErrorLevel.Deprecated',
+        'PHPCompatibility.Syntax.NewClassMemberAccessWithoutParentheses.Found',
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.binaryDeprecated',
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.booleanDeprecated',
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.doubleDeprecated',
+        'PHPCompatibility.TypeCasts.RemovedTypeCasts.integerDeprecated',
+    ];
+
     private string $executable = '';
 
     private string $findingsProject = '';
@@ -290,11 +312,11 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame(
             [
                 'invocation_count' => 3,
-                'finding_count' => 166,
-                'mapped_finding_count' => 161,
-                'unmapped_finding_count' => 5,
-                'mapping_count' => 161,
-                'mapped_rule_count' => 9,
+                'finding_count' => 177,
+                'mapped_finding_count' => 174,
+                'unmapped_finding_count' => 3,
+                'mapping_count' => 174,
+                'mapped_rule_count' => 16,
             ],
             $report['summary'],
         );
@@ -304,7 +326,10 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             $ids[] = $finding['external_rule_id'];
         }
 
-        // The 16 ids verified before the imap family was mapped (13 mapped + 3 unmapped), unchanged.
+        // The 16 ids verified before the imap family was mapped, unchanged as a list. Their mapped/
+        // unmapped split is no longer 13/3, though: utf8_decodeDeprecated and utf8_encodeDeprecated are
+        // now mapped to core.utf8_encode_decode (a v0.3.2 mapping), so this list is 15 mapped + 1
+        // unmapped (split() alone stays unmapped, still proving the preservation boundary).
         $preImapIds = [
             'PHPCompatibility.Classes.NewTypedConstants.Found',
             'PHPCompatibility.FunctionDeclarations.RemovedImplicitlyNullableParam.Deprecated',
@@ -329,29 +354,35 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // Classes.RemovedClasses + 1 IniDirectives.RemovedIniDirectives) plus two unmapped ids that prove
         // the boundary: imap_is_open() was itself added in PHP 8.2.1, so it also reports an unrelated
         // "not present in PHP version 8.2.0 or earlier" finding, and imap_header() reports a distinct,
-        // pre-floor "removed since PHP 8.0" fact that must not be swept into the map.
-        $expectedIds = array_merge($preImapIds, self::imapUnbundledSniffIds(), [
+        // pre-floor "removed since PHP 8.0" fact that must not be swept into the map. The v0.3.2
+        // catalogue expansion then adds CATALOGUE_EXPANSION_SNIFF_IDS's 10 further mapped ids, proved by
+        // catalogue_expansion_findings.php (the other 2 of the 12 new mappings are the utf8 ids already
+        // present in $preImapIds above).
+        $expectedIds = array_merge($preImapIds, self::imapUnbundledSniffIds(), self::CATALOGUE_EXPANSION_SNIFF_IDS, [
             'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
             'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
         ]);
         sort($expectedIds, SORT_STRING);
 
-        // (a) the sorted set of external rule ids: 163 distinct ids (158 mapped + 5 unmapped).
+        // (a) the sorted set of external rule ids: 173 distinct ids (170 mapped + 3 unmapped).
         $sortedSet = array_values(array_unique($ids));
         sort($sortedSet, SORT_STRING);
         self::assertSame($expectedIds, $sortedSet);
 
-        // (b) the sorted 166-element multiset: the same 163 distinct ids with three ids each appearing
-        // once more, because each is triggered from two distinct locations that dedupe must not collapse:
-        // the dollar-brace expression syntax id (once from mapped_findings.php, once from
+        // (b) the sorted 177-element multiset: the same 173 distinct ids with four ids each appearing
+        // once more, because each is triggered from two distinct locations (or tokens) that dedupe must
+        // not collapse: the dollar-brace expression syntax id (once from mapped_findings.php, once from
         // duplicate_findings.php — different files, so different sortKey()s), the IMAP\Connection class
         // id (the parameter type and the return type of the same function signature, in
-        // imap_all_surfaces.php — same file and line, different columns), and the imap.enable_insecure_rsh
-        // ini-directive id (ini_set() then ini_get(), in imap_ini.php — same file, different lines).
+        // imap_all_surfaces.php — same file and line, different columns), the imap.enable_insecure_rsh
+        // ini-directive id (ini_set() then ini_get(), in imap_ini.php — same file, different lines), and
+        // the backtick operator id (the opening and closing backtick of the one expression in
+        // catalogue_expansion_findings.php — same file and line, different columns).
         $expectedMultiset = $expectedIds;
         $expectedMultiset[] = 'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax';
         $expectedMultiset[] = 'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved';
         $expectedMultiset[] = 'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved';
+        $expectedMultiset[] = 'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated';
         sort($expectedMultiset, SORT_STRING);
         $sortedMultiset = $ids;
         sort($sortedMultiset, SORT_STRING);
@@ -389,6 +420,28 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             }
         }
 
+        // Every one of the 12 v0.3.2 mappings, proved end-to-end through the real analyzer: the two utf8
+        // ids (already called by unmapped_findings.php, now mapped instead of unmapped) and the 10
+        // CATALOGUE_EXPANSION_SNIFF_IDS ids (proved by catalogue_expansion_findings.php).
+        foreach ([
+            'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_decodeDeprecated' => ['core.utf8_encode_decode'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_encodeDeprecated' => ['core.utf8_encode_decode'],
+            'PHPCompatibility.Keywords.NewKeywords.t_private_setFound' => ['language.asymmetric_property_visibility'],
+            'PHPCompatibility.Keywords.NewKeywords.t_protected_setFound' => ['language.asymmetric_property_visibility'],
+            'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated' => ['language.backtick_shell_exec'],
+            'PHPCompatibility.ParameterValues.RemovedGetClassNoArgs.ArgMissing' => ['core.get_class_without_arguments'],
+            'PHPCompatibility.ParameterValues.RemovedTriggerErrorLevel.Deprecated' => ['core.trigger_error_e_user_error'],
+            'PHPCompatibility.Syntax.NewClassMemberAccessWithoutParentheses.Found' => ['language.new_without_parentheses'],
+            'PHPCompatibility.TypeCasts.RemovedTypeCasts.binaryDeprecated' => ['language.non_canonical_cast_names'],
+            'PHPCompatibility.TypeCasts.RemovedTypeCasts.booleanDeprecated' => ['language.non_canonical_cast_names'],
+            'PHPCompatibility.TypeCasts.RemovedTypeCasts.doubleDeprecated' => ['language.non_canonical_cast_names'],
+            'PHPCompatibility.TypeCasts.RemovedTypeCasts.integerDeprecated' => ['language.non_canonical_cast_names'],
+        ] as $sniffId => $expectedRuleIds) {
+            foreach ($mappedRuleIdsBySniffId[$sniffId] as $mapped) {
+                self::assertSame($expectedRuleIds, $mapped, $sniffId);
+            }
+        }
+
         // The two imap boundary ids prove the "must stay unmapped" decision: imap_is_open() was itself
         // added in PHP 8.2.1 (a fact this catalogue does not track) and imap_header() was removed in PHP
         // 8.0 (a different, pre-floor fact) — neither is part of the 75-entry unbundling family.
@@ -417,12 +470,19 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             [
                 'core.array_find_functions',
                 'core.array_first_last',
+                'core.get_class_without_arguments',
                 'core.json_validate',
+                'core.trigger_error_e_user_error',
+                'core.utf8_encode_decode',
                 'extension.curl_close',
                 'extension.imap_unbundled',
                 'extension.mysqli_driver_reconnect',
+                'language.asymmetric_property_visibility',
+                'language.backtick_shell_exec',
                 'language.dollar_brace_string_interpolation',
                 'language.implicitly_nullable_parameter_types',
+                'language.new_without_parentheses',
+                'language.non_canonical_cast_names',
                 'language.typed_class_constants',
             ],
             $ruleContextIds,
@@ -593,16 +653,16 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertStringContainsString('Verification: findings (exit 6)', $human);
         self::assertStringContainsString('Planned invocations: 3', $human);
         self::assertStringContainsString('Invocations: 3', $human);
-        self::assertStringContainsString('Findings: 166', $human);
-        self::assertStringContainsString('mapped findings        161', $human);
-        self::assertStringContainsString('unmapped findings      5', $human);
+        self::assertStringContainsString('Findings: 177', $human);
+        self::assertStringContainsString('mapped findings        174', $human);
+        self::assertStringContainsString('unmapped findings      3', $human);
 
         [$jsonExitCode, $report] = $this->verifyReport($this->findingsProject);
         /** @var array{status: string, exit_code: int, summary: array{finding_count: int}} $report */
         self::assertSame($humanExitCode, $jsonExitCode);
         self::assertSame('findings', $report['status']);
         self::assertSame(ExitCode::VERIFICATION_FINDINGS, $report['exit_code']);
-        self::assertSame(166, $report['summary']['finding_count']);
+        self::assertSame(177, $report['summary']['finding_count']);
     }
 
     public function testJsonOutputIsByteIdenticalAcrossTwoRuns(): void
