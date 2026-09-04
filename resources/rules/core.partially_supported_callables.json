@@ -1,0 +1,96 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.partially_supported_callables",
+    "title": "Partially supported callables are deprecated",
+    "summary": "PHP 8.2 deprecates using `\"self::method\"`, `\"parent::method\"`, `\"static::method\"`, their two-element array equivalents, and array callables whose second element is itself a `\"Class::method\"` string, wherever `call_user_func()`, `array_map()`, `is_callable()`, or another callable-consuming or callable-inspecting function accepts them; the direct `$callable()` syntax cannot use these shapes at all - it throws a fatal Error, not a deprecation notice - and ordinary `\"A::method\"`/`[\"A\", \"method\"]` callables are unaffected.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.2",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never build a callable value out of `\"self::method\"`, `\"parent::method\"`, `\"static::method\"`, `[\"self\", \"method\"]`, `[\"parent\", \"method\"]`, `[\"static\", \"method\"]`, or an array whose second element already contains its own `\"Class::method\"` string, no matter how the value will be used - passed to `call_user_func()`/`array_map()`/a similar function, merely checked with `is_callable()`, or (which will not work at all) invoked directly via `$callable()`. Use a first-class callable expression instead - `self::method(...)`, `parent::method(...)`, `static::method(...)`, or `$this->method(...)` for an instance method - which the direct `$callable()` syntax handles natively and which every callable-consuming function accepts without a notice.",
+    "existing_code_policy": "Find every place one of these seven shapes is constructed - a string or array literal built from self/parent/static plus a method name - not just the places where it looks like it is invoked: the deprecation notice fires on `call_user_func()`, `array_map()`, `usort()`, and similar consumers, and also on a bare `is_callable()` check that never invokes the value at all, so \"grep for the invocation call site\" is not sufficient advice - a codebase can carry these notices from an `is_callable()` probe alone, with no invocation anywhere nearby. Replace each shape with the first-class callable expression that uses the same keyword: a `\"self::method\"` string becomes `self::method(...)`, `\"parent::method\"` becomes `parent::method(...)`, and `\"static::method\"` becomes `static::method(...)` - do not collapse `static::` into `self::` out of habit, since `static::` is late-static-bound to the runtime class and `self::` is bound to the class where the code is written, and swapping one for the other changes which subclass's override actually runs. When the target is a non-static method meant to run against the current object rather than resolved through a class-name keyword, `$this->method(...)` is the clearer and equally valid replacement. Because a Closure is not the same kind of value as the string/array it replaces, also check whether the callable is stored, compared with ==/===, serialized, or introspected with is_string()/is_array() anywhere downstream before converting it. And because is_callable(['static', 'onHook'])-style checks are sometimes used specifically to test at runtime whether an optional method exists at all, be careful converting one to a first-class callable expression: `static::onHook(...)` requires onHook to be declared somewhere in the class hierarchy at compile time, so if the method might genuinely be absent, the rewrite fails to compile instead of the check returning false - that call site needs `method_exists()`, not a first-class callable.",
+    "guideline": "Do not construct a callable value out of `\"self::method\"`, `\"parent::method\"`, `\"static::method\"`, their two-element array forms, or an array whose second element is itself a `\"Class::method\"` string. It is not how they get invoked that matters - attempting to invoke one directly via `$callable()` throws a fatal Error, unrelated to this deprecation - it is that using the value at all, through `call_user_func()`, `array_map()`, `is_callable()`, or any other callable-consuming or callable-inspecting function, raises an E_DEPRECATED notice. Replace the value itself with the matching first-class callable expression (`self::method(...)`, `parent::method(...)`, `static::method(...)`, or `$this->method(...)`), preserving whichever early- or late-binding keyword the original callable used.",
+    "details": "UPGRADING-8.2.0 lists this under Deprecated Functionality -> Core: any callable value that the direct `$callable()` invocation syntax does not accept, but that `call_user_func()` does, is now deprecated (RFC deprecate_partially_supported_callables; a follow-up RFC, partially-supported-callables-expand-deprecation-notices, extended where the notices are raised). The UPGRADING text illustrates the affected values with eight example lines that group into three families, seven distinct shapes in total since the third family is shown twice: the strings `\"self::method\"`, `\"parent::method\"`, and `\"static::method\"`; the two-element arrays `[\"self\", \"method\"]`, `[\"parent\", \"method\"]`, and `[\"static\", \"method\"]`; and an array whose second element is itself a `\"Class::method\"` string, illustrated once with a class-name string and once with an object as the array's first element - `[\"Foo\", \"Bar::method\"]` and `[new Foo, \"Bar::method\"]`. The deprecation fires on use of one of these values by whatever does accept it - `call_user_func()`, `array_map()`, `usort()`, and other callable-consuming functions, and even `is_callable()`, which only inspects a callable without invoking it - not on invoking it through `$callable()`. The direct `$callable()` syntax cannot resolve self, parent, or static at all: those keywords are resolved only against an active class scope, which a bare variable-call expression does not carry, so assigning one of the string shapes to a variable and calling it directly throws a fatal Error (`Class \"self\"/\"parent\"/\"static\" not found`) rather than emitting any deprecation notice - this pre-existing failure is exactly why the UPGRADING text describes these values as \"not accepted by the $callable() syntax\" in the first place, and it is unrelated to, and unchanged by, this deprecation. This does not affect an ordinary, fully-resolved method callable such as `\"A::method\"` or `[\"A\", \"method\"]`, and `call_user_func()` is not itself deprecated as a function - passing it a normal callable remains completely silent; only handing it, or another callable-consuming or callable-inspecting function, one of these seven shapes raises the notice. The seventh shape, where the array's second element already carries its own `\"Class::method\"` designation, is rare enough in real code that its exact resolution and notice text should be verified at the call site rather than assumed; it exists to let a callable reach a specific class's version of a method rather than whatever the array's first element alone would resolve to. None of these shapes is removed on any minor this tool tracks (PHP 8.2 through 8.5): every one remains usable exactly as before through `call_user_func()`-style APIs, now with an added E_DEPRECATED notice, so `introduced_in` and `removed_in` both stay null.",
+    "examples": [
+        {
+            "before": [
+                "abstract class Command",
+                "{",
+                "    public function runAll(array $payloads): array",
+                "    {",
+                "        return array_map('static::execute', $payloads);",
+                "    }",
+                "",
+                "    abstract protected static function execute(mixed $payload): mixed;",
+                "}"
+            ],
+            "after": [
+                "abstract class Command",
+                "{",
+                "    public function runAll(array $payloads): array",
+                "    {",
+                "        return array_map(static::execute(...), $payloads);",
+                "    }",
+                "",
+                "    abstract protected static function execute(mixed $payload): mixed;",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class PriceFormatter",
+                "{",
+                "    public static function forDisplay(float $price): string",
+                "    {",
+                "        return call_user_func(['self', 'toDisplayString'], $price);",
+                "    }",
+                "",
+                "    private static function toDisplayString(float $price): string",
+                "    {",
+                "        return number_format($price, 2);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class PriceFormatter",
+                "{",
+                "    public static function forDisplay(float $price): string",
+                "    {",
+                "        return call_user_func(self::toDisplayString(...), $price);",
+                "    }",
+                "",
+                "    private static function toDisplayString(float $price): string",
+                "    {",
+                "        return number_format($price, 2);",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-09-04"
+        }
+    ],
+    "notes": [
+        "call_user_func() is not deprecated as a function, and passing it an ordinary callable is unaffected; but call_user_func(), array_map(), usort(), and other callable-consuming or callable-inspecting functions - including is_callable(), which only inspects a callable without invoking it - all raise the deprecation notice when handed one of these seven shapes. The direct $callable() syntax cannot use these shapes at all, deprecated or not: self, parent, and static are resolved only within an active class scope, which $callable() does not have, so it throws a fatal Error instead of emitting any notice.",
+        "PHPCompatibility 10.0.0-alpha2 produced no finding for any of these seven callable shapes at testVersion 8.2-8.5, so there is no proven sniff mapping for this rule; `verification.phpcompatibility` is intentionally empty rather than guessed.",
+        "Verified on PHP 8.4.19: call_user_func('self::handle', 1), array_map(['static', 'handle'], $values), and is_callable('parent::handle') each raise the engine's own \"Use of \"self\"/\"static\"/\"parent\" in callables is deprecated\" notice (naming whichever keyword is present) while still completing normally - the is_callable() case raises it despite never invoking the callable at all. Assigning 'self::handle' to a variable and calling it directly ($c()) raises no deprecation whatsoever and instead throws \\Error: Class \"self\" not found, confirming $callable() was already unable to use this shape before this deprecation existed and remains unable to after it.",
+        "Evidence: UPGRADING-8.2.0.txt, '4. Deprecated Functionality' -> Core: \"Callables that are not accepted by the $callable() syntax (but are accepted by call_user_func) are deprecated,\" listing \"self::method\", \"parent::method\", \"static::method\", [\"self\", \"method\"], [\"parent\", \"method\"], [\"static\", \"method\"], [\"Foo\", \"Bar::method\"], and [new Foo, \"Bar::method\"], and noting \"This does not affect normal method callables like \"A::method\" or [\"A\", \"method\"].\" Grepping the 8.3, 8.4 and 8.5 UPGRADING files for this text found no further mention, so no later escalation to removal is recorded."
+    ]
+}
