@@ -1,0 +1,102 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.http_response_header",
+    "title": "The `$http_response_header` predefined variable is deprecated",
+    "summary": "PHP 8.5 deprecates the locally predefined $http_response_header variable in favor of calling http_get_last_response_headers(); verified locally (against a loopback PHP built-in server, since this box cannot reach the public internet), the two carry byte-identical content for the same request - the same list of raw header-line strings, status line first, both accumulating every hop of a followed redirect chain rather than only the final response - but they are not interchangeable in one respect that matters for how existing code gets fixed: $http_response_header only ever exists in the local variable scope of the function that actually made the request, while http_get_last_response_headers() reads a single process-wide \"most recent response\" slot that is not tied to any particular call frame, confirmed by reading it successfully from a caller whose own scope never held $http_response_header at all.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Never rely on $http_response_header in new code; call http_get_last_response_headers() instead, as close as possible to the request that produced the headers you want. Verified locally, calling it immediately after file_get_contents() returns the exact same array $http_response_header would have held for that call: a plain list of raw strings, index 0 the raw status line (e.g. `HTTP/1.1 200 OK`), every following entry one raw, unparsed header line (e.g. `Content-type: text/html; charset=UTF-8`) - there is no lowercasing, no splitting into name/value pairs, and the response body never appears in this array at all. Do not assume the array reflects only the final response of a request that followed a redirect: verified with a real two-hop redirect chain (two 302s then a 200), both $http_response_header and http_get_last_response_headers() contained all three responses concatenated in chronological order - 7 header lines from the first 302, 7 more from the second 302, then 7 from the final 200, 21 entries total - so naively reading index [0] for \"the\" status code silently returns the FIRST redirect's `302 Found` status line rather than the final response's status. If a redirect might be involved, scan the array for entries that look like a status line and use the last one, not index 0. Also verified directly: a request that never gets any HTTP response at all - connection refused, nothing listening - leaves http_get_last_response_headers() returning `null` (exactly as isset($http_response_header) would have been false), which is different from a request that reached the server and received a non-2xx response: a 404, for instance, still populates a full 6-entry header array including the raw `HTTP/1.1 404 Not Found` status line, even though file_get_contents() itself returns `false` and raises its own separate warning. Because http_get_last_response_headers() is not scoped to the call that produced it, be careful where it is read: verified directly, its value survived an unrelated function call made afterward that performed no HTTP request of its own, meaning code that fetches with one call and reads the headers later, elsewhere, or after other requests may have run in between risks reading a different request's headers than the one intended - read it as close as possible to the request, in the same function, exactly as the old variable's scoping used to force by construction.",
+    "existing_code_policy": "Find every read of $http_response_header; two shapes need different handling. If the read happens in the same function that made the request - the pattern the old variable's scoping forced by construction - replace it with a call to http_get_last_response_headers() made at the same point: verified locally, the returned array is identical in content and order to what $http_response_header held there, so the substitution changes nothing observable. If instead a helper function performs the request and returns only the response body - the shape most fetch-a-URL-and-return-the-body helpers take - $http_response_header was never visible to that helper's caller at all: verified directly with a real request, isset($http_response_header) is `false` in the caller's scope immediately after such a helper returns, even though it was `true` inside the helper during the call, and a method on the same object that tries to read $http_response_header separately from the method that made the request gets nothing for the same reason (verified with a two-method class: the reading method returned `null` every time, unconditionally, regardless of the request's real outcome). This is the case worth actively fixing rather than mechanically porting: have the function or method that performs the request call http_get_last_response_headers() immediately and store or return the result explicitly, since the replacement function's real advantage over the old variable is that a value captured this way can then be read from anywhere, including a different method, later. Wherever code inspects a fixed index (typically [0]) of the array to get \"the\" response status, check whether that code path can ever follow an HTTP redirect: verified with a real redirect chain, both mechanisms concatenate every hop's status line and headers in order, so index [0] is only the final response's status when there was no redirect - existing code that assumed otherwise had a latent bug predating this deprecation, not one introduced by migrating to the replacement function. Do not assume http_get_last_response_headers() is available below this project's actual floor without checking: verified locally, it and its companion http_clear_last_response_headers() both exist and work as of PHP 8.4 (confirmed via function_exists(), and this tool's local copy of UPGRADING-8.4 lists both together under New Functions -> Standard, describing them as returning \"the same content as the magic $http_response_header variable\"), so a floor below 8.4 cannot adopt the replacement at all and must keep using the deprecated variable until the floor rises.",
+    "guideline": "Stop reading $http_response_header; call http_get_last_response_headers() instead, as close as possible to the request that produced the headers. It returns the identical raw header-line array (status line first) for the same request, but unlike the old variable it is not confined to the function that made the request, so a helper that returns only a response body can capture and expose its headers explicitly instead of losing them - provided the value is read or captured before any other HTTP-wrapper request runs in between, since the replacement is one process-wide \"most recent response\" slot, not a value scoped to any specific call frame.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Standard: \"The locally predefined variable $http_response_header is deprecated. Instead one should call the http_get_last_response_headers() function.\" (RFC deprecations_php_8_5#deprecate_the_http_response_header_predefined_variable). This PHP 8.5 notice cannot fire on this tool's PHP 8.4.19 host, which predates the deprecation; every observation below is of the underlying mechanism's actual behavior, not of the notice itself. Because this box's outbound network access is restricted to a pre-configured proxy that does not permit arbitrary HTTP requests (confirmed: a plain request to a public host returned a proxy-level 403), every measurement here was made against a `php -S` built-in server bound to a loopback address rather than a real external host, plus a genuine connection-refused case against a port with nothing listening; nothing here was inferred or fabricated. Four things were established. First, scope: a helper function performing `file_get_contents()` and returning only the body was called, and inside that helper `isset($http_response_header)` was confirmed `true` with the expected raw header array; immediately after the same helper returned to its caller, `isset($http_response_header)` in the caller's own scope was confirmed `false` - the variable never crossed the function boundary. The same failure mode was confirmed for a two-method class where one method performs the request and a second method tries to read $http_response_header on its own: the second method returned `null` unconditionally, because $http_response_header was never set in that method's own scope regardless of what the first method's request actually did. Second, content: for a plain, non-redirected 200 response, the array held 7 entries - `HTTP/1.1 200 OK` at index 0, then each response header as its own raw string (`Host: ...`, `Date: ...`, `Connection: close`, `X-Powered-By: PHP/8.4.19`, a custom header, `Content-type: ...`) - no parsing, no key/value split, and the response body was not present anywhere in the array. Third, redirects and failures: a request that followed a real two-hop redirect chain (302, 302, then 200) produced a 21-entry array - all three responses' status lines and headers concatenated in chronological hop order, not only the final response's 7 entries - confirmed identical between $http_response_header and http_get_last_response_headers() read at the same point (`===` compared true). A 404 response left `isset($http_response_header)` `true` with a full 6-entry array including `HTTP/1.1 404 Not Found`, even though `file_get_contents()` itself returned `false` and separately raised `Failed to open stream: HTTP request failed! HTTP/1.1 404 Not Found` (captured as an E_WARNING, errno 2, by the installed error handler). A genuine connection failure (nothing listening on the target port at all) left `isset($http_response_header)` `false` - no array at all - which is the measurable, checkable difference between \"the server responded, just not with 2xx\" and \"no HTTP exchange happened.\" Fourth, the replacement function: `function_exists('http_get_last_response_headers')` and `function_exists('http_clear_last_response_headers')` both returned `true` on this PHP 8.4.19 host (this tool's local copy of UPGRADING-8.4, under New Functions -> Standard, confirms both were added in 8.4: \"Added the http_get_last_response_headers() and http_clear_last_response_headers() that allows retrieving the same content as the magic $http_response_header variable.\"); Reflection shows both take zero parameters, with `http_get_last_response_headers(): ?array` and `http_clear_last_response_headers(): void`. Calling `http_get_last_response_headers()` immediately after the same plain 200 request returned an array `===`-identical to `$http_response_header` captured at the same point, and the same identity held after the redirect chain too. Critically, calling `http_get_last_response_headers()` from the ORIGINAL HELPER'S CALLER - a scope that never itself held $http_response_header - successfully returned the full header array for the request the helper had made; and calling it again after an intervening function call that performed no HTTP request of its own still returned the same array, unchanged. This is the concrete behavior-change risk this rule records: the replacement function fixes the \"trapped in a helper\" problem precisely because it is not scoped to a call frame, but that same property means a read relocated to run later, or in different code, than the request itself can silently observe a different request's headers than intended - a failure mode the old, call-frame-local variable could not produce (it simply would not be set instead). Calling `http_clear_last_response_headers()` and then `http_get_last_response_headers()` again returned `null`, confirming the clear function works as documented.",
+    "examples": [
+        {
+            "before": [
+                "$body = file_get_contents('https://api.example.com/status');",
+                "$statusLine = $http_response_header[0] ?? null;"
+            ],
+            "after": [
+                "$body = file_get_contents('https://api.example.com/status');",
+                "$statusLine = http_get_last_response_headers()[0] ?? null;"
+            ]
+        },
+        {
+            "before": [
+                "final class HttpFetcher",
+                "{",
+                "    public function fetchBody(string $url): string|false",
+                "    {",
+                "        return file_get_contents($url);",
+                "    }",
+                "",
+                "    public function lastStatusCode(): ?int",
+                "    {",
+                "        if (!isset($http_response_header)) {",
+                "            return null;",
+                "        }",
+                "",
+                "        if (preg_match('#^HTTP/\\S+\\s+(\\d{3})#', $http_response_header[0], $m) === 1) {",
+                "            return (int) $m[1];",
+                "        }",
+                "",
+                "        return null;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class HttpFetcher",
+                "{",
+                "    private ?array $lastHeaders = null;",
+                "",
+                "    public function fetchBody(string $url): string|false",
+                "    {",
+                "        $body = file_get_contents($url);",
+                "        $this->lastHeaders = http_get_last_response_headers();",
+                "",
+                "        return $body;",
+                "    }",
+                "",
+                "    public function lastStatusCode(): ?int",
+                "    {",
+                "        if ($this->lastHeaders === null) {",
+                "            return null;",
+                "        }",
+                "",
+                "        if (preg_match('#^HTTP/\\S+\\s+(\\d{3})#', $this->lastHeaders[0], $m) === 1) {",
+                "            return (int) $m[1];",
+                "        }",
+                "",
+                "        return null;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "This box's outbound network access is restricted to a pre-configured proxy that does not permit arbitrary HTTP requests (a plain request to a public host returned a proxy-level 403), so every measurement here was made against a `php -S` built-in server on a loopback address, plus a genuine connection-refused case against an unused port - not against the public internet. Nothing was inferred or fabricated in place of an unreachable request.",
+        "Verified locally on PHP 8.4.19: a helper function performing file_get_contents() and returning only the body left isset($http_response_header) `true` inside the helper and `false` in the caller immediately after the helper returned. Reading $http_response_header from a second method of a class, separate from the method that performed the request, returned `null` unconditionally in a live test, because the variable was never set in that second method's own scope.",
+        "Verified locally: a plain 200 response produced a 7-entry array (raw status line first, then each header line as its own string, no parsing and no response body). A two-hop redirect chain (302, 302, 200) produced a 21-entry array - all three responses concatenated in order, not only the final one - identical between $http_response_header and http_get_last_response_headers() read at the same point (`===` true). A 404 response left $http_response_header set with a 6-entry array including the raw 404 status line, despite file_get_contents() itself returning false and raising its own separate warning. A genuine connection failure (nothing listening) left $http_response_header unset entirely.",
+        "Verified locally: function_exists('http_get_last_response_headers') and function_exists('http_clear_last_response_headers') both return true on PHP 8.4.19; Reflection shows both declared with zero parameters, returning ?array and void respectively. http_get_last_response_headers() called immediately after a request returned an array identical to $http_response_header captured at the same point, for both a plain request and a redirect chain. Called from the original helper's own caller - a scope that never held $http_response_header - it still returned the full header array for the request the helper had made, and it returned the same array again after an intervening function call that made no HTTP request of its own. http_clear_last_response_headers() followed by http_get_last_response_headers() returned null.",
+        "Analyzer probe re-run directly (2026-09-05) at testVersion 8.2-8.5, against a function reading $http_response_header[0] after file_get_contents() and a second function calling http_get_last_response_headers() the same way: both produced zero findings, confirming verification.phpcompatibility is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Standard: \"The locally predefined variable $http_response_header is deprecated. Instead one should call the http_get_last_response_headers() function.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_the_http_response_header_predefined_variable"
+    ]
+}
