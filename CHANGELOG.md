@@ -2,6 +2,59 @@
 
 All notable changes will be documented in this file.
 
+## [0.3.4] - 2026-09-05
+
+### Added
+
+- Eight source-backed rules, growing the catalogue from 32 to 40, all drawn from the **Tier B**
+  candidates registered in [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18)
+  — the tier the pinned analyzer produces no finding for. One is a `behavior_change` rule,
+  `core.resource_to_object_conversions` (8.4); four are lifecycle rules,
+  `core.string_increment_operators` (8.3), `core.sleep_wakeup_magic_methods`, `core.null_array_offset`
+  and `core.constant_redeclaration` (8.5); three are attribute features,
+  `core.sensitive_parameter_attribute` (8.2), `core.deprecated_attribute` (8.4) and
+  `core.nodiscard_attribute` (8.5).
+- `core.resource_to_object_conversions` is the reason this round was worth taking. PHP 8.4 turned DBA,
+  ODBC and SOAP resources into objects, so an unchanged `is_resource()` guard returns `false` for a
+  perfectly healthy handle and takes the error branch on success — silent, and indistinguishable from a
+  real connection failure. The replacement is not uniform, which is the trap: DBA and ODBC return values
+  become checks for `false`, but `SoapClient::$httpurl` and `$sdl` become checks for `null`. Because the
+  change spans three extensions no single `extension` value would be true, so the rule is `core` and
+  framed on `is_resource()`.
+
+### Changed
+
+- **Mapping coverage falls from 24 of 32 rules to 24 of 40.** The absolute figures are unchanged — still
+  24 mapped rules and 195 sniff ids, and `SNIFF_RULE_MAP` was not edited at all — but the catalogue grew
+  underneath them. This is the deliberate trade this release makes: catalogue depth is what the M3-B
+  value gate measured as the binding constraint on end-user value, and the highest-damage item in the
+  whole register can never be mappable. `v0.3.2` and `v0.3.3` took Tier A and raised coverage; this round
+  took the opposite tier on purpose.
+- `SeedRuleCatalogueTest::REVIEW_DATES` gains `2026-09-05` alongside the two existing committed review
+  dates, preserving the rule that every catalogue entry carries exactly one source with a pinned date.
+- The Agent Skill's two executed console examples, both READMEs, `AGENTS.md` and the Pages site report
+  the 40-rule catalogue and the decreased coverage, in both cases with the decrease stated rather than
+  elided. The skill's goldens were regenerated from real command output.
+- Corrected a pre-existing defect in both READMEs: the Quick Start "Expected output" for the `version`
+  command still read `0.3.1`, three releases stale.
+
+### Not included
+
+- Any mapping for the eight new rules. Each was re-probed against the CI-pinned analyzer —
+  PHP_CodeSniffer 3.13.6 with PHPCompatibility 10.0.0-alpha2 — on this release's review date and
+  produced zero findings, so each ships with an empty `verification.phpcompatibility` and a note
+  recording that measurement rather than a guess. The three attribute rules additionally record the
+  structural reason they can never carry one: `NewAttributesSniff::process()` returns unless the scanned
+  policy includes PHP 7.4 or below, so at this tool's 8.2 floor it never inspects an attribute at all.
+- Any new analyzer or adapter infrastructure. `src/` was not touched by this release at all. The PHPStan
+  deprecation adapter (M3-C) stays deferred and the Rector dry-run adapter (M3-D) stays dropped. See
+  [issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9).
+- New PHP version coverage. The known minors are still 8.2–8.5.
+- The two Tier B candidates this round left behind — `__debugInfo()` returning `null` and raising zero to
+  a negative power — and the seven Tier A candidates still open. Issue #18 records them.
+- Framework rule packs, auto-fixes, target-project writes, network rule fetching, and Packagist
+  publication.
+
 ## [0.3.3] - 2026-09-04
 
 ### Added
