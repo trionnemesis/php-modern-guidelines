@@ -25,7 +25,7 @@
           <div>
             <h1>Modern PHP guidance that respects the whole version range.</h1>
             <p class="lede">A policy and rule-query foundation for coding agents: understand the project's declared PHP compatibility before choosing newer syntax, APIs, deprecations, or replacements.</p>
-            <ul class="hero-facts" role="list"><li>48 source-backed rules</li><li>PHP 8.2–8.5 coverage</li><li>Real PHPCompatibility verify adapter</li></ul>
+            <ul class="hero-facts" role="list"><li>56 source-backed rules</li><li>PHP 8.2–8.5 coverage</li><li>Real PHPCompatibility verify adapter</li></ul>
             <div class="actions">
               <a class="button primary" href="https://github.com/trionnemesis/php-modern-guidelines">View repository <span aria-hidden="true">→</span></a>
               <a class="button secondary" href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/README.md">Read the README</a>
@@ -33,8 +33,8 @@
           </div>
           <aside class="version-card" aria-label="Current release status">
             <span class="status-dot" aria-hidden="true"></span><span>Latest release · Rule-catalogue expansion</span>
-            <strong>v0.3.5</strong>
-            <p>The current PHAR contains the M1–M3 engine and real PHPCompatibility verify adapter, now backed by 48 source-backed rules, up from 40 — all eight new rules ship mapped, so mapping coverage rises from 24 of 40 rules (60%) to 32 of 48 (67%), emptying issue #18's Tier A.</p>
+            <strong>v0.3.6</strong>
+            <p>The current PHAR contains the M1–M3 engine and real PHPCompatibility verify adapter, now backed by 56 source-backed rules, up from 48 — only three of the eight new rules ship mapped, so mapping coverage falls from 32 of 48 rules (67%) to 35 of 56 (62%). A php-src-first re-measurement of issue #18 found 13 more uncovered deprecations, disproving the prior claim that Tier A was exhausted.</p>
             <p class="meta">Release: Rule-catalogue expansion · Adapter: PHPCompatibility</p>
           </aside>
         </div>
@@ -50,10 +50,10 @@
       </section>
 
       <section class="container section" id="verification">
-        <div class="section-heading"><p class="eyebrow">Shipped in v0.3.0 · hardened in v0.3.1 · expanded in v0.3.2 · expanded again in v0.3.3 · deepened in v0.3.4 · widened in v0.3.5</p><h2>A real PHPCompatibility adapter reports advisory evidence.</h2></div>
+        <div class="section-heading"><p class="eyebrow">Shipped in v0.3.0 · hardened in v0.3.1 · expanded in v0.3.2 · expanded again in v0.3.3 · deepened in v0.3.4 · widened in v0.3.5 · re-measured in v0.3.6</p><h2>A real PHPCompatibility adapter reports advisory evidence.</h2></div>
         <div class="cards">
           <article class="card"><h3>Released: M2</h3><ul><li><code>resolve</code> / <code>list-rules</code> / <code>explain</code> / <code>doctor</code></li><li>16 source-backed PHP 8.2–8.5 rules</li><li>Agent Skill + <code>AGENTS.md</code> wrapper</li><li>PHAR release asset + SHA-256</li></ul></article>
-          <article class="card"><h3>Released: M3</h3><ul><li>Real PHPCompatibility <code>verify</code> adapter</li><li>Canonical <code>verification.schema.json</code></li><li>Exact policy projection, incl. <code>single-target</code></li><li>Mapped and unmapped evidence model</li><li>Rule-local ordered mapping lists in schema 1.1.0</li><li>Deterministic top-level scan operands with exact root <code>vendor/</code> exclusion</li><li>48 source-backed rules, up from 40</li><li>32 of 48 rules carry a proven sniff mapping, up from 24 of 40</li></ul></article>
+          <article class="card"><h3>Released: M3</h3><ul><li>Real PHPCompatibility <code>verify</code> adapter</li><li>Canonical <code>verification.schema.json</code></li><li>Exact policy projection, incl. <code>single-target</code></li><li>Mapped and unmapped evidence model</li><li>Rule-local ordered mapping lists in schema 1.1.0</li><li>Deterministic top-level scan operands with exact root <code>vendor/</code> exclusion</li><li>56 source-backed rules, up from 48</li><li>35 of 56 rules carry a proven sniff mapping, down from 32 of 48</li></ul></article>
           <article class="card muted"><h3>Still not included</h3><ul><li>PHPStan deprecation adapter (deferred)</li><li>Rector dry-run advisory adapter (dropped)</li><li>Auto-fixing or target-project writes</li></ul></article>
         </div>
         <p class="caption"><code>v0.3.1</code> keeps verification narrow and truthful: the production <code>phpcompatibility</code> adapter uses exact rule mappings and explicit scan operands, excludes only the project root's own <code>vendor/</code> directory, and never falls back to an unanchored ignore pattern that could produce a false clean.</p>
@@ -80,8 +80,9 @@
           <li><strong>Rule-catalogue expansion · v0.3.2 (complete)</strong><span>Acted on the M3-B value gate finding directly: added 8 source-backed rules (16 → 24) and 12 proven PHPCompatibility sniff mappings (9 of 16 → 16 of 24 rules mapped), with no new adapter infrastructure.</span></li>
           <li><strong>Further catalogue and mapping growth · v0.3.3 (complete)</strong><span>Added 8 more source-backed rules (24 → 32) and 25 proven PHPCompatibility sniff mappings (16 of 24 → 24 of 32 rules mapped), every one of the eight new rules shipping mapped, with no new adapter infrastructure.</span></li>
           <li><strong>Catalogue depth over mapping breadth · v0.3.4 (complete)</strong><span>Added 8 more source-backed rules (32 → 40), all from issue #18's Tier B — candidates the analyzer produces no finding for at all — so every one ships unmapped and mapping coverage falls from 24 of 32 rules to 24 of 40, a deliberate, measured trade for catalogue depth rather than a regression.</span></li>
-          <li><strong>Emptying issue #18's Tier A · v0.3.5 (complete)</strong><span>Added the 8 remaining source-backed rules from issue #18's Tier A (40 → 48), every one shipping mapped, so mapping coverage rises from 24 of 40 rules (60%) to 32 of 48 (67%) — reversing the previous round's deliberate trade and emptying Tier A entirely, though two low-frequency Tier B candidates, two structural analyzer findings, and 16 of 48 unmapped rules remain.</span></li>
-          <li class="current"><strong>Next · further catalogue and mapping growth</strong><span>Mapping coverage still covers only 32 of 48 rules, so growing further source-backed PHP rules and their proven mappings — including the register's remaining Tier B candidates — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter.</span></li>
+          <li><strong>Emptying issue #18's Tier A · v0.3.5 (complete)</strong><span>Added the 8 remaining source-backed rules from issue #18's Tier A (40 → 48), every one shipping mapped, so mapping coverage rises from 24 of 40 rules (60%) to 32 of 48 (67%) — reversing the previous round's deliberate trade. Tier A, as bounded by analyzer-probed candidates, was believed exhausted; v0.3.6 found that incomplete.</span></li>
+          <li><strong>Re-measuring issue #18 from php-src · v0.3.6 (complete)</strong><span>Enumerating candidates from php-src UPGRADING first, rather than by probing the analyzer, found 13 uncovered Core/Standard deprecations (3 mappable) and disproved the "Tier A exhausted" claim. Ships 8 of the 13 (48 → 56 rules), so mapping coverage falls from 32 of 48 rules (67%) to 35 of 56 (62%); 5 of the 13 gaps, all unmappable, remain open.</span></li>
+          <li class="current"><strong>Next · further catalogue and mapping growth</strong><span>Mapping coverage still covers only 35 of 56 rules, so growing further source-backed PHP rules and their proven mappings — including the register's remaining Tier B candidates and the five still-uncovered php-src gaps — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter.</span></li>
           <li><strong>M4 · v0.4.x</strong><span>Isolated framework rule packs without mixing framework conventions into PHP Core policy.</span></li>
         </ol>
       </section>
@@ -94,6 +95,6 @@
         <p class="attribution">Primary inspiration: <a href="https://github.com/JetBrains/go-modern-guidelines">JetBrains/go-modern-guidelines</a>. Modern PHP Guidelines is an independent implementation and is not affiliated with or endorsed by JetBrains. Its narrow version-policy focus is also distinct from <a href="https://github.com/netresearch/php-modernization-skill">netresearch/php-modernization-skill</a>.</p>
       </section>
     </main>
-    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · Rule-catalogue expansion v0.3.5 release</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
+    <footer class="footer container"><span>Modern PHP Guidelines · Apache-2.0 · Rule-catalogue expansion v0.3.6 release</span><a href="https://github.com/trionnemesis/php-modern-guidelines/blob/main/NOTICE.md">Attribution notice</a></footer>
   </body>
 </html>
