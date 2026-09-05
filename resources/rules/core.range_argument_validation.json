@@ -1,0 +1,99 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.range_argument_validation",
+    "title": "`range()` now validates its arguments instead of silently tolerating bad ones",
+    "summary": "As of PHP 8.3, range() validates its arguments instead of silently coercing whatever it is given: an object, resource, or array for $start/$end/$step now throws a TypeError; 0, a wrongly-signed, or a non-finite (INF/NAN) $step, or a non-finite $start/$end, now throws a ValueError; and several other previously-silent misuses - an empty-string or multi-byte non-numeric boundary, a boundary cast to an integer because the other one is numeric, or a float $step used while generating a character range - now emit an E_WARNING and substitute a fallback value instead of running quietly.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.3+ floor, never pass range() a value whose type and content you have not validated. An object, resource, or array for $start, $end, or $step now throws a TypeError; 0, a negative $step on an increasing range, or an infinite or NAN $start/$end/$step now throws a ValueError - both are fatal if uncaught, so treat range()'s arguments the same way you would any strict, throwing API, not as tolerant of loose input. Beyond the throwing cases, do not pass an empty string, a multi-byte non-numeric string, or a float $step while trying to build a character range (for example range('a', 'z', 0.5)): each now raises an E_WARNING and falls back to a value you almost certainly did not intend (an empty-string boundary becomes 0; a type-mismatched character boundary becomes 0; a float step during character-range generation resets both boundaries to 0 as well) - validate $start, $end, and $step, together, before the call instead of relying on range() to make sense of a malformed combination.",
+    "existing_code_policy": "Audit range() call sites that pass through unvalidated input - user-supplied pagination bounds, configuration values, data read from an array or request - for three failure classes. (1) A value that is an object, resource, or array now throws a TypeError where it previously produced some coerced result. (2) A $step of 0, a negative $step paired with an increasing range, or an INF/NAN anywhere now throws a ValueError. (3) An empty-string, multi-byte-non-numeric, or type-mismatched string boundary, or a float $step during character-range generation, now raises an E_WARNING and silently substitutes a fallback value (typically 0) rather than doing what the caller probably intended. Fix (1) and (2) by validating types and step sign/finiteness before the call and handling the invalid-input case explicitly - do not blanket-wrap every range() call in a try/catch, since a TypeError or ValueError here usually means the caller has a real bug worth surfacing, not a condition to swallow silently. Fix (3) by making sure $start and $end are unambiguously both numeric, or both single-character strings, and that $step is an int (or an int-valued float) whenever either boundary is a string, rather than relying on range() to resolve a mixed or malformed pair on its own.",
+    "guideline": "Validate $start, $end, and $step before calling range(), rather than relying on it to make sense of whatever is passed. As of PHP 8.3, an object/resource/array argument throws a TypeError, a zero, wrongly-signed, or non-finite $step (or a non-finite boundary) throws a ValueError, and several other previously-silent misuses - an empty-string or multi-byte non-numeric boundary, a boundary forced to an integer because the other one is numeric, or a float $step used while generating a character range - now raise an E_WARNING and substitute a value you likely did not intend.",
+    "details": "PHP 8.3 changed range() from a function that tolerated almost any input and produced some coerced result, to one that validates its arguments: it throws for the clearly-wrong cases and warns-and-substitutes for the ambiguous ones. Verified directly on the local PHP 8.4.19 (post-change; the pre-8.3 behavior cited below is drawn from UPGRADING-8.3.0's own wording, not observed locally, since no pre-8.3 PHP was available to run):\n\nType errors. range() throws TypeError when $start or $end is an array, object, or resource - confirmed for an array (`range(): Argument #1 ($start) must be of type string|int|float, array given`), a stdClass object, and an open resource, and the same for $end. $step enforces its own, narrower `int|float` type the same way: an array $step throws `Argument #3 ($step) must be of type int|float, array given`.\n\nValue errors. range(1, 5, 0) throws ValueError \"Argument #3 ($step) cannot be 0\" - the more descriptive message UPGRADING promises. range(1, 5, -1) - an increasing range with a negative step - throws ValueError \"Argument #3 ($step) must be greater than 0 for increasing ranges\"; a decreasing range with a negative step (range(5, 1, -1)) is unaffected and still works, and so does a decreasing range given a positive step (range(5, 1, 1) still counts down 5,4,3,2,1) - only the negative-step-on-an-increasing-range combination is newly rejected. Any of $start, $end, or $step being INF or NAN throws ValueError \"... must be a finite number, INF/NAN provided\".\n\nFloat step normalization. If $step is a float with no fractional part (for example 2.0), it is silently used as the equivalent int with no warning at all: range(0, 10, 2.0) behaves exactly like range(0, 10, 2). A float step that does have a fractional part (for example 2.5) is not on its own an error for a numeric range - range(0, 5, 2.5) still runs and returns the float sequence 0.0, 2.5, 5.0 - it is only rejected (see below) when it would otherwise be used to generate a range of characters.\n\nWarnings that still let the call complete, substituting a fallback value. An empty-string $start or $end raises E_WARNING \"... must not be empty, casted to 0\" and that boundary becomes int 0. A multi-byte $start or $end raises E_WARNING \"... must be a single byte, subsequent bytes are ignored\" only when that string is non-numeric - a numeric multi-byte string such as '12' is accepted with no warning at all and used as the number 12. When one boundary is a number (an int, or a numeric string) and the other is a single non-numeric-character string, the character-string boundary is cast to int 0 with E_WARNING \"... must be a single byte string if argument #N is a single byte string, argument #N converted to 0\" - confirmed for range(5, 'z') (one warning) and range(5, 'zz') (both this warning and the multi-byte warning fire together, since 'zz' is both multi-byte and mismatched). Using a float $step while both boundaries would otherwise form a character range raises E_WARNING \"... must be of type int when generating an array of characters, inputs converted to 0\" and - confirmed directly - resets both boundaries to 0 as well, so range('a', 'e', 0.5) does not produce a truncated character list; it produces the single-element array [0.0].\n\nCharacter-vs-numeric boundary resolution also changed. range('5', '9', 0.5) - both boundaries numeric strings - raises no warning at all and produces the float sequence 5.0, 5.5, ..., 9.0, confirming UPGRADING's explicit carve-out that a float step is fine when both boundaries are numeric strings. But range('5', 'z') - a numeric-string boundary paired with a non-numeric single-character string - now produces a character list from '5' through 'z' by codepoint (70 entries, ord('5')=53 through ord('z')=122 inclusive: the 5 digits '5'-'9', then 7 punctuation characters ':;<=>?@', then all 26 uppercase letters, then 6 more punctuation characters '[\\]^_`', then all 26 lowercase letters - confirmed directly, not a short run), where UPGRADING says this combination used to cast the non-numeric side to an integer instead.\n\nHere introduced_in is set to 8.3 because that is the minor these behaviors actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.3 introduced range() itself, which has existed since PHP's earliest versions.",
+    "examples": [
+        {
+            "before": [
+                "function sequence(int $start, int $end, int $step): array",
+                "{",
+                "    return range($start, $end, $step);",
+                "}"
+            ],
+            "after": [
+                "function sequence(int $start, int $end, int $step): array",
+                "{",
+                "    if ($step === 0) {",
+                "        throw new InvalidArgumentException('step must not be 0');",
+                "    }",
+                "",
+                "    if ($start <= $end && $step < 0) {",
+                "        $step = -$step;",
+                "    }",
+                "",
+                "    return range($start, $end, $step);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class PageNumberSequence",
+                "{",
+                "    /**",
+                "     * @param array<string, mixed> $query",
+                "     * @return list<int>",
+                "     */",
+                "    public function fromQuery(array $query): array",
+                "    {",
+                "        return range($query['from'], $query['to']);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class PageNumberSequence",
+                "{",
+                "    /**",
+                "     * @param array<string, mixed> $query",
+                "     * @return list<int>",
+                "     */",
+                "    public function fromQuery(array $query): array",
+                "    {",
+                "        $from = $query['from'] ?? null;",
+                "        $to = $query['to'] ?? null;",
+                "",
+                "        if (!is_int($from) && !is_float($from) && !is_string($from)) {",
+                "            throw new InvalidArgumentException('from must be a scalar page boundary');",
+                "        }",
+                "",
+                "        if (!is_int($to) && !is_float($to) && !is_string($to)) {",
+                "            throw new InvalidArgumentException('to must be a scalar page boundary');",
+                "        }",
+                "",
+                "        return range($from, $to);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-05), each call isolated with try/catch and an installed error handler: range([1],5) and range(1,[5]) => TypeError (array); range(new stdClass(),5) => TypeError (object); range($openResource,5) => TypeError (resource); range(1,5,[1]) => TypeError (step, 'int|float' typed); range(1,5,0) => ValueError; range(1,5,-1) => ValueError; range(5,1,-1) => [5,4,3,2,1] (decreasing range, negative step: fine); range(5,1,1) => [5,4,3,2,1] (decreasing range, positive step: also fine, unaffected); range(0,10,2.0) => [0,2,4,6,8,10], no warning; range(0,5,2.5) => [0.0,2.5,5.0], no warning; range(INF,5), range(1,NAN), range(1,5,NAN), range(1,5,INF) => ValueError in each case; range('',5) => E_WARNING + [0,1,2,3,4,5]; range('ab',5) => two E_WARNINGs + [0,1,2,3,4,5]; range('12',5) => [12,11,...,5], no warning; range(5,'z') => E_WARNING + [5,4,3,2,1,0]; range(5,'zz') => two E_WARNINGs + [5,4,3,2,1,0]; range('a','e',0.5) => E_WARNING + [0.0]; range('5','9',0.5) => [5.0,5.5,...,9.0], no warning; range('5','z') => character array '5'..'z' (70 entries: count(range('5','z'))=70, ord('5')=53, ord('z')=122, 122-53+1=70; digits, then punctuation, then upper, then punctuation, then lower - not a short run), no warning.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-05) against a class calling range() with an int step, a plain character range, and boundaries drawn from a mixed-type array parameter, at testVersion 8.2-8.5, and produced zero findings; verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility checks version availability, not that a function's argument handling silently got stricter, so a clean phpcs run gives no signal about any of the sub-changes above.",
+        "Evidence: UPGRADING-8.3.0, \"1. Backward Incompatible Changes\" -> Standard: \"The range() function has had various changes: A TypeError is now thrown when passing objects, resources, or arrays as the boundary inputs. A more descriptive ValueError is thrown when passing 0 for $step. A ValueError is now thrown when using a negative $step for increasing ranges. If $step is a float that can be interpreted as an int, it is now done so. A ValueError is now thrown if any argument is infinity or NAN. An E_WARNING is now emitted if $start or $end is the empty string. The value continues to be cast to the value 0. An E_WARNING is now emitted if $start or $end has more than one byte, only if it is a non-numeric string. An E_WARNING is now emitted if $start or $end is cast to an integer because the other boundary input is a number. (e.g. range(5, 'z');) An E_WARNING is now emitted if $step is a float when trying to generate a range of characters, except if both boundary inputs are numeric strings (e.g. range('5', '9', 0.5); does not produce a warning). range() now produce a list of characters if one of the boundary inputs is a string digit instead of casting the other input to int (e.g. range('5', 'z');)\""
+    ]
+}
