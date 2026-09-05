@@ -63,7 +63,8 @@
 > `core.directory_functions_implicit_handle`, `language.case_terminating_semicolon` — the last with no
 > sniff in the pinned analyzer at all). Mapping coverage **falls** from thirty-two of forty-eight rules
 > (67%) to thirty-five of fifty-six (62%), stated in the direction it moved rather than rounded away.
-> Five of the thirteen newly-found gaps — all unmappable — remain open, and twenty-one of the fifty-six
+> These eight rules cover nine of the thirteen entries, one rule carrying both the `chr()` and the `ord()`
+> entry, so four newly-found gaps — all unmappable — remain open, and twenty-one of the fifty-six
 > rules now carry no mapping at all.
 
 ## Why
@@ -284,7 +285,7 @@ the three mappable candidates the re-measurement found, and all three ship mappe
 unmapped, and the last of those has no corresponding sniff in the pinned analyzer at all. Growing the
 catalogue from forty-eight rules to fifty-six while adding only three new mappings **drops** coverage
 from thirty-two of forty-eight rules (67%) to thirty-five of fifty-six (62%) — the same direction-first
-honesty `v0.3.4` applied to its own decrease. Five of the thirteen newly-found gaps, all unmappable,
+honesty `v0.3.4` applied to its own decrease. Four of the thirteen newly-found gaps, all unmappable,
 remain open. Measured directly against php-src rather than through the analyzer, twenty-two of the
 thirty-five Core/Standard deprecation entries `UPGRADING` records for 8.2–8.5 were already in the
 catalogue before this round; this round raises that figure, though the catalogue still does not mirror
@@ -453,8 +454,8 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | **Further catalogue and mapping growth** | `v0.3.3` | ✅ Complete: added 8 more source-backed rules (24 → 32) and 25 proven PHPCompatibility sniff mappings (16 of 24 → 24 of 32 rules mapped), every one of the eight new rules shipping mapped | No new adapter infrastructure; mapping coverage is deeper but still partial |
 | **Catalogue depth over mapping breadth** | `v0.3.4` | ✅ Complete: added 8 more source-backed rules (32 → 40), all from issue #18's Tier B — candidates the analyzer produces no finding for at all — so every one ships unmapped and mapping coverage **falls** from 24 of 32 rules to 24 of 40 | No new adapter infrastructure; the drop is a deliberate, measured trade for catalogue depth, not a regression |
 | **Emptying issue #18's Tier A** | `v0.3.5` | ✅ Complete: added the 8 remaining source-backed rules from issue #18's Tier A (40 → 48), every one shipping mapped, so mapping coverage **rises** from 24 of 40 rules (60%) to 32 of 48 (67%); Tier A, as bounded by analyzer-probed candidates, was believed exhausted — a `v0.3.6` re-measurement from php-src `UPGRADING` found this incomplete | No new adapter infrastructure; the register still holds two low-frequency Tier B candidates, two structural analyzer findings, and 16 of 48 rules with no mapping |
-| **Re-measuring issue #18 from php-src** | `v0.3.6` | ✅ Complete: enumerating issue #18 candidates from php-src `UPGRADING` first, rather than by probing the analyzer, found 13 uncovered Core/Standard deprecations in 8.2–8.5 (3 mappable) and disproved `v0.3.5`'s "Tier A exhausted" claim; this round ships 8 of the 13 (48 → 56 rules), so mapping coverage **falls** from 32 of 48 rules (67%) to 35 of 56 (62%) | No new adapter infrastructure; 5 of the 13 newly-found gaps remain open, all unmappable, and 21 of 56 rules carry no mapping |
-| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage still covers only 35 of 56 rules, so growing further source-backed PHP rules and their proven mappings — including the register's remaining Tier B candidates and the five still-uncovered php-src gaps this round's re-measurement found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
+| **Re-measuring issue #18 from php-src** | `v0.3.6` | ✅ Complete: enumerating issue #18 candidates from php-src `UPGRADING` first, rather than by probing the analyzer, found 13 uncovered Core/Standard deprecations in 8.2–8.5 (3 mappable) and disproved `v0.3.5`'s "Tier A exhausted" claim; this round ships 8 rules covering 9 of the 13 entries (48 → 56 rules), so mapping coverage **falls** from 32 of 48 rules (67%) to 35 of 56 (62%) | No new adapter infrastructure; 4 of the 13 newly-found gaps remain open, all unmappable, and 21 of 56 rules carry no mapping |
+| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage still covers only 35 of 56 rules, so growing further source-backed PHP rules and their proven mappings — including the register's remaining Tier B candidates and the four still-uncovered php-src gaps this round's re-measurement found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
 ## Repository structure

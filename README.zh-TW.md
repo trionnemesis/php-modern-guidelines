@@ -61,8 +61,9 @@
 > （`core.http_response_header`、`core.output_in_output_handler`、`core.chr_ord_byte_range`、
 > `core.directory_functions_implicit_handle`、`language.case_terminating_semicolon`——最後這條在
 > pinned analyzer 中甚至完全沒有對應的 sniff）。Mapping coverage 從 48 條中的 32 條（67%）
-> **下降**為 56 條中的 35 條（62%），如實依方向陳述，而非略過不提。這次重新測量找到的 13 項缺口
-> 中，仍有 5 項——全數 unmappable——尚未處理；56 條規則中現在有 21 條完全沒有 mapping。
+> **下降**為 56 條中的 35 條（62%），如實依方向陳述，而非略過不提。這八條規則涵蓋 13 項條目中的
+> 9 項——其中一條規則同時涵蓋 `chr()` 與 `ord()` 兩項——因此仍有 4 項缺口尚未處理，全數 unmappable；
+> 56 條規則中現在有 21 條完全沒有 mapping。
 
 ## Why
 
@@ -274,7 +275,7 @@ mapping 候選，三條全數以已 mapping 狀態上線；`core.http_response_h
 則以 unmapped 狀態上線，其中最後一條在 pinned analyzer 中甚至完全沒有對應的 sniff。Catalogue 從
 48 條成長為 56 條，卻只新增三筆 mapping，使 mapping coverage 從 48 條中的 32 條（67%）**下降**
 為 56 條中的 35 條（62%）——與 `v0.3.4` 當年如實陳述下降方向的做法一致。這次重新測量找到的
-13 項缺口中，仍有 5 項——全數 unmappable——尚未處理。直接對照 php-src 而非透過 analyzer 測量，
+13 項缺口中，仍有 4 項——全數 unmappable——尚未處理。直接對照 php-src 而非透過 analyzer 測量，
 `UPGRADING` 為 PHP 8.2–8.5 記錄的 35 項 Core/Standard deprecation 中，這一輪之前已有 22 項納入
 catalogue；這一輪使這個數字提高，但 catalogue 依然不是 php-src 名冊的完整鏡像。56 條規則中
 現在有 21 條完全沒有 mapping。
@@ -441,7 +442,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **Further catalogue and mapping growth** | `v0.3.3` | ✅ 完成：新增 8 條 source-backed 規則（24 → 32），並新增 25 筆通過驗證的 PHPCompatibility sniff mapping（有 mapping 的規則從 24 條中的 16 條成長為 32 條中的 24 條），這一輪新增的八條規則全數皆有 mapping | 不新增 adapter infrastructure；mapping coverage 更深，但仍為 partial |
 | **Catalogue depth over mapping breadth** | `v0.3.4` | ✅ 完成：新增 8 條 source-backed 規則（32 → 40），全部取自 issue #18 的 Tier B——這一層 analyzer 完全沒有回報任何 finding——因此八條全數以 unmapped 狀態上線，使 mapping coverage 從 32 條中的 24 條**下降**為 40 條中的 24 條 | 不新增 adapter infrastructure；這次下降是刻意、經測量的 catalogue 深度取捨，不是退步 |
 | **Emptying issue #18's Tier A** | `v0.3.5` | ✅ 完成：新增 issue #18 Tier A 剩下的 8 條 source-backed 規則（40 → 48），全數以已 mapping 狀態上線，使 mapping coverage 從 40 條中的 24 條（60%）**上升**為 48 條中的 32 條（67%）；當時以為 Tier A（依 analyzer 探測法界定）已完全清空，`v0.3.6` 的重新測量證明並非如此 | 不新增 adapter infrastructure；名冊中仍有兩條低頻率 Tier B 候選規則、兩項 analyzer 結構性發現，以及 48 條規則中 16 條沒有 mapping |
-| **改以 php-src 重新測量 issue #18** | `v0.3.6` | ✅ 完成：改從 php-src `UPGRADING` 出發枚舉 issue #18 候選規則，而非探測 analyzer，找到 PHP 8.2–8.5 中 13 項尚未涵蓋的 Core/Standard deprecation（3 項可 mapping），推翻了 `v0.3.5`「Tier A 已完全清空」的說法；這一輪上線 13 項中的 8 項（48 → 56 條），使 mapping coverage 從 48 條中的 32 條（67%）**下降**為 56 條中的 35 條（62%） | 不新增 adapter infrastructure；13 項缺口中仍有 5 項未處理，全數 unmappable，56 條規則中有 21 條沒有 mapping |
+| **改以 php-src 重新測量 issue #18** | `v0.3.6` | ✅ 完成：改從 php-src `UPGRADING` 出發枚舉 issue #18 候選規則，而非探測 analyzer，找到 PHP 8.2–8.5 中 13 項尚未涵蓋的 Core/Standard deprecation（3 項可 mapping），推翻了 `v0.3.5`「Tier A 已完全清空」的說法；這一輪上線 8 條規則、涵蓋 13 項條目中的 9 項（48 → 56 條），使 mapping coverage 從 48 條中的 32 條（67%）**下降**為 56 條中的 35 條（62%） | 不新增 adapter infrastructure；13 項缺口中仍有 4 項未處理，全數 unmappable，56 條規則中有 21 條沒有 mapping |
 | **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前仍只涵蓋 56 條規則中的 35 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含名冊中剩餘的 Tier B 候選規則，以及這次重新測量找到、尚餘 5 項未處理的 php-src 缺口——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 

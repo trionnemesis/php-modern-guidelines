@@ -57,7 +57,9 @@ All notable changes will be documented in this file.
 - Any change to the pinned analyzer version. `language.case_terminating_semicolon` would gain a mapping
   if the pin moved, but the rule itself needs no bump to be written, and moving the pin means
   re-measuring the analyzer fixture rather than editing a version string.
-- The remaining five of the thirteen gaps this round's re-measurement found. All are unmappable, and
+- The remaining four of the thirteen gaps this round's re-measurement found. The eight rules cover nine
+  of the thirteen entries, because one rule carries both the `chr()` and the `ord()` entry. All four are
+  unmappable, and
   they stay recorded in the register rather than being folded in to make the round look complete.
 - Any framework pack, auto-fix, target-project write, or network rule fetching.
 
