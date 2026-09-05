@@ -297,6 +297,28 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated',
     ];
 
+    /**
+     * The 4 distinct sniff ids `src/catalogue_expansion_r5_findings.php` proves — one round 5 (v0.3.6,
+     * eight-rule expansion) mapping each, across the 3 of round 5's eight new rules that carry a proven
+     * PHPCompatibility mapping: core.stream_context_set_option_arity contributes 2 ids (the
+     * two-argument call's missing "option_name" and "value" parameters), core.csv_escape_parameter
+     * contributes 1 (fputcsv()/fgetcsv()/str_getcsv() called with no $escape), and
+     * core.socket_set_timeout contributes 1. The other 5 of round 5's eight new rules
+     * (core.chr_ord_byte_range, core.directory_functions_implicit_handle, core.http_response_header,
+     * core.output_in_output_handler, language.case_terminating_semicolon) ship with an empty
+     * verification.phpcompatibility and need no fixture here — the pinned analyzer produces zero
+     * findings for every one of them. Probed directly with the CI-pinned analyzer before being written
+     * here; every id below is measured, not assumed.
+     *
+     * @var list<string>
+     */
+    private const CATALOGUE_EXPANSION_R5_SNIFF_IDS = [
+        'PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_option_nameSoftRequired',
+        'PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_valueSoftRequired',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.socket_set_timeoutDeprecated',
+        'PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed',
+    ];
+
     private string $executable = '';
 
     private string $findingsProject = '';
@@ -376,11 +398,11 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame(
             [
                 'invocation_count' => 3,
-                'finding_count' => 211,
-                'mapped_finding_count' => 208,
+                'finding_count' => 215,
+                'mapped_finding_count' => 212,
                 'unmapped_finding_count' => 3,
-                'mapping_count' => 208,
-                'mapped_rule_count' => 32,
+                'mapping_count' => 212,
+                'mapped_rule_count' => 35,
             ],
             $report['summary'],
         );
@@ -425,13 +447,16 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // CATALOGUE_EXPANSION_R2_SNIFF_IDS's 25 further mapped ids, proved by
         // catalogue_expansion_r2_findings.php. The v0.3.5 (round 4, finishing Tier A) catalogue expansion
         // then adds CATALOGUE_EXPANSION_R4_SNIFF_IDS's 8 further mapped ids, proved by
-        // catalogue_expansion_r4_findings.php.
+        // catalogue_expansion_r4_findings.php. The v0.3.6 (round 5, eight-rule) catalogue expansion then
+        // adds CATALOGUE_EXPANSION_R5_SNIFF_IDS's 4 further mapped ids, proved by
+        // catalogue_expansion_r5_findings.php.
         $expectedIds = array_merge(
             $preImapIds,
             self::imapUnbundledSniffIds(),
             self::CATALOGUE_EXPANSION_SNIFF_IDS,
             self::CATALOGUE_EXPANSION_R2_SNIFF_IDS,
             self::CATALOGUE_EXPANSION_R4_SNIFF_IDS,
+            self::CATALOGUE_EXPANSION_R5_SNIFF_IDS,
             [
                 'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
                 'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
@@ -439,12 +464,12 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         );
         sort($expectedIds, SORT_STRING);
 
-        // (a) the sorted set of external rule ids: 206 distinct ids (203 mapped + 3 unmapped).
+        // (a) the sorted set of external rule ids: 210 distinct ids (207 mapped + 3 unmapped).
         $sortedSet = array_values(array_unique($ids));
         sort($sortedSet, SORT_STRING);
         self::assertSame($expectedIds, $sortedSet);
 
-        // (b) the sorted 211-element multiset: the same 206 distinct ids with five ids each appearing
+        // (b) the sorted 215-element multiset: the same 210 distinct ids with five ids each appearing
         // once more, because each is triggered from two distinct locations (or tokens) that dedupe must
         // not collapse: the dollar-brace expression syntax id (once from mapped_findings.php, once from
         // duplicate_findings.php — different files, so different sortKey()s), the IMAP\Connection class
@@ -458,7 +483,9 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // legitimate second-order finding of the round-2 static-asymmetric-visibility construct rather
         // than anything this round deliberately triggered twice). catalogue_expansion_r4_findings.php
         // adds no sixth duplicate: every one of its 8 constructs is a single occurrence of a distinct,
-        // previously-unseen sniff id, confirmed by probing it in isolation before it was written.
+        // previously-unseen sniff id, confirmed by probing it in isolation before it was written. Neither
+        // does catalogue_expansion_r5_findings.php: its 3 constructs (one of which reports 2 sniff ids)
+        // are each a single occurrence of a distinct, previously-unseen sniff id, confirmed the same way.
         $expectedMultiset = $expectedIds;
         $expectedMultiset[] = 'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax';
         $expectedMultiset[] = 'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved';
@@ -579,6 +606,21 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             }
         }
 
+        // Every one of the 4 v0.3.6 (round 5) mappings, proved end-to-end through the real analyzer by
+        // catalogue_expansion_r5_findings.php. The two OptionalToRequiredFunctionParameters ids both map
+        // to core.stream_context_set_option_arity: they are the "option_name" and "value" halves of the
+        // same deprecated two-argument call, not two separate rules.
+        foreach ([
+            'PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_option_nameSoftRequired' => ['core.stream_context_set_option_arity'],
+            'PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_valueSoftRequired' => ['core.stream_context_set_option_arity'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.socket_set_timeoutDeprecated' => ['core.socket_set_timeout'],
+            'PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed' => ['core.csv_escape_parameter'],
+        ] as $sniffId => $expectedRuleIds) {
+            foreach ($mappedRuleIdsBySniffId[$sniffId] as $mapped) {
+                self::assertSame($expectedRuleIds, $mapped, $sniffId);
+            }
+        }
+
         self::assertArrayNotHasKey(
             'PHPCompatibility.Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated',
             $mappedRuleIdsBySniffId,
@@ -621,6 +663,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
                 'core.array_find_functions',
                 'core.array_first_last',
                 'core.assert_options',
+                'core.csv_escape_parameter',
                 'core.date_rfc7231',
                 'core.e_strict_constant',
                 'core.get_class_without_arguments',
@@ -630,6 +673,8 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
                 'core.register_argc_argv_ini',
                 'core.report_memleaks_ini',
                 'core.request_parse_body',
+                'core.socket_set_timeout',
+                'core.stream_context_set_option_arity',
                 'core.trigger_error_e_user_error',
                 'core.underscore_class_name',
                 'core.utf8_encode_decode',
@@ -819,8 +864,8 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertStringContainsString('Verification: findings (exit 6)', $human);
         self::assertStringContainsString('Planned invocations: 3', $human);
         self::assertStringContainsString('Invocations: 3', $human);
-        self::assertStringContainsString('Findings: 211', $human);
-        self::assertStringContainsString('mapped findings        208', $human);
+        self::assertStringContainsString('Findings: 215', $human);
+        self::assertStringContainsString('mapped findings        212', $human);
         self::assertStringContainsString('unmapped findings      3', $human);
 
         [$jsonExitCode, $report] = $this->verifyReport($this->findingsProject);
@@ -828,7 +873,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame($humanExitCode, $jsonExitCode);
         self::assertSame('findings', $report['status']);
         self::assertSame(ExitCode::VERIFICATION_FINDINGS, $report['exit_code']);
-        self::assertSame(211, $report['summary']['finding_count']);
+        self::assertSame(215, $report['summary']['finding_count']);
     }
 
     public function testJsonOutputIsByteIdenticalAcrossTwoRuns(): void

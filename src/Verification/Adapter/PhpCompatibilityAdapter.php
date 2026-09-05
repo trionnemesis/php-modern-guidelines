@@ -146,6 +146,8 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.FunctionUse.NewFunctions.array_lastFound' => ['core.array_first_last'],
         'PHPCompatibility.FunctionUse.NewFunctions.json_validateFound' => ['core.json_validate'],
         'PHPCompatibility.FunctionUse.NewFunctions.request_parse_bodyFound' => ['core.request_parse_body'],
+        'PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_option_nameSoftRequired' => ['core.stream_context_set_option_arity'],
+        'PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_valueSoftRequired' => ['core.stream_context_set_option_arity'],
         'PHPCompatibility.FunctionUse.RemovedFunctionParameters.get_defined_functions_exclude_disabledDeprecated' => ['core.get_defined_functions_exclude_disabled'],
         'PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated' => ['extension.mysqli_store_result_mode'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.assert_optionsDeprecated' => ['core.assert_options'],
@@ -231,6 +233,7 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_killDeprecated' => ['extension.mysqli_ping_kill_refresh'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_pingDeprecated' => ['extension.mysqli_ping_kill_refresh'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_refreshDeprecated' => ['extension.mysqli_ping_kill_refresh'],
+        'PHPCompatibility.FunctionUse.RemovedFunctions.socket_set_timeoutDeprecated' => ['core.socket_set_timeout'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_decodeDeprecated' => ['core.utf8_encode_decode'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_encodeDeprecated' => ['core.utf8_encode_decode'],
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved' => [
@@ -249,6 +252,7 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.ParameterValues.RemovedGetClassNoArgs.ArgMissing' => [
             'core.get_class_without_arguments',
         ],
+        'PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed' => ['core.csv_escape_parameter'],
         'PHPCompatibility.ParameterValues.RemovedTriggerErrorLevel.Deprecated' => [
             'core.trigger_error_e_user_error',
         ],

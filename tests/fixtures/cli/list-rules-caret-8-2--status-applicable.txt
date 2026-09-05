@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 4 of 48 shown
+Rules: 4 of 56 shown
 
   [applicable]                       P1  feature              core.sensitive_parameter_attribute
       `#[\SensitiveParameter]` attribute

@@ -1,0 +1,112 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.csv_escape_parameter",
+    "title": "Relying on the default `$escape` parameter of the CSV functions is deprecated",
+    "summary": "PHP 8.4 deprecates relying on the default value of the $escape parameter across six APIs - the free functions fputcsv(), fgetcsv(), and str_getcsv(), and the matching SplFileObject::setCsvControl(), SplFileObject::fputcsv(), and SplFileObject::fgetcsv() methods - because that default silently activates a proprietary, non-RFC-4180 backslash-escaping mechanism; verified locally, passing '' instead switches to RFC 4180's plain double-quote-doubling behavior and silences every notice, but it is not a behavior-inert substitution: verified with a controlled byte comparison, it changes how a raw external CSV line that uses a backslash to escape an embedded quote gets parsed.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Never call fputcsv(), fgetcsv(), str_getcsv(), SplFileObject::setCsvControl(), SplFileObject::fputcsv(), or SplFileObject::fgetcsv() without passing $escape explicitly - PHP 8.4 deprecates their historical default. In new code that both writes and later reads its own CSV data (the common case: exporting a report your own application will re-import), pass '' explicitly everywhere, matching RFC 4180 and the direction the RFC steers toward: verified locally, a value containing a literal double quote, a literal backslash, or both round-trips byte-for-byte through fputcsv(escape: '') followed by fgetcsv(escape: '') or str_getcsv(escape: ''). Only choose the historical backslash value ('\\\\', passed explicitly to keep it, never left as an implicit default) when new code must parse CSV text actually produced by something else that is known to rely on backslash-escaped quotes - do not pick '\\\\' out of habit or to superficially match old code without checking what a specific external source really emits. For a SplFileObject, pass $escape once to setCsvControl() and every later argument-less fgetcsv()/fputcsv() call on that same object is covered - verified locally, a call to $object->fgetcsv() with no arguments raised no notice once setCsvControl() had already supplied $escape explicitly, so there is no need to repeat the argument at every call site.",
+    "existing_code_policy": "Find every call to fputcsv(), fgetcsv(), str_getcsv(), SplFileObject::setCsvControl(), SplFileObject::fputcsv(), and SplFileObject::fgetcsv() that omits $escape, including any SplFileObject that never calls setCsvControl() at all (its fgetcsv()/fputcsv() then fall back to the same deprecated default). Do not blanket-replace every omitted $escape with '' - verified directly, that substitution is not behavior-preserving for every input. Writing a field consisting of only a backslash produces an unquoted field under '' but a quoted one under the legacy default - cosmetic only, and confirmed to round-trip back to the identical value either way as long as the same $escape is used to read it back. But reading a raw line that uses a lone backslash to escape an embedded quote character - a line not written by fputcsv() with matching settings, for instance an externally supplied file or a hand-written fixture - produces genuinely different field content under the two settings: verified with an exact byte-for-byte comparison, parsing the 19-byte line `\"say \\\"hi\\\"\",second` extracted the field `say \\\"hi\\\"` (10 bytes, both backslashes and both inner quotes preserved literally, field boundary correctly found at the real closing quote) under the legacy default, and a different 10-byte sequence under escape: '' (the backslashes carry no special meaning at all, so the field boundary is resolved purely by RFC 4180's doubled-quote rule instead). For a call site that only ever reads CSV your own application wrote with fputcsv() or SplFileObject::fputcsv(), passing '' consistently on both ends is safe. For a call site that reads CSV from an external, uncontrolled, or historical source, inspect real samples of that data for a backslash immediately preceding a quote before choosing '' over the explicit legacy value '\\\\'; when genuinely unsure, keep '\\\\' explicit, which silences the notice without changing today's parsing behavior at all, rather than guessing. Separately, verified directly that the analyzer's mapped sniff fires only against the three free functions - a codebase's SplFileObject::fputcsv()/fgetcsv()/setCsvControl() call sites carrying the exact same deprecated omission produce zero analyzer findings - so a clean `verify` run must never be read as proof that a project's SplFileObject-based CSV code is already compliant with this deprecation.",
+    "guideline": "Always pass $escape explicitly to fputcsv(), fgetcsv(), str_getcsv(), SplFileObject::setCsvControl(), SplFileObject::fputcsv(), and SplFileObject::fgetcsv() - PHP 8.4 deprecates relying on their default. Pass '' when the CSV is entirely your own application's round trip (matches RFC 4180, verified to round-trip losslessly); keep the historical '\\\\' explicit, rather than switching to '', when reading CSV text that might already rely on backslash-escaped quotes from outside your control.",
+    "details": "UPGRADING-8.4.0 lists this deprecation twice, once per affected surface, for the same RFC (deprecations_php_8_4#deprecate_proprietary_csv_escaping_mechanism). Under Deprecated Functionality -> Standard: \"Using the default value for $escape parameter of: - fputcsv() - fgetcsv() - str_getcsv() is now deprecated. It must be passed explicitly either positionally or via named arguments.\" Under Deprecated Functionality -> SPL, in near-identical wording: \"Using the default value for $escape parameter of: - SplFileObject::setCsvControl() - SplFileObject::fputcsv() - SplFileObject::fgetcsv() is now deprecated. It must be passed explicitly either positionally or via named arguments.\" Verified directly on PHP 8.4.19 with an explicit error handler: all six APIs raise a deprecation notice (errno 8192) the moment $escape is left at its default, and every one of them is silenced the instant any value is passed explicitly, '' included. The wording differs by surface: fputcsv(), fgetcsv(), and str_getcsv() each raise `<function>(): the $escape parameter must be provided as its default value will change`; SplFileObject::setCsvControl() raises the identical shape under its own name; SplFileObject::fgetcsv() and SplFileObject::fputcsv() instead raise a longer variant naming the alternative, e.g. `SplFileObject::fgetcsv(): the $escape parameter must be provided, as its default value will change, either explicitly or via SplFileObject::setCsvControl()` - and it was confirmed directly that calling setCsvControl() once with $escape supplied does silence a later argument-less fgetcsv()/fputcsv() call on the same object, exactly as that message implies. What the deprecated default actually does was measured directly. Quote-doubling for an embedded double quote (`b\"c` becomes `\"b\"\"c\"`) is RFC 4180's own behavior and is unaffected by $escape - confirmed identical output under both the legacy default and ''. The one difference on the writing side: a value containing only a backslash and nothing else that would otherwise need quoting is wrapped in quotes under the legacy default (`\"d\\e\"`) but left completely unquoted under '' (`d\\e`) - cosmetic, and confirmed to round-trip back to the identical original value under either setting, as long as reading uses the same $escape that was used to write. The behavior that is not cosmetic was measured with an exact byte comparison: the legacy backslash default additionally lets a lone, non-doubled `\\\"` sequence inside a quoted field escape that quote character without ending the field - the actual proprietary mechanism this RFC deprecates, and something no PHP function ever writes on its own, only something a raw or externally-authored line might contain. Feeding the literal 19-byte line `\"say \\\"hi\\\"\",second` (built byte-by-byte to remove any ambiguity: an opening quote, `say `, backslash, quote, `hi`, backslash, quote, quote, comma, `second`) to fgetcsv() with the legacy default extracted field one as the 10-byte string `say \\\"hi\\\"` (both backslashes and both inner quotes kept as literal content, with the field correctly ending at the real final quote before the comma) and field two as `second` - 2 fields total, correctly delimited. The identical line parsed with escape: '' also produced exactly 2 fields with `second` unchanged, but field one's 10 bytes differed: with backslash carrying no special meaning under '', the same raw bytes resolve through RFC 4180's doubled-quote rule alone instead, yielding different field content for the same input. Both parses succeeded with no error and no exception either way - the divergence is silent. This is the concrete risk behind this rule's existing_code_policy: '' is safe for CSV that your own fputcsv()-based code both writes and reads, and is not safe to assume for CSV arriving from anywhere else without checking real samples of it first. Verified separately via a live comparison: SplFileObject::setCsvControl() is the object's persistent configuration, and an $escape value passed there is picked up by every subsequent argument-less fgetcsv()/fputcsv() call on that same object - so fixing an entire SplFileObject-based reader or writer can be a single call at construction time instead of touching every fgetcsv()/fputcsv() call site individually.",
+    "examples": [
+        {
+            "before": [
+                "$file = fopen('export.csv', 'w');",
+                "fputcsv($file, ['name', 'notes']);",
+                "fclose($file);"
+            ],
+            "after": [
+                "$file = fopen('export.csv', 'w');",
+                "fputcsv($file, ['name', 'notes'], escape: '');",
+                "fclose($file);"
+            ]
+        },
+        {
+            "before": [
+                "final class ReportExporter",
+                "{",
+                "    /** @param list<list<string>> $rows */",
+                "    public function write(string $path, array $rows): void",
+                "    {",
+                "        $file = fopen($path, 'w');",
+                "        foreach ($rows as $row) {",
+                "            fputcsv($file, $row);",
+                "        }",
+                "        fclose($file);",
+                "    }",
+                "",
+                "    /** @return list<list<string>> */",
+                "    public function read(string $path): array",
+                "    {",
+                "        $file = fopen($path, 'r');",
+                "        $rows = [];",
+                "        while (($row = fgetcsv($file)) !== false) {",
+                "            $rows[] = $row;",
+                "        }",
+                "        fclose($file);",
+                "",
+                "        return $rows;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ReportExporter",
+                "{",
+                "    /** @param list<list<string>> $rows */",
+                "    public function write(string $path, array $rows): void",
+                "    {",
+                "        $file = fopen($path, 'w');",
+                "        foreach ($rows as $row) {",
+                "            fputcsv($file, $row, escape: '');",
+                "        }",
+                "        fclose($file);",
+                "    }",
+                "",
+                "    /** @return list<list<string>> */",
+                "    public function read(string $path): array",
+                "    {",
+                "        $file = fopen($path, 'r');",
+                "        $rows = [];",
+                "        while (($row = fgetcsv($file, escape: '')) !== false) {",
+                "            $rows[] = $row;",
+                "        }",
+                "        fclose($file);",
+                "",
+                "        return $rows;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally on PHP 8.4.19 with an explicit error handler: fputcsv(), fgetcsv(), and str_getcsv() each raised `<function>(): the $escape parameter must be provided as its default value will change` (errno 8192) when $escape was omitted, and raised nothing when any value, including '', was passed explicitly. SplFileObject::setCsvControl() raised the same shape of notice under its own name; SplFileObject::fgetcsv() and SplFileObject::fputcsv() each raised `SplFileObject::<method>(): the $escape parameter must be provided, as its default value will change, either explicitly or via SplFileObject::setCsvControl()` - and calling setCsvControl() once with $escape supplied first was confirmed to silence a later argument-less call to either method on that object.",
+        "Verified with an exact byte-for-byte comparison (bin2hex of both raw input and parsed output, to remove any ambiguity from printable rendering): parsing the 19-byte line `\"say \\\"hi\\\"\",second` with fgetcsv(escape: '\\\\') (the legacy default) extracted field one as the 10 bytes `73 61 79 20 5c 22 68 69 5c 22` (`say \\\"hi\\\"`); parsing the identical line with fgetcsv(escape: '') extracted field one as the different 10 bytes `73 61 79 20 5c 68 69 5c 22 22`. Both parses produced exactly 2 fields with an unchanged `second` as field two, and neither raised any error - the content difference in field one is silent. Separately, five varied fields (plain text; containing only a quote; containing only a backslash; quote-then-backslash; backslash-then-quote) were each written with fputcsv() and read back with fgetcsv() using matched escape settings on both ends (both '' and, separately, the legacy '\\\\') and round-tripped losslessly in every case - the divergence above is specific to parsing a raw line using the proprietary backslash-escaped-quote convention that PHP's own writer never produces, not to a same-settings round trip through PHP's own functions.",
+        "Analyzer probe re-run directly (2026-09-05) at testVersion 8.2-8.5: a file calling fputcsv(), fgetcsv(), and str_getcsv() each without $escape produced exactly 3 warnings, one per call, all `PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed`; passing $escape explicitly (any value) to all three silenced every one of them. A separate file calling SplFileObject::setCsvControl(), ::fputcsv(), and ::fgetcsv() with the identical omission produced zero findings, confirming a proven analyzer gap: a clean `verify` run must not be read as evidence that a project's SplFileObject-based CSV code carries no instances of this deprecation.",
+        "Evidence: UPGRADING-8.4.0, \"4. Deprecated Functionality\" -> Standard: \"Using the default value for $escape parameter of: - fputcsv() - fgetcsv() - str_getcsv() is now deprecated. It must be passed explicitly either positionally or via named arguments.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_4#deprecate_proprietary_csv_escaping_mechanism"
+    ]
+}

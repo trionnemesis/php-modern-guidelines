@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 48 of 48 shown
+Rules: 56 of 56 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -7,12 +7,18 @@ Rules: 48 of 48 shown
       Prefer array_first() and array_last()
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
+  [deprecated_in_range]              P2  deprecated           core.chr_ord_byte_range
+      `chr()` outside `[0, 255]` and `ord()` on non-single-byte strings are deprecated
   [deprecated_in_range]              P2  deprecated           core.constant_redeclaration
       Constant redeclaration is deprecated
+  [deprecated_in_range]              P2  deprecated           core.csv_escape_parameter
+      Relying on the default `$escape` parameter of the CSV functions is deprecated
   [deprecated_in_range]              P2  deprecated           core.date_rfc7231
       `DATE_RFC7231` and `DateTimeInterface::RFC7231` are deprecated
   [forbidden_above_feature_ceiling]  P1  feature              core.deprecated_attribute
       `#[\Deprecated]` attribute
+  [deprecated_in_range]              P2  deprecated           core.directory_functions_implicit_handle
+      `readdir()`, `rewinddir()`, and `closedir()` without an explicit handle are deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [deprecated_in_range]              P2  deprecated           core.e_strict_constant
@@ -21,6 +27,8 @@ Rules: 48 of 48 shown
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [deprecated_in_range]              P2  deprecated           core.get_defined_functions_exclude_disabled
       Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated
+  [deprecated_in_range]              P2  deprecated           core.http_response_header
+      The `$http_response_header` predefined variable is deprecated
   [forbidden_above_feature_ceiling]  P3  modern_preference    core.json_validate
       Prefer `json_validate()` over decode-and-check
   [deprecated_in_range]              P2  deprecated           core.lcg_value
@@ -29,6 +37,8 @@ Rules: 48 of 48 shown
       `#[\NoDiscard]` attribute and the `(void)` cast
   [deprecated_in_range]              P2  deprecated           core.null_array_offset
       Using `null` as an array offset or in `array_key_exists()` is deprecated
+  [deprecated_in_range]              P2  deprecated           core.output_in_output_handler
+      Producing output (e.g. `echo`) within a user output handler is deprecated
   [forbidden_above_feature_ceiling]  P1  feature              core.override_attribute
       #[\Override] attribute
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
@@ -45,6 +55,10 @@ Rules: 48 of 48 shown
       `#[\SensitiveParameter]` attribute
   [deprecated_in_range]              P2  deprecated           core.sleep_wakeup_magic_methods
       `__sleep()`/`__wakeup()` are soft-deprecated in favour of `__serialize()`/`__unserialize()`
+  [deprecated_in_range]              P2  deprecated           core.socket_set_timeout
+      The `socket_set_timeout()` alias function is deprecated
+  [deprecated_in_range]              P2  deprecated           core.stream_context_set_option_arity
+      Calling `stream_context_set_option()` with 2 arguments is deprecated
   [deprecated_in_range]              P2  deprecated           core.string_increment_operators
       `++`/`--` on empty, non-numeric, or non-alphanumeric strings
   [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
@@ -73,6 +87,8 @@ Rules: 48 of 48 shown
       Asymmetric property visibility
   [deprecated_in_range]              P2  deprecated           language.backtick_shell_exec
       Backtick shell-execution operator is deprecated
+  [deprecated_in_range]              P2  deprecated           language.case_terminating_semicolon
+      Terminating a `case`/`default` label with `;` instead of `:` is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
       "${var}"/"${expr}" string interpolation is deprecated
   [forbidden_above_feature_ceiling]  P1  feature              language.dynamic_class_constant_fetch

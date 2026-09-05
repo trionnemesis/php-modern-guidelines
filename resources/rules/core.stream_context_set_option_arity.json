@@ -1,0 +1,90 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.stream_context_set_option_arity",
+    "title": "Calling `stream_context_set_option()` with 2 arguments is deprecated",
+    "summary": "PHP 8.4 deprecates calling stream_context_set_option() with only 2 arguments (a context and an options array) in favor of the dedicated stream_context_set_options() function; verified locally, both produce a byte-identical resulting context for the same input array, but stream_context_set_options() itself does not exist before PHP 8.3, and stream_context_set_option()'s other, 4-argument per-option form remains fully supported and undeprecated on every version this catalogue tracks.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never call stream_context_set_option() with only 2 arguments (a context and an options array) in new code. To set one option for one wrapper, call stream_context_set_option() with all 4 arguments instead - $context, $wrapper, $option_name, $value - which is a completely different, undeprecated overload of the same function name: verified locally, `stream_context_set_option($ctx, 'http', 'method', 'POST')` raised no notice at all and produced the same resulting context as the deprecated call. To set an entire options array at once, call stream_context_set_options($context, $options) instead, but only when the project's PHP floor is already 8.3 or later: verified locally by bisecting testVersion with the pinned analyzer, a call to stream_context_set_options() is flagged as not present at testVersion 8.2 and raises nothing at testVersion 8.3 or 8.4, and this tool's own local copy of UPGRADING-8.3 confirms it directly, under New Functions -> Standard: \"Added stream_context_set_options() as a replacement for stream_context_set_option() when passed an array of options.\" On a floor below 8.3, do not introduce stream_context_set_options(); either keep the deprecated 2-argument call until the floor rises, or expand the array into individual 4-argument stream_context_set_option() calls, one per wrapper/option pair, which is accepted unchanged on every PHP version in this catalogue's range.",
+    "existing_code_policy": "Search for every stream_context_set_option() call site and count its arguments before touching anything - this function has three genuinely different call shapes, and only one of them is what this deprecation is about. A call with exactly 2 arguments (a context and an array) is the deprecated form: if the project's floor is already PHP 8.3+, replace it with stream_context_set_options($context, $optionsArray) using the identical array - verified locally via stream_context_get_options(), the resulting context is byte-for-byte identical either way. If the floor is still below 8.3, do not adopt stream_context_set_options(); instead expand the same array into one 4-argument stream_context_set_option($context, $wrapper, $optionName, $value) call per wrapper/option pair, which silences the notice on any PHP version because that overload was never deprecated. Separately, a call with exactly 3 arguments - context, wrapper, option name, with $value omitted - is not the deprecated form at all and is not what this rule's guidance fixes: verified directly on PHP 8.4.19, `stream_context_set_option($ctx, 'http', 'method')` throws `ValueError: stream_context_set_option(): Argument #4 ($value) must be provided when argument #2 ($wrapper_or_options) is a string` - a hard failure today, on every version PHP 8.4.19 represents, not a deprecation to migrate away from. Finally, a call with all 4 arguments supplied is already the fully-supported form and needs no change at all - verified locally, it raises no notice and trips no analyzer finding.",
+    "guideline": "Never call stream_context_set_option() with just a context and an options array (2 arguments) - PHP 8.4 deprecates that specific overload. Use the dedicated stream_context_set_options($context, $options) function for the same array shape once the project's floor is PHP 8.3 or later, or use stream_context_set_option()'s other, still fully supported 4-argument form ($context, $wrapper, $optionName, $value) for a single wrapper/option pair on any PHP version.",
+    "details": "UPGRADING-8.4.0 lists this under Deprecated Functionality -> Standard, in one line: \"Calling stream_context_set_option() with 2 arguments is deprecated. Use stream_context_set_options() instead.\" Verified directly on PHP 8.4.19 with an explicit error handler: `stream_context_set_option($ctx, ['http' => ['method' => 'POST']])` (2 arguments) raises `[errno=8192] Calling stream_context_set_option() with 2 arguments is deprecated, use stream_context_set_options() instead` and still returns `true`, leaving the context's options exactly as given (confirmed via `stream_context_get_options()`). Reflection confirms why this specific overload is the one being deprecated: `stream_context_set_option()` actually declares 4 parameters (`context`, `wrapper_or_options`, `option_name`, `value`) with only the first 2 required, so \"2 arguments\" means the context plus an array passed as `wrapper_or_options`, standing in for the entire options structure that `stream_context_set_options()` (plural) now exists to accept explicitly. Calling the deprecated 2-argument form and calling `stream_context_set_options($context, $options)` with the identical array were compared directly on this host: both produced a context whose `stream_context_get_options()` output was the exact same nested array (`['http' => ['method' => 'POST']]`), confirming the fix is a pure rename with nothing else to reconcile - provided the floor allows it. It does not always: this tool's own local copy of UPGRADING-8.3 records, under New Functions -> Standard, \"Added stream_context_set_options() as a replacement for stream_context_set_option() when passed an array of options.\" Bisecting the pinned analyzer's `testVersion` setting against a bare call to `stream_context_set_options()` confirms this precisely: it is flagged `PHPCompatibility.FunctionUse.NewFunctions.stream_context_set_optionsFound` (\"is not present in PHP version 8.2 or earlier\") at `testVersion 8.2` and produces zero findings at `testVersion 8.3` and `8.4`. So the replacement function is itself unavailable on a floor below 8.3, one full minor before the 2-argument call it replaces was even deprecated - a project whose floor is 8.2 or lower cannot mechanically adopt it at all, and must fall back to the 4-argument per-option form (or keep the deprecation) instead. That 4-argument form was measured directly and is unaffected by any of this: `stream_context_set_option($ctx, 'http', 'method', 'POST')` raised no notice, returned `true`, and produced the identical resulting context as both of the other two forms. A third, easily-confused shape was also measured directly: `stream_context_set_option($ctx, 'http', 'method')`, supplying only 3 arguments, does not raise a deprecation notice at all - it throws `ValueError: stream_context_set_option(): Argument #4 ($value) must be provided when argument #2 ($wrapper_or_options) is a string`, because once `$wrapper_or_options` is a string rather than an array, `$value` stops being optional. This is a pre-existing hard error on PHP 8.4.19 today, unrelated to this deprecation, and must not be treated as an instance of it.",
+    "examples": [
+        {
+            "before": [
+                "$context = stream_context_create();",
+                "stream_context_set_option($context, ['http' => ['method' => 'POST']]);"
+            ],
+            "after": [
+                "$context = stream_context_create();",
+                "stream_context_set_options($context, ['http' => ['method' => 'POST']]);"
+            ]
+        },
+        {
+            "before": [
+                "final class HttpContextFactory",
+                "{",
+                "    public static function forJsonPost(string $payload): mixed",
+                "    {",
+                "        $context = stream_context_create();",
+                "        stream_context_set_option($context, [",
+                "            'http' => [",
+                "                'method' => 'POST',",
+                "                'header' => \"Content-Type: application/json\\r\\n\",",
+                "                'content' => $payload,",
+                "            ],",
+                "        ]);",
+                "",
+                "        return $context;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class HttpContextFactory",
+                "{",
+                "    public static function forJsonPost(string $payload): mixed",
+                "    {",
+                "        $context = stream_context_create();",
+                "        stream_context_set_options($context, [",
+                "            'http' => [",
+                "                'method' => 'POST',",
+                "                'header' => \"Content-Type: application/json\\r\\n\",",
+                "                'content' => $payload,",
+                "            ],",
+                "        ]);",
+                "",
+                "        return $context;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_option_nameSoftRequired",
+            "PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_valueSoftRequired"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally on PHP 8.4.19 with an explicit error handler across all four call shapes: the 2-argument call `stream_context_set_option($ctx, ['http' => ['method' => 'POST']])` raised `[errno=8192] Calling stream_context_set_option() with 2 arguments is deprecated, use stream_context_set_options() instead` and returned `true`; the 4-argument call `stream_context_set_option($ctx, 'http', 'method', 'POST')` raised nothing and returned `true`; the 3-argument call `stream_context_set_option($ctx, 'http', 'method')` raised nothing but threw `ValueError: stream_context_set_option(): Argument #4 ($value) must be provided when argument #2 ($wrapper_or_options) is a string`; and `stream_context_set_options($ctx, ['http' => ['method' => 'POST']])` (the plural replacement) raised nothing and returned `true`. `stream_context_get_options()` returned the identical array `['http' => ['method' => 'POST']]` after the 2-argument, 4-argument, and plural-function calls alike.",
+        "Analyzer probe re-run directly (2026-09-05) at testVersion 8.2-8.5: the 2-argument call trips both `PHPCompatibility.FunctionUse.OptionalToRequiredFunctionParameters.stream_context_set_option_option_nameSoftRequired` and `...stream_context_set_option_valueSoftRequired`; the genuine 3-argument call (option name given, value omitted) trips only `...stream_context_set_option_valueSoftRequired`; the 4-argument call produces zero findings; and a bare call to `stream_context_set_options()` produces one `PHPCompatibility.FunctionUse.NewFunctions.stream_context_set_optionsFound` error at testVersion 8.2 alone (bisected: silent at testVersion 8.3 and 8.4), which is an availability finding about the replacement function, not a mapping for this deprecation itself.",
+        "This rule's brief described `stream_context_set_option($ctx, 'http', 'method', 'POST')` as \"the three-argument form\"; measured directly, that call has 4 arguments and is the fully-supported, non-deprecated overload, tripping no notice and no analyzer finding. The genuinely 3-argument call, `stream_context_set_option($ctx, 'http', 'method')` (omitting $value), was measured separately and does not raise a deprecation notice at all - it throws the ValueError quoted above and trips only one of the two mapped sniffs. This rule is written from the three call shapes as actually measured (2-argument deprecated, 3-argument ValueError, 4-argument fully supported), not from the brief's mislabeled example.",
+        "Evidence: UPGRADING-8.4.0, \"4. Deprecated Functionality\" -> Standard: \"Calling stream_context_set_option() with 2 arguments is deprecated. Use stream_context_set_options() instead.\""
+    ]
+}

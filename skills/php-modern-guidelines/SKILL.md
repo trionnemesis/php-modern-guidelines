@@ -84,14 +84,20 @@ Then filter the rule catalogue to what you are about to write:
 ```console
 $ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 26 of 48 shown
+Rules: 34 of 56 shown
 
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
+  [deprecated_in_range]              P2  deprecated           core.chr_ord_byte_range
+      `chr()` outside `[0, 255]` and `ord()` on non-single-byte strings are deprecated
   [deprecated_in_range]              P2  deprecated           core.constant_redeclaration
       Constant redeclaration is deprecated
+  [deprecated_in_range]              P2  deprecated           core.csv_escape_parameter
+      Relying on the default `$escape` parameter of the CSV functions is deprecated
   [deprecated_in_range]              P2  deprecated           core.date_rfc7231
       `DATE_RFC7231` and `DateTimeInterface::RFC7231` are deprecated
+  [deprecated_in_range]              P2  deprecated           core.directory_functions_implicit_handle
+      `readdir()`, `rewinddir()`, and `closedir()` without an explicit handle are deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [deprecated_in_range]              P2  deprecated           core.e_strict_constant
@@ -100,10 +106,14 @@ Rules: 26 of 48 shown
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [deprecated_in_range]              P2  deprecated           core.get_defined_functions_exclude_disabled
       Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated
+  [deprecated_in_range]              P2  deprecated           core.http_response_header
+      The `$http_response_header` predefined variable is deprecated
   [deprecated_in_range]              P2  deprecated           core.lcg_value
       `lcg_value()` is deprecated
   [deprecated_in_range]              P2  deprecated           core.null_array_offset
       Using `null` as an array offset or in `array_key_exists()` is deprecated
+  [deprecated_in_range]              P2  deprecated           core.output_in_output_handler
+      Producing output (e.g. `echo`) within a user output handler is deprecated
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
       Partially supported callables are deprecated
   [deprecated_in_range]              P2  deprecated           core.register_argc_argv_ini
@@ -112,6 +122,10 @@ Rules: 26 of 48 shown
       The `report_memleaks` INI directive is deprecated
   [deprecated_in_range]              P2  deprecated           core.sleep_wakeup_magic_methods
       `__sleep()`/`__wakeup()` are soft-deprecated in favour of `__serialize()`/`__unserialize()`
+  [deprecated_in_range]              P2  deprecated           core.socket_set_timeout
+      The `socket_set_timeout()` alias function is deprecated
+  [deprecated_in_range]              P2  deprecated           core.stream_context_set_option_arity
+      Calling `stream_context_set_option()` with 2 arguments is deprecated
   [deprecated_in_range]              P2  deprecated           core.string_increment_operators
       `++`/`--` on empty, non-numeric, or non-alphanumeric strings
   [deprecated_in_range]              P2  deprecated           core.trigger_error_e_user_error
@@ -132,6 +146,8 @@ Rules: 26 of 48 shown
       Passing an explicit `$mode` argument to `mysqli_store_result()` is deprecated
   [deprecated_in_range]              P2  deprecated           language.backtick_shell_exec
       Backtick shell-execution operator is deprecated
+  [deprecated_in_range]              P2  deprecated           language.case_terminating_semicolon
+      Terminating a `case`/`default` label with `;` instead of `:` is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation
       "${var}"/"${expr}" string interpolation is deprecated
   [deprecated_in_range]              P2  deprecated           language.implicitly_nullable_parameter_types
@@ -156,8 +172,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage coverage_gap (known 8.2-8.5, open upper bound), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 48 rule file(s)
-  [ok]      rules.load               48 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 56 rule file(s)
+  [ok]      rules.load               56 rule(s) loaded
 
 Details
   cli.build
@@ -199,9 +215,9 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              48
+    file_count              56
   rules.load
-    loaded                  48
+    loaded                  56
     error                   -
 ```
 

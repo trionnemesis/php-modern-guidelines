@@ -1,0 +1,99 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.socket_set_timeout",
+    "title": "The `socket_set_timeout()` alias function is deprecated",
+    "summary": "PHP 8.5 deprecates socket_set_timeout(), a plain alias of stream_set_timeout() that has always lived in ext/standard and operated on ordinary PHP stream resources rather than on ext/sockets' Socket objects, despite its name; verified locally on PHP 8.4.19, the two functions share an identical parameter signature and produce byte-for-byte identical results - same return value, same effect on stream_get_meta_data()['timed_out'], same measured timeout duration - on both a plain file stream and a live TCP socket stream, confirming the fix is a pure rename with nothing else to reconcile.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Never call socket_set_timeout() in new code, regardless of whether the stream came from ext/sockets or anywhere else - despite the name, this function has nothing to do with the sockets extension. Verified via Reflection, `(new ReflectionFunction('socket_set_timeout'))->getExtensionName()` returns `standard`, identical to `stream_set_timeout()`; it operates on the same generic PHP stream resource that fopen(), stream_socket_client(), and every other stream-producing function returns, not on a `Socket` object. Call stream_set_timeout() instead, with the exact same arguments in the exact same order - verified locally, it is not merely similar, it is the same operation under a different name: both functions declare an identical signature, `(mixed $stream, int $seconds, int $microseconds = 0): bool`, and on a live TCP connection both returned the same value, caused an in-progress fread() to give up after the same measured ~300ms when the requested timeout was 300ms, and left stream_get_meta_data()['timed_out'] as true afterward.",
+    "existing_code_policy": "Search for every socket_set_timeout() call and rename it to stream_set_timeout(), leaving every argument untouched. Verified directly on PHP 8.4.19 with an identical parameter signature confirmed via Reflection for both functions, and with a live TCP connection: both functions returned the same value on a plain (non-socket) stream where neither could set a real timeout (both returned `false` there, identically), and both caused a blocking fread() on an idle TCP connection to time out after the same measured wall-clock duration and leave stream_get_meta_data()['timed_out'] as `true` afterward. There is no parameter reordering, no type change, and no return-value difference to account for - this is a pure find-and-replace; nothing about the surrounding code needs to change. There is also no need to check whether ext/sockets is loaded, whether the stream originated from ext/sockets, or anything else about the stream's origin: confirmed directly by running `php -n` (no php.ini processed, so no optional extensions loaded) with `extension_loaded('sockets')` returning `false`, socket_set_timeout() was still present and fully callable - it has no dependency on the sockets extension at all, on this build or in principle.",
+    "guideline": "Rename every socket_set_timeout() call to stream_set_timeout() with its arguments unchanged. PHP 8.5 deprecates the alias; verified locally, the two are functionally identical in every measurable way, and neither has ever required the sockets extension - both live in ext/standard and operate on ordinary stream resources.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Standard: \"The socket_set_timeout() alias function has been deprecated. Use stream_set_timeout() instead.\" (RFC deprecations_php_8_5#formally_deprecate_socket_set_timeout). This PHP 8.5 notice cannot fire on this tool's PHP 8.4.19 host, which predates the deprecation; calling socket_set_timeout() on PHP 8.4.19 with an explicit error handler installed raised no notice of any kind, which is the expected absence for a version that has not yet added the diagnostic, not evidence that the function is somehow exempt from it. Two things were established by direct measurement rather than by the function's misleading name. First, this is not part of the sockets extension: Reflection confirms both `socket_set_timeout` and `stream_set_timeout` report `getExtensionName() === 'standard'`, and running `php -n` (which processes no php.ini and therefore loads no optional extensions) confirmed `extension_loaded('sockets') === false` while `function_exists('socket_set_timeout')` and `function_exists('stream_set_timeout')` both still returned `true` - the function is fully present and callable with no sockets extension involved anywhere, which is exactly why this rule's category is `core` and its `extension` is `null` despite the name inviting the opposite conclusion. Second, whether the two functions are a pure alias was tested directly rather than assumed. Reflection shows an identical declared signature for both: `stream` (required, no type declared), `seconds` (required, int), `microseconds` (optional, int, default 0), returning `bool`. Behaviorally, on a plain `fopen()`-backed file stream, both `socket_set_timeout($stream, 3, 500000)` and `stream_set_timeout($stream, 3, 500000)` returned the identical value `false` (a plain file stream does not support this kind of timeout, and both functions agree that it does not). On a live TCP connection built with `stream_socket_server()`/`stream_socket_client()`/`stream_socket_accept()`, setting a 300ms timeout with `socket_set_timeout()` and then issuing a blocking `fread()` against a peer that sent nothing measured an elapsed wall-clock time of 0.300s before `fread()` returned `false`, with `stream_get_meta_data()['timed_out']` reading `true` afterward; repeating the identical scenario with `stream_set_timeout()` on a fresh connection measured the same 0.300s elapsed time, the same `false` return, and the same `timed_out => true` result. Same signature, same return values, same measured timing, same metadata effect - the two are the same underlying operation reachable under two names, and the fix is nothing more than the rename UPGRADING describes.",
+    "examples": [
+        {
+            "before": [
+                "$stream = fopen('php://memory', 'r+');",
+                "socket_set_timeout($stream, 5);"
+            ],
+            "after": [
+                "$stream = fopen('php://memory', 'r+');",
+                "stream_set_timeout($stream, 5);"
+            ]
+        },
+        {
+            "before": [
+                "final class LineReader",
+                "{",
+                "    /** @var resource */",
+                "    private $stream;",
+                "",
+                "    public function __construct(string $host, int $port, int $timeoutSeconds)",
+                "    {",
+                "        $this->stream = stream_socket_client(",
+                "            \"tcp://{$host}:{$port}\",",
+                "            $errno,",
+                "            $errstr,",
+                "            $timeoutSeconds",
+                "        );",
+                "        socket_set_timeout($this->stream, $timeoutSeconds);",
+                "    }",
+                "",
+                "    public function readLine(): string|false",
+                "    {",
+                "        return fgets($this->stream);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class LineReader",
+                "{",
+                "    /** @var resource */",
+                "    private $stream;",
+                "",
+                "    public function __construct(string $host, int $port, int $timeoutSeconds)",
+                "    {",
+                "        $this->stream = stream_socket_client(",
+                "            \"tcp://{$host}:{$port}\",",
+                "            $errno,",
+                "            $errstr,",
+                "            $timeoutSeconds",
+                "        );",
+                "        stream_set_timeout($this->stream, $timeoutSeconds);",
+                "    }",
+                "",
+                "    public function readLine(): string|false",
+                "    {",
+                "        return fgets($this->stream);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctions.socket_set_timeoutDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally on PHP 8.4.19 with an explicit error handler: calling socket_set_timeout() raised no notice of any kind, as expected, since this deprecation targets PHP 8.5 and this host predates it. Reflection on this host confirms `socket_set_timeout` and `stream_set_timeout` are both registered by the `standard` extension (not `sockets`), and both declare the identical signature `(mixed $stream, int $seconds, int $microseconds = 0): bool`.",
+        "Verified behaviorally on PHP 8.4.19: running `php -n` (no php.ini processed) confirmed `extension_loaded('sockets') === false` while `socket_set_timeout` remained present and callable, proving no dependency on ext/sockets. On a plain `fopen()` file stream, `socket_set_timeout($fh, 3, 500000)` and `stream_set_timeout($fh, 3, 500000)` both returned `false` identically. On a live loopback TCP connection (`stream_socket_server`/`stream_socket_client`/`stream_socket_accept`), setting a 300ms timeout via `socket_set_timeout()` and then issuing a blocking `fread()` against a peer that sent nothing measured 0.300s elapsed before `fread()` returned `false` with `stream_get_meta_data()['timed_out'] === true`; repeating the identical scenario with `stream_set_timeout()` on a fresh connection measured the same 0.300s elapsed time and the same outcome.",
+        "Analyzer probe re-run directly (2026-09-05) at testVersion 8.2-8.5: a bare call to socket_set_timeout() produced exactly one finding, `PHPCompatibility.FunctionUse.RemovedFunctions.socket_set_timeoutDeprecated` (message: \"Function socket_set_timeout() is deprecated since PHP 8.5; Use stream_set_timeout() instead\"); the identical call rewritten as stream_set_timeout() produced zero findings.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Standard: \"The socket_set_timeout() alias function has been deprecated. Use stream_set_timeout() instead.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#formally_deprecate_socket_set_timeout"
+    ]
+}
