@@ -1,0 +1,66 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.lcg_value",
+    "title": "`lcg_value()` is deprecated",
+    "summary": "PHP 8.4 deprecates lcg_value() because the function is broken in multiple ways; its named replacement, Random\\Randomizer::getFloat(), needs an existing Randomizer instance plus explicit min/max bounds, so it cannot be swapped in as a same-signature drop-in for a bare, zero-argument call.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Do not call lcg_value() in new code. Obtain (construct once, or have injected) a Random\\Randomizer instance and call $randomizer->getFloat(0.0, 1.0) for the same half-open [0, 1) range lcg_value() produced; the default $boundary, Random\\IntervalBoundary::ClosedOpen, is what reproduces that shape - 0.0 is reachable, 1.0 never is. Do not construct a fresh Random\\Randomizer at every call site: it is an object precisely so that one instance can be shared, injected, or given a specific Random\\Engine.",
+    "existing_code_policy": "Search for lcg_value() calls and replace each with a call to getFloat(0.0, 1.0) on a Random\\Randomizer instance already available at that call site - a constructor-injected dependency, a shared service, or a module-level instance - rather than constructing a new one inline; if no such instance exists yet, that is a real design decision for a person to make, not something to default silently. Where the original code scaled or shifted the result (for example lcg_value() * 100), consider folding that into min/max directly (getFloat(0.0, 100.0)) rather than layering arithmetic on top of the default [0, 1) call.",
+    "guideline": "Replace lcg_value() with a call to getFloat(0.0, 1.0) on an existing Random\\Randomizer instance, keeping the default Random\\IntervalBoundary::ClosedOpen boundary to preserve the same half-open [0, 1) range.",
+    "details": "PHP 8.4 deprecates lcg_value(). UPGRADING-8.4.0 gives the reason bluntly: \"lcg_value() is deprecated, as the function is broken in multiple ways. Use \\Random\\Randomizer::getFloat() instead.\" Reflection confirms this is not only an UPGRADING remark but an attribute on the function itself: lcg_value() carries #[\\Deprecated(since: '8.4', message: 'use \\Random\\Randomizer::getFloat() instead')], introspectable directly through ReflectionFunction::getAttributes(). The named replacement is not a signature-compatible drop-in, though: lcg_value() took no arguments and could be called from anywhere with no setup, while Random\\Randomizer::getFloat(float $min, float $max, Random\\IntervalBoundary $boundary = Random\\IntervalBoundary::ClosedOpen): float is an instance method requiring an existing Random\\Randomizer object, and reflection confirms $min and $max are both required, non-optional parameters - there is no zero-argument call that reproduces the old zero-argument shape of lcg_value(). Measured locally with a deterministic custom Random\\Engine, Random\\IntervalBoundary::ClosedOpen - the default $boundary - is the case that reproduces a half-open range: forcing the raw output of the engine to one extreme yielded exactly 0.0 from getFloat(0.0, 1.0, ClosedOpen), while forcing the other extreme yielded 0.9999999999999999 (one ULP short of 1.0, never exactly 1.0) - confirming 0.0 is reachable and 1.0 never is, matching the conventional half-open [0, 1) range of lcg_value(). The other three Random\\IntervalBoundary cases were measured the same way and behave exactly as their names suggest (ClosedClosed reached 1.0 exactly from the same engine input that ClosedOpen fell one ULP short of; OpenClosed came arbitrarily close to 0.0 without ever reaching it). Because a genuine migration requires deciding where the Random\\Randomizer instance comes from, not just which bounds are passed, a purely mechanical call-site rewrite is not safe to apply automatically; see the notes for the measured detail behind that judgment. introduced_in stays null because this rule makes no feature-availability claim, and removed_in stays null because no PHP 8.2-8.5 UPGRADING file removes lcg_value(); it is deprecated only.",
+    "examples": [
+        {
+            "before": [
+                "function randomBackoffFactor(): float",
+                "{",
+                "    return lcg_value();",
+                "}"
+            ],
+            "after": [
+                "function randomBackoffFactor(Random\\Randomizer $randomizer): float",
+                "{",
+                "    // lcg_value() is deprecated since PHP 8.4 (\"the function is broken in",
+                "    // multiple ways\"). Random\\Randomizer::getFloat() is the named",
+                "    // replacement, but it is an instance method with required bounds, not",
+                "    // a zero-argument function, so the Randomizer is injected here rather",
+                "    // than constructed inline. ClosedOpen (the default $boundary)",
+                "    // reproduces the half-open [0, 1) range of lcg_value(): 0.0 is",
+                "    // reachable, 1.0 never is.",
+                "    return $randomizer->getFloat(0.0, 1.0);",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctions.lcg_valueDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Measured locally with two custom Random\\Engine implementations - one always returning 8 zero bytes, one always returning 8 bytes of 0xFF - passed to (new Random\\Randomizer($engine))->getFloat(0.0, 1.0, $boundary) for each of the four Random\\IntervalBoundary cases: ClosedOpen gave 0.9999999999999999 from the zero-byte engine and exactly 0.0 from the 0xFF-byte engine; ClosedClosed gave exactly 1.0 from the zero-byte engine and threw Random\\BrokenRandomEngineError (\"Failed to generate an acceptable random number in 50 attempts\") from the 0xFF-byte engine, consistent with a closed-closed range needing rejection sampling that a fully deterministic engine can get permanently stuck in; OpenClosed gave exactly 1.0 from the zero-byte engine and 1.1102230246251565E-16 (just above 0.0, never exactly 0.0) from the 0xFF-byte engine; OpenOpen gave 0.9999999999999999 from the zero-byte engine and also threw BrokenRandomEngineError from the 0xFF-byte engine. The pattern is fully consistent with each case name: Closed means the corresponding bound is exactly reachable, Open means it is approached but never reached.",
+        "Reflection confirms Random\\Randomizer::getFloat() is a non-static instance method with $min and $max both non-optional (ReflectionParameter::isOptional() is false for each) and $boundary optional, defaulting to Random\\IntervalBoundary::ClosedOpen; lcg_value() itself carries a native #[\\Deprecated(since: '8.4', message: 'use \\Random\\Randomizer::getFloat() instead')] attribute, confirmed via ReflectionFunction::getAttributes().",
+        "Measured locally (a single rough run, 200,000 iterations, not a rigorous benchmark): lcg_value() took about 74 ms; (new Random\\Randomizer())->getFloat(0.0, 1.0) using the default engine of the constructor - confirmed by reflection to be Random\\Engine\\Secure, a CSPRNG, which lcg_value() never was - took about 66 ms, comparable rather than a regression; explicitly constructing new Random\\Randomizer(new Random\\Engine\\Mt19937()) took about 6 ms, roughly ten times faster than either. A call site that calls this very frequently and does not need cryptographically secure output may prefer an explicit non-secure engine; that choice, like where the Randomizer instance itself should live, is exactly the kind of decision a mechanical rewrite cannot make on its own, which is why this rule ships a no-automatic-replacement example rather than one universal call-site substitution.",
+        "A plain sanity sample of 3,000,000 lcg_value() draws stayed within the open interval (1.37e-6, 0.9999999029) and never produced exactly 0.0 or a value >= 1.0 - consistent with, though not proof of, the conventional half-open [0, 1) range; hitting an exact floating-point boundary by chance alone is too rare to observe at any practical sample size, which is why the boundary-case proof above uses a deterministic engine instead of random sampling.",
+        "Evidence: UPGRADING-8.4.0.txt, '4. Deprecated Functionality' -> Random: \"lcg_value() is deprecated, as the function is broken in multiple ways. Use \\Random\\Randomizer::getFloat() instead.\""
+    ]
+}

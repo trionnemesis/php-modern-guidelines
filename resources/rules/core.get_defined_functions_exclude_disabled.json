@@ -1,0 +1,64 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.get_defined_functions_exclude_disabled",
+    "title": "Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated",
+    "summary": "PHP 8.5 deprecates the $exclude_disabled parameter of get_defined_functions() because it has had no effect since PHP 8.0, so passing it explicitly - true or false - now only raises a deprecation notice and should simply be dropped.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Never pass an argument to get_defined_functions(). Call it as get_defined_functions(); the parameter has had no effect since PHP 8.0, and on PHP 8.5+ supplying it at all - regardless of whether the value is true or false - raises a deprecation notice.",
+    "existing_code_policy": "Search for get_defined_functions( calls that pass an argument and drop the argument entirely, whether it currently reads true or false; both already behave identically to calling the function with no arguments. The call remains valid and silent on PHP 8.2-8.4 either way, so this is a safe, order-independent cleanup that need not wait for a PHP 8.5 floor.",
+    "guideline": "Call get_defined_functions() with no arguments; do not pass a value for $exclude_disabled.",
+    "details": "PHP 8.5 deprecates the $exclude_disabled parameter of get_defined_functions(). The official UPGRADING-8.5.0 text is direct about why: \"The $exclude_disabled parameter of the get_defined_functions() function has been deprecated, as it no longer has any effect since PHP 8.0.\" This is a deprecation of the parameter, not of get_defined_functions() itself: the function remains fully supported and undeprecated on every currently known minor, 8.2-8.5; only supplying an explicit value for its one parameter now emits a deprecation notice on PHP 8.5+. Measured locally on PHP 8.4.19, get_defined_functions(), get_defined_functions(true), and get_defined_functions(false) all returned equal arrays - the same 1891 internal functions and the same user-defined list in every pairing - direct confirmation that the parameter has already been inert for several minors before this deprecation formalizes that fact. Because the PHPCompatibility sniff fires on the mere presence of an explicit argument rather than on a specific value - an explicit true triggers the same warning as an explicit false - the only correct fix is to drop the argument entirely rather than to normalize it to some particular value. introduced_in stays null because this rule makes no feature-availability claim, and removed_in stays null because no PHP 8.2-8.5 UPGRADING file removes the parameter or the function; it is deprecated only.",
+    "examples": [
+        {
+            "before": [
+                "function listInternalFunctionNames(): array",
+                "{",
+                "    return get_defined_functions(true)['internal'];",
+                "}"
+            ],
+            "after": [
+                "function listInternalFunctionNames(): array",
+                "{",
+                "    // $exclude_disabled has had no effect since PHP 8.0 and is deprecated",
+                "    // on PHP 8.5+; call get_defined_functions() with no arguments.",
+                "    return get_defined_functions()['internal'];",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "$allFunctions = get_defined_functions(false);"
+            ],
+            "after": [
+                "$allFunctions = get_defined_functions();"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctionParameters.get_defined_functions_exclude_disabledDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "This rule deprecates passing an argument to get_defined_functions(), not the function itself: get_defined_functions() remains ordinary, undeprecated, fully supported API on every currently known minor; only the act of supplying its one parameter explicitly is deprecated, and only starting PHP 8.5.",
+        "Reflection shows the engine-declared default of the parameter is true (ReflectionParameter::getDefaultValue() for the exclude_disabled parameter of get_defined_functions()), which means calling it bare is already equivalent to passing true explicitly - yet passing that same default value explicitly still raises the deprecation notice, confirmed by probing both literal forms with the pinned PHPCompatibility stack. There is no value that avoids the warning other than omitting the argument outright.",
+        "Evidence: UPGRADING-8.5.0.txt, '4. Deprecated Functionality' -> Core: \"The $exclude_disabled parameter of the get_defined_functions() function has been deprecated, as it no longer has any effect since PHP 8.0.\""
+    ]
+}

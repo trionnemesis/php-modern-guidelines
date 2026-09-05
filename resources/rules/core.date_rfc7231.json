@@ -1,0 +1,61 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.date_rfc7231",
+    "title": "`DATE_RFC7231` and `DateTimeInterface::RFC7231` are deprecated",
+    "summary": "PHP 8.5 deprecates the DATE_RFC7231 global constant and the DateTimeInterface::RFC7231 class constant because the format they hold always renders GMT regardless of the actual timezone of the DateTimeInterface object being formatted, silently ignoring it rather than converting to it.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Do not reach for DATE_RFC7231 or DateTimeInterface::RFC7231 in new code. To produce a genuine RFC 7231 HTTP-date, first make sure the value is actually in GMT - either format a Unix timestamp with gmdate('D, d M Y H:i:s \\G\\M\\T', $timestamp), which is always GMT by construction, or explicitly convert a DateTimeInterface object with ->setTimezone(new DateTimeZone('GMT')) before formatting it. Do not assume the format string of the deprecated constant performs that conversion; it does not.",
+    "existing_code_policy": "Search for DATE_RFC7231 and DateTimeInterface::RFC7231 (also reachable as DateTime::RFC7231 or DateTimeImmutable::RFC7231 through interface-constant inheritance); on a PHP 8.5+ floor, using either raises a deprecation notice. For each call site, check whether the DateTimeInterface object being formatted is actually in GMT. If it already is, the fix is mechanical: gmdate() or an explicit setTimezone(new DateTimeZone('GMT')) reproduces the identical string with no deprecation notice. If it is not, the existing code was almost certainly already producing an incorrect HTTP-date - a wall-clock time mislabeled GMT - so fixing the deprecation is also a chance to fix a latent correctness bug by converting to GMT before formatting.",
+    "guideline": "Do not use DATE_RFC7231 or DateTimeInterface::RFC7231. To format a value as an HTTP-date, convert it to GMT first and only then format - with gmdate() on a Unix timestamp, or ->setTimezone(new DateTimeZone('GMT')) on a DateTimeInterface object before calling format().",
+    "details": "PHP 8.5 deprecates both the global DATE_RFC7231 constant and the DateTimeInterface::RFC7231 class constant, inherited by DateTime, DateTimeImmutable, and any other DateTimeInterface implementation, in one UPGRADING-8.5.0 Date entry: \"The DATE_RFC7231 and DateTimeInterface::RFC7231 constants have been deprecated. This is because the associated timezone is ignored and always uses GMT.\" Both constants hold the identical format string D, d M Y H:i:s \\G\\M\\T (measured locally, and DATE_RFC7231 === DateTimeInterface::RFC7231 is true): the trailing \\G\\M\\T is an escaped literal, not a timezone-offset format code, so formatting with it always prints the three characters GMT regardless of the actual timezone of the object being formatted - the format does not convert the value to GMT, it relabels whatever wall-clock time the object already holds. That is the crux of the replacement advice: because the constant never performed a conversion, swapping it for a different built-in date constant such as DATE_RFC2822 or DATE_RSS does not fix anything, since those instead format the real UTC offset of the object (for example +0800) rather than hard-coding GMT - a differently shaped and equally not-necessarily-correct string. Producing a genuine RFC 7231 HTTP-date requires converting to GMT explicitly first and only then formatting - with gmdate() on a Unix timestamp, always GMT by construction, or an explicit ->setTimezone(new DateTimeZone('GMT')) on a DateTimeInterface object before calling format(). Only the global DATE_RFC7231 constant has a proven PHPCompatibility mapping; probing the class-constant form - DateTimeInterface::RFC7231, and the identically-valued inherited DateTime::RFC7231 and DateTimeImmutable::RFC7231 spellings - produced no finding at all from the pinned analyzer, even though UPGRADING-8.5.0 deprecates it in the same sentence as the global constant. The guidance in this rule covers both constants, matching the official source, but verification.phpcompatibility can only list the one sniff actually proven. introduced_in stays null because this rule makes no feature-availability claim, and removed_in stays null because no PHP 8.2-8.5 UPGRADING file removes either constant.",
+    "examples": [
+        {
+            "before": [
+                "function lastModifiedHeaderValue(DateTimeInterface $modifiedAt): string",
+                "{",
+                "    return $modifiedAt->format(DATE_RFC7231);",
+                "}"
+            ],
+            "after": [
+                "function lastModifiedHeaderValue(DateTimeInterface $modifiedAt): string",
+                "{",
+                "    // DATE_RFC7231 is deprecated on PHP 8.5+, and its format string never",
+                "    // actually converts to GMT - it only relabels whatever timezone",
+                "    // $modifiedAt already carries. Convert explicitly, then format.",
+                "    $gmt = (clone $modifiedAt)->setTimezone(new DateTimeZone('GMT'));",
+                "    return $gmt->format('D, d M Y H:i:s \\G\\M\\T');",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Constants.RemovedConstants.date_rfc7231Deprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Measured locally: DATE_RFC7231 and DateTimeInterface::RFC7231 are the identical string D, d M Y H:i:s \\G\\M\\T (=== is true). Formatting three DateTime objects that share the same wall-clock time, 2026-09-05 03:00:00, in three different timezones - UTC, Asia/Taipei (UTC+8), America/Los_Angeles (UTC-7) - with DATE_RFC7231 produced the byte-identical string \"Sat, 05 Sep 2026 03:00:00 GMT\" in all three cases; for comparison, formatting the same three objects with DATE_RFC2822 (format D, d M Y H:i:s O) correctly produced the offsets +0000, +0800, and -0700 respectively. Converting the Asia/Taipei object to GMT first with ->setTimezone(new DateTimeZone('GMT')) and then formatting with DATE_RFC7231 produced \"Fri, 04 Sep 2026 19:00:00 GMT\", matching gmdate('D, d M Y H:i:s \\G\\M\\T', $timestamp) on the same instant - the correct HTTP-date.",
+        "Measured locally: with date_default_timezone_set('Asia/Taipei') in effect, the procedural form date(DATE_RFC7231, $timestamp) printed the local Taipei wall-clock time labelled GMT (\"Sat, 05 Sep 2026 03:00:00 GMT\"), the same silent mislabeling reached through the default timezone of the process rather than the timezone of a DateTimeInterface object; gmdate(DATE_RFC7231, $timestamp) on the identical $timestamp correctly printed \"Fri, 04 Sep 2026 19:00:00 GMT\". Because whether date(DATE_RFC7231, ...) is already correct depends entirely on a date_default_timezone_set() call the call site itself does not show, this shape gets the no-automatic-replacement example rather than a mechanical date()-to-gmdate() rewrite that cannot be verified safe without reading the surrounding code.",
+        "Evidence: UPGRADING-8.5.0.txt, '4. Deprecated Functionality' -> Date: \"The DATE_RFC7231 and DateTimeInterface::RFC7231 constants have been deprecated. This is because the associated timezone is ignored and always uses GMT.\""
+    ]
+}
