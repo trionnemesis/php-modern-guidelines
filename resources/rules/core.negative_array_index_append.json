@@ -1,0 +1,109 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.negative_array_index_append",
+    "title": "Appending to an array right after a negative key now continues from `n + 1`, not `0`",
+    "summary": "As of PHP 8.3, assigning a negative integer key n as the very first key an array's underlying container has ever recorded makes the array's next auto-appended key n + 1 instead of resetting it to 0; the change is completely silent in both directions - no notice, warning, or diagnostic of any kind, on any PHP version - so it can only be found by reading the code or by running it and comparing the resulting keys.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Do not write code whose correctness depends on the specific integer key that $a[] = ... or array_push() produces after assigning a negative key to a freshly-created array. As of PHP 8.3, the first [] append after $a[-5] = 'x' on an array that has never held any other key yields -4, not 0 - but this only holds while the array's auto-next-key counter has never been advanced by any prior key, positive or negative, even one that has since been unset(); an array that already held any key before the negative one does not get this treatment, and its next [] append is unaffected. If the resulting keys matter to your code, assign them explicitly instead of relying on the implicit next-key computation, on any PHP version.",
+    "existing_code_policy": "Find array-building code that assigns a negative integer key to what the author assumed was, or intended to be, an empty array, followed by one or more $a[] = ... or array_push($a, ...) calls whose resulting keys matter downstream - a json_encode() that expects a list rather than an object, a later array_values() call, code indexing by the literal key. On PHP 8.3+, if that negative-keyed assignment really was the first key the array's underlying container ever received, the appended keys now continue upward from n + 1 instead of resetting to 0 - and this happened with no diagnostic then and none now, so grep for the pattern; you cannot find it by running the code and watching for an error. Confirm, for each call site, whether the array had genuinely never held a key before the negative assignment: merely being empty at that moment (for example after unset()-ing every element of a previously-populated array) does not qualify - such an array's next-key counter is already established and stays unaffected by a subsequent negative key, exactly as it always was.",
+    "guideline": "Do not rely on the specific integer key that $a[] = ... or array_push() produces immediately after assigning a negative key to an array that has never held any other key. As of PHP 8.3, that first append continues from n + 1 rather than resetting to 0 - silently, with no notice in either direction - and only for an array whose next-key counter was never previously advanced; assign keys explicitly wherever the resulting key matters.",
+    "details": "Before PHP 8.3, assigning a negative integer key to an array did not change what key [] would assign next: on an otherwise-empty array, $a[-5] = 'x'; $a[] = 'y'; gave 'y' the key 0, discarding the relationship to -5 entirely. As of PHP 8.3, the first [] (or array_push()) append after such a negative-key assignment instead continues from n + 1: verified directly on the local PHP 8.4.19, $a = []; $a[-5] = 'x'; $a[] = 'y'; produces keys [-5, -4], and array_push($a, 'y') after the same $a[-5] = 'x' produces the identical [-5, -4]. -1 specifically is a visible-behavior no-op for this change, since -1 + 1 = 0 is what the pre-8.3 reset-to-0 behavior already produced: $a = []; $a[-1] = 'x'; $a[] = 'y'; gives [-1, 0] on 8.4.19 and, per UPGRADING, would have given the same result before 8.3 - so testing only -1 cannot reveal whether a given runtime has this change at all.\n\nThe trigger condition is narrower than \"the array is empty\": it is really about whether the array's next-auto-key bookkeeping has ever been advanced, not about its current element count. Measured directly: (1) a non-empty array is unaffected - $a = [0 => 'z']; $a[-5] = 'x'; $a[] = 'y'; gives keys [0, -5, 1], the append still continuing from the pre-existing positive key exactly as before 8.3; (2) emptying a previously-keyed array with unset() does not re-arm the rule - $a = [0 => 'z']; unset($a[0]); $a[-5] = 'x'; $a[] = 'y'; gives keys [-5, 1], not [-5, -4], even though count($a) === 0 at the moment -5 is assigned; the same holds when the prior key was itself negative ($a = []; $a[-1] = 'p'; unset($a[-1]); $a[-5] = 'q'; $a[] = 'r'; gives [-5, 0], not [-5, -4] - the append reuses the 0 already established by the first, since-removed, negative key); (3) a genuinely fresh array container is affected even when it was built by filtering a non-empty one - $a = array_filter([0 => 'z'], fn() => false); $a[-5] = 'x'; $a[] = 'y'; gives [-5, -4], because array_filter() returns a new array value rather than mutating the old one in place. In short, what matters is the specific array container's own history of key assignment, not what count() reports right now, and not whether the negative key was literally the first statement to touch that variable - reassigning a variable to a fresh array resets that history. String-numeric negative keys behave identically to integer ones: $a = []; $a['-5'] = 'x'; $a[] = 'y'; gives keys [-5, -4] with both keys stored as PHP integers, since PHP always canonicalizes an integer-like string key to an int.\n\nOnce established - whether by the ordinary pre-8.3 rule (a non-negative key) or by this new negative-key rule - the next-append value persists across further unset() calls and is not moved by inserting additional negative keys: $a = []; $a[-5] = 'p'; unset($a[-5]); $a[] = 'y'; still appends at -4, and $a = []; $a[-5] = 'p'; $a[-2] = 'q'; $a[] = 'r'; appends 'r' at -1 (continuing from the -5-established -4; the explicit $a[-2] = 'q' did not itself move the counter). This mirrors how positive keys have always worked in PHP: the next-append counter is monotonic for the life of a given array and is never lowered by removing elements. PHP 8.3 simply extended that same monotonic counter to start correctly from a negative first key too, instead of clamping it to 0.\n\nHere introduced_in is set to 8.3 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.3 introduced negative array keys or the [] append operator, both of which have existed since PHP's earliest versions.",
+    "examples": [
+        {
+            "before": [
+                "function withPlaceholderAt(string $placeholder, array $items): array",
+                "{",
+                "    $result = [];",
+                "    $result[-1] = $placeholder;",
+                "",
+                "    foreach ($items as $item) {",
+                "        $result[] = $item;",
+                "    }",
+                "",
+                "    return $result;",
+                "}"
+            ],
+            "after": [
+                "function withPlaceholderAt(string $placeholder, array $items): array",
+                "{",
+                "    $result = ['placeholder' => $placeholder];",
+                "    $result['items'] = array_values($items);",
+                "",
+                "    return $result;",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class OrderedBuffer",
+                "{",
+                "    /** @var array<int, string> */",
+                "    private array $entries = [];",
+                "",
+                "    public function seedAt(int $negativeKey, string $value): void",
+                "    {",
+                "        $this->entries[$negativeKey] = $value;",
+                "    }",
+                "",
+                "    public function append(string $value): int",
+                "    {",
+                "        $this->entries[] = $value;",
+                "",
+                "        end($this->entries);",
+                "",
+                "        return key($this->entries);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class OrderedBuffer",
+                "{",
+                "    /** @var array<int, string> */",
+                "    private array $entries = [];",
+                "",
+                "    private int $nextKey = 0;",
+                "",
+                "    public function seedAt(int $negativeKey, string $value): void",
+                "    {",
+                "        $this->entries[$negativeKey] = $value;",
+                "        $this->nextKey = $negativeKey + 1;",
+                "    }",
+                "",
+                "    public function append(string $value): int",
+                "    {",
+                "        $key = $this->nextKey;",
+                "        $this->entries[$key] = $value;",
+                "        $this->nextKey++;",
+                "",
+                "        return $key;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-05), array_keys() read after each sequence: []; $a[-5]='x'; $a[]='y' => [-5,-4]. []; $a[-1]='x'; $a[]='y' => [-1,0] (coincides with the pre-8.3 default, since -1+1=0). [0=>'z']; $a[-5]='x'; $a[]='y' => [0,-5,1] (non-empty array, unaffected). [0=>'z']; unset($a[0]); $a[-5]='x'; $a[]='y' => [-5,1] (count()===0 at assignment time, but NOT treated as empty for this rule). []; $a[-1]='p'; unset($a[-1]); $a[-5]='q'; $a[]='r' => [-5,0] (a prior, since-removed, negative key also blocks the new rule). array_filter([0=>'z'], fn()=>false) then $a[-5]='x'; $a[]='y' => [-5,-4] (a genuinely fresh array container from array_filter() IS affected, unlike unset() on the same container). []; $a[-5]='p'; array_push($a,'y') => [-5,-4] (array_push() matches [] exactly). []; $a['-5']='x'; $a[]='y' => [-5,-4] with both keys stored as PHP int (string-numeric keys canonicalize the same way).",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-05) against a class assigning a negative key to a freshly-built array and then appending, and a class calling array_push() after a negative-key assignment, at testVersion 8.2-8.5, and produced zero findings; verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility checks version availability, not that an existing, always-valid array-key assignment now silently computes a different next key, so there is nothing about this construct a static, line-by-line sniff could flag without evaluating the array's actual key history.",
+        "Evidence: UPGRADING-8.3.0, \"1. Backward Incompatible Changes\" -> Core: \"Assigning a negative index n to an empty array will now make sure that the next index is n+1 instead of 0.\" No PHP 8.4 or 8.5 UPGRADING file revisits this behavior, so it persists unchanged through PHP 8.5."
+    ]
+}

@@ -1,0 +1,116 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.list_destructuring_non_array",
+    "title": "Destructuring a non-array, non-`NULL` value with `[]` or `list()` now emits a warning",
+    "summary": "PHP 8.5 emits a warning when `[]` or `list()` destructuring is applied to any value that is neither an array nor `NULL`; verified directly, destructuring an `int`, `float`, `string`, or `bool` value already silently assigns `NULL` to every target variable today with no diagnostic whatsoever, and UPGRADING describes only a new warning being added on top of that unchanged silent fill. `NULL` itself stays the one exempt case on both sides of the change: `[$a, $b] = null;` stays silent in PHP 8.5, while `list($c, $d) = 42;` is exactly what the new warning targets.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Only destructure a value with `[]` or `list()` once it is already known to be an array - by its declared type, a preceding `is_array()` guard, or an unconditionally array-returning call. Do not write `[$first] = $someString` expecting `$first` to become the string's first character; destructuring a string does not do that, on any PHP version this catalog tracks - it silently assigns `NULL`. `NULL` is the sole value that stays legal and silent to destructure (`[$a, $b] = null;` gives `NULL` for both, with no warning even in PHP 8.5); treat every other non-array value reaching a destructure as a bug to fix upstream, not a case to special-case around.",
+    "existing_code_policy": "Search for every `[...] = $expr;` and `list(...) = $expr;` whose right-hand side is not already statically known to be an array. Verified directly on PHP 8.4.19 with an explicit `set_error_handler()` that would have printed any diagnostic PHP produced: destructuring an `int` (`list($c, $d) = 42;`), a `float` (`[$f] = 3.14;`), a `string` (`[$e] = 'str';`), or a `bool` (`[$g] = true;`) each silently assigns `NULL` to every target and raised no warning, notice, or error of any kind. `NULL` is the sole exception on both sides of PHP 8.5 - `[$a, $b] = null;` also silently yields `NULL` for both targets and is explicitly carved out of what starts warning in 8.5 - so do not add a defensive rewrite for the `NULL` case expecting it to eventually warn; it will not. Destructuring an *object*, by contrast, is a different and already-loud failure, not part of this rule at all: verified directly, `[$h] = new stdClass();` throws `Error: Cannot use object of type stdClass as array` today, regardless of whether the object has public properties, so objects were never part of the silent-`NULL` problem this rule describes and need no change here. Where existing code destructures a value that is not statically an array, find out why: if the value can legitimately be absent, make that explicit (guard on `null` and branch, rather than relying on the implicit `NULL`-fill to propagate); if it is a scalar that was mistakenly expected to explode into named parts - the common miswrite being `[$first] = $someString` expecting a character - replace the destructure with the operation actually intended (`$someString[0] ?? null`, or `mb_substr($someString, 0, 1)` for a multibyte-safe first character).",
+    "guideline": "Only destructure values that are already known to be arrays; `NULL` is the one non-array value this stays legal and silent for, both before and after PHP 8.5. Every other non-array value - `int`, `float`, `string`, `bool` - destructures today by silently assigning `NULL` to every target with no diagnostic at all, and PHP 8.5 adds a warning on top of that same silent fill without changing which value gets assigned. Never read `[$first] = $someString` as extracting a character; it assigns `NULL`.",
+    "details": "UPGRADING-8.5.0 lists this under Backward Incompatible Changes -> Core: destructuring non-array values (other than `NULL`) using `[]` or `list()` now emits a warning (RFC warnings-php-8-5#destructuring_non-array_values). Verified directly on PHP 8.4.19, with `set_error_handler()` installed so any diagnostic PHP raised would be printed: `[$a, $b] = null;` assigns `NULL` to both targets with zero diagnostics; `list($c, $d) = 42;` (an `int`) and the short-syntax equivalent `[$c2, $d2] = 42;` both assign `NULL` to both targets with zero diagnostics; `[$f] = 3.14;` (a `float`) assigns `NULL` with zero diagnostics; `[$e] = 'str';` (a `string`) assigns `NULL` - not `'s'` - with zero diagnostics; and `[$g1] = true;` / `[$g2] = false;` (`bool`) each assign `NULL` with zero diagnostics. Every one of these produced no output at all from the installed error handler, confirming the silent-fill is total today, not merely under-reported. `NULL` is the single documented exemption, verified to already behave identically to the other non-array cases in outcome (assigns `NULL`) while remaining the one case UPGRADING's parenthetical excludes from the new PHP 8.5 warning - a rule that omitted this carve-out would send an agent looking for a warning on `[$a, $b] = null;` that does not exist. Destructuring an object was separately verified to be an unrelated, already-loud failure: `[$h] = new stdClass();` throws `Error: Cannot use object of type stdClass as array` on PHP 8.4.19 regardless of whether the object carries public properties (tested both an empty `stdClass` and one with a public `$x` property; both throw the identical `Error`) - objects were never part of the silent-`NULL` behavior this rule documents, since attempting to destructure one has always been a hard, unmissable failure rather than a silent no-op. UPGRADING's own text describes only a new diagnostic (\"now emits a warning\"), not a change to which value gets assigned, and this tool cannot observe PHP 8.5 directly to confirm that firsthand - the local host is PHP 8.4.19 - but nothing in the cited text suggests the `NULL`-fill itself will change once the warning starts firing; the value the warning describes is exactly the value already produced silently today. `introduced_in` is set to \"8.5\" here because that is the minor the new warning actually starts firing in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.5 introduced `[]`/`list()` destructuring themselves, which have existed since PHP's earliest versions (`list()`) and since PHP 7.1 (the short `[]` destructuring syntax). On a policy whose entire targeted range sits below 8.5 (for example `8.2.*`), this rule is out of range and does not apply: no PHP runtime in that range warns on this pattern, so surfacing the rule there would tell an agent to expect a diagnostic that cannot fire. The underlying silent-`NULL` assignment this rule documents is not itself new at 8.5 - it is unchanged on every PHP version this catalog tracks, before and after - but the rule's actionable claim is specifically about the new PHP 8.5 warning, and gating on `introduced_in` keeps that claim honest for a project that never reaches 8.5. PHPCompatibility was probed directly (2026-09-05) against files covering every case above (`null`, `int`, `float`, `string`, `bool`, and the object contrast) at testVersion 8.2-8.5 and produced zero findings: this is a new runtime warning triggered by a value's runtime type at the destructuring site, not a function/constant/syntax availability fact, so it sits outside what PHPCompatibility's sniffs are built to detect; `verification.phpcompatibility` is intentionally empty rather than guessed.",
+    "examples": [
+        {
+            "before": [
+                "function firstCharacter(string $value): ?string",
+                "{",
+                "    [$first] = $value;",
+                "",
+                "    return $first;",
+                "}"
+            ],
+            "after": [
+                "function firstCharacter(string $value): ?string",
+                "{",
+                "    return $value === '' ? null : $value[0];",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class RowSplitter",
+                "{",
+                "    /**",
+                "     * @return array{0: string, 1: string}|false",
+                "     */",
+                "    private function splitPair(string $raw): array|false",
+                "    {",
+                "        $pos = strpos($raw, ':');",
+                "        if ($pos === false) {",
+                "            return false;",
+                "        }",
+                "",
+                "        return [substr($raw, 0, $pos), substr($raw, $pos + 1)];",
+                "    }",
+                "",
+                "    /**",
+                "     * @return array{key: ?string, value: ?string}",
+                "     */",
+                "    public function parse(string $raw): array",
+                "    {",
+                "        [$key, $value] = $this->splitPair($raw);",
+                "",
+                "        return ['key' => $key, 'value' => $value];",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class RowSplitter",
+                "{",
+                "    /**",
+                "     * @return array{0: string, 1: string}|null",
+                "     */",
+                "    private function splitPair(string $raw): ?array",
+                "    {",
+                "        $pos = strpos($raw, ':');",
+                "        if ($pos === false) {",
+                "            return null;",
+                "        }",
+                "",
+                "        return [substr($raw, 0, $pos), substr($raw, $pos + 1)];",
+                "    }",
+                "",
+                "    /**",
+                "     * @return array{key: string, value: string}",
+                "     */",
+                "    public function parse(string $raw): array",
+                "    {",
+                "        $pair = $this->splitPair($raw);",
+                "        if ($pair === null) {",
+                "            throw new \\InvalidArgumentException(\"Malformed row: {$raw}\");",
+                "        }",
+                "",
+                "        [$key, $value] = $pair;",
+                "",
+                "        return ['key' => $key, 'value' => $value];",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19 with `set_error_handler()` installed to surface any diagnostic: `[$a, $b] = null;` gives `NULL, NULL`; `list($c, $d) = 42;` and `[$c2, $d2] = 42;` each give `NULL, NULL`; `[$f] = 3.14;` gives `NULL`; `[$e] = 'str';` gives `NULL` (not the string's first character); `[$g1] = true;` and `[$g2] = false;` each give `NULL`. No `[errno=...]` line was ever printed for any of these, confirming zero diagnostics of any kind on this host - as expected, since 8.4.19 predates PHP 8.5's new warning. As a control, `[$i1, $i2] = ['first', 'second'];` behaves as ordinary array destructuring and is unaffected. Commands run: `php -l rule6_destructure.php` then `php rule6_destructure.php`.",
+        "Verified on PHP 8.4.19: `[$h] = new stdClass();` throws `Error: Cannot use object of type stdClass as array`, both for an empty `stdClass` and for one with a public `$x` property - an unrelated, already-loud failure that predates and is untouched by this rule; objects were never part of the silent-`NULL` behavior described here.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-05) against files covering the `null`/`int`/`float`/`string`/`bool` destructuring cases and the object contrast above, at testVersion 8.2-8.5, and produced zero findings (`{\"errors\": 0, \"warnings\": 0, \"fixable\": 0}`). PHPCompatibility's sniffs detect version-availability facts about functions, constants, and syntax; a warning keyed on a destructuring target's runtime type has no such fact to sniff for, so this is the structural blindness the catalog's Backward Incompatible Changes rules generally run into this round, not an oversight in the mapping - `verification.phpcompatibility` is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0, \"1. Backward Incompatible Changes\" -> Core: \"Destructing non-array values (other than NULL) using [] or list() now emits a warning.\" RFC: https://wiki.php.net/rfc/warnings-php-8-5#destructuring_non-array_values"
+    ]
+}

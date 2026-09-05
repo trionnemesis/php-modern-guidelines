@@ -84,7 +84,7 @@ Then filter the rule catalogue to what you are about to write:
 ```console
 $ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 34 of 56 shown
+Rules: 34 of 64 shown
 
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -172,8 +172,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage coverage_gap (known 8.2-8.5, open upper bound), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 56 rule file(s)
-  [ok]      rules.load               56 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 64 rule file(s)
+  [ok]      rules.load               64 rule(s) loaded
 
 Details
   cli.build
@@ -215,9 +215,9 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              56
+    file_count              64
   rules.load
-    loaded                  56
+    loaded                  64
     error                   -
 ```
 

@@ -1,0 +1,115 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.readonly_indirect_modification_clone",
+    "title": "Indirect modification of readonly properties within `__clone()` is no longer allowed",
+    "summary": "As of PHP 8.4, taking a reference to a readonly property inside `__clone()` (e.g. `$ref = &$this->prop;`) throws `Error: Cannot indirectly modify readonly property Class::$prop`, closing an oversight that had left `__clone()` as the one place a readonly property's indirect-modification protection did not apply; direct reassignment (`$this->prop = $value;`), the supported readonly-reinitialization-during-cloning pattern, is unaffected and continues to work inside `__clone()` exactly as before.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "Never take a reference to a readonly property, anywhere - `__clone()` included. `$ref = &$this->prop;` throws `Error: Cannot indirectly modify readonly property Class::$prop` regardless of where it is attempted: inside `__clone()`, inside the constructor during initialization, or from completely outside the class. When `__clone()` needs to change a readonly property's value, reassign it directly - `$this->prop = $value;`, or a compound assignment such as `$this->prop *= 2;` - which is the fully supported readonly-reinitialization-during-cloning pattern and remains legal precisely because it is not an indirect modification.",
+    "existing_code_policy": "Search every `__clone()` method for a reference taken against `$this->` - `$ref = &$this->prop;`, or a helper that hands back a reference into a property - and cross-reference which of those properties are declared `readonly`. Verified directly on PHP 8.4.19: `$ref = &$this->amount;` inside `__clone()` on a `readonly int $amount` throws `Error: Cannot indirectly modify readonly property class@anonymous::$amount`, while a direct reassignment - `$this->amount = 0;`, in the very same `__clone()` method - succeeds with no error at all. Because the fix (switch to direct assignment) produces the identical end value when the original intent was already \"set this property to a new value on clone\", it is usually a safe, mechanical rewrite; do not, however, assume every reference-based clone pattern reduces this cleanly - a `__clone()` that took a reference specifically to mutate something reachable *through* the property (rather than the property's own value) needs its actual intent worked out before it can be rewritten as a plain assignment, since a direct reassignment and a through-reference mutation are not always interchangeable.",
+    "guideline": "Never take a reference to a readonly property, in `__clone()` or anywhere else; PHP throws `Error: Cannot indirectly modify readonly property Class::$prop` for the attempt regardless of context, and PHP 8.4 closed the one place - `__clone()` - where this had slipped through as an implementation oversight. When a readonly property's value must change while cloning, reassign it directly; that is the fully supported readonly-reinitialization-during-cloning behavior and is unaffected by this change.",
+    "details": "UPGRADING-8.4.0 lists this under Backward Incompatible Changes -> Core: indirect modification of readonly properties within `__clone()` is no longer allowed, e.g. `$ref = &$this->readonly`; this was already forbidden for readonly initialization, and was an oversight in the \"readonly reinitialization during cloning\" implementation. Verified directly on the local PHP 8.4.19 (which already has this fix, since it landed in 8.4 and this host predates 8.5, not 8.4): inside `__clone()` on an object with a `readonly int $amount`, `$ref = &$this->amount;` throws `Error: Cannot indirectly modify readonly property class@anonymous::$amount`, while, in the very same `__clone()` method on a fresh instance, a plain direct reassignment `$this->amount = 0;` succeeds and the clone ends up with `amount === 0` - confirming the boundary UPGRADING describes: indirect modification is blocked, direct reassignment (the readonly-reinitialization-during-cloning feature) is not. This tool cannot observe what happened on PHP 8.3 or earlier - the local host is already 8.4.19 - so it cannot confirm firsthand that the same `__clone()` reference-taking attempt previously succeeded; that claim rests entirely on UPGRADING's own text calling it \"an oversight,\" which by construction means some earlier release allowed it. Verified further, to establish the rule's boundary precisely rather than assume it: indirect modification of a readonly property is also rejected identically outside of `__clone()` altogether - a plain external reference against an already-initialized object (`$ref = &$plainObject->amount;`) throws `Error: Cannot indirectly modify readonly property Plain::$amount` - and during the constructor's own initialization (`$ref = &$this->amount; $ref = $v;` inside `__construct()`) throws `Error: Cannot indirectly modify readonly property DuringInit::$amount`; both of these match UPGRADING's framing that indirect modification \"was already forbidden for readonly initialization\" and was never specific to `__clone()` - `__clone()` was simply the one context that had been missed. `introduced_in` is set to \"8.4\" here because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.4 introduced readonly properties or `__clone()` themselves: readonly properties arrived in PHP 8.1, and `__clone()` has existed since PHP 5. On a policy whose entire targeted range sits below 8.4 (for example a project pinned to `8.2.*` or `8.3.*`), this rule is out of range and does not apply, because on those runtimes the `__clone()` gap this rule documents had not yet closed - `$ref = &$this->prop;` inside `__clone()` was not rejected there, so surfacing this rule would describe a restriction that does not exist for that floor. Once a project's targeted range reaches 8.4 or above, the restriction applies on every affected minor in that range. PHPCompatibility was probed directly (2026-09-05) against files containing both the reference-taking and the direct-reassignment `__clone()` patterns and produced zero findings at testVersion 8.2-8.5: this is a runtime `Error`, not an availability difference in a function, constant, or syntax construct, so it sits outside what PHPCompatibility's sniffs are built to detect; `verification.phpcompatibility` is intentionally empty rather than guessed.",
+    "examples": [
+        {
+            "before": [
+                "final class Counter",
+                "{",
+                "    public function __construct(public readonly int $value)",
+                "    {",
+                "    }",
+                "",
+                "    public function __clone(): void",
+                "    {",
+                "        $ref = &$this->value;",
+                "        $ref = 0;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class Counter",
+                "{",
+                "    public function __construct(public readonly int $value)",
+                "    {",
+                "    }",
+                "",
+                "    public function __clone(): void",
+                "    {",
+                "        $this->value = 0;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class Money",
+                "{",
+                "    public function __construct(",
+                "        public readonly int $amountCents,",
+                "        public readonly string $currency,",
+                "    ) {",
+                "    }",
+                "",
+                "    public function doubled(): self",
+                "    {",
+                "        return clone $this;",
+                "    }",
+                "",
+                "    public function __clone(): void",
+                "    {",
+                "        // Intent: double the amount on every clone produced by doubled().",
+                "        $amountRef = &$this->amountCents;",
+                "        $amountRef *= 2;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class Money",
+                "{",
+                "    public function __construct(",
+                "        public readonly int $amountCents,",
+                "        public readonly string $currency,",
+                "    ) {",
+                "    }",
+                "",
+                "    public function doubled(): self",
+                "    {",
+                "        return clone $this;",
+                "    }",
+                "",
+                "    public function __clone(): void",
+                "    {",
+                "        // Direct reassignment is the supported readonly-reinitialization-during-cloning",
+                "        // pattern; no reference is needed or allowed.",
+                "        $this->amountCents *= 2;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: inside a `__clone()` method on an object with `public readonly int $amount`, `$ref = &$this->amount;` throws `Error: Cannot indirectly modify readonly property class@anonymous::$amount`. In the same script, a separate instance's `__clone()` using `$this->amount = 0;` (direct reassignment, no reference) completed with no error and the resulting clone's `amount` was `0` - confirming direct reassignment is unaffected. Commands run: `php -l rule5_readonly_clone.php` then `php rule5_readonly_clone.php`, with `set_error_handler()` installed to surface anything PHP would otherwise emit; only the two `Error` exceptions described here were produced, both caught with `try`/`catch (\\Error $e)`, and no warning/notice fired for either the reference-taking or the direct-reassignment path.",
+        "Verified on PHP 8.4.19, to establish that this is not clone-specific in effect (only the *oversight* was clone-specific): an external reference against an already-constructed object, `$ref = &$plainObject->amount;`, throws `Error: Cannot indirectly modify readonly property Plain::$amount`; and taking a reference during the constructor's own initialization, `$ref = &$this->amount; $ref = $v;` inside `__construct()`, throws `Error: Cannot indirectly modify readonly property DuringInit::$amount`. Both confirm UPGRADING's framing that indirect modification \"was already forbidden for readonly initialization\" prior to this change, and that `__clone()` was the sole gap being closed.",
+        "This tool cannot observe PHP 8.3 or earlier directly - the local host is PHP 8.4.19, which already has this PHP 8.4 fix applied - so it cannot independently confirm that the same `__clone()` reference-taking attempt previously succeeded on an older runtime; that specific claim is UPGRADING's own (calling it \"an oversight\" in the 8.3-introduced readonly-reinitialization-during-cloning feature), not something measured here.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-05) against files containing both the `$ref = &$this->prop;` pattern and the direct-reassignment `$this->prop = $value;` pattern inside `__clone()`, at testVersion 8.2-8.5, and produced zero findings (`{\"errors\": 0, \"warnings\": 0, \"fixable\": 0}`). This is expected: the change is a new runtime `Error` for an operation, not a function/constant/syntax availability fact, which is what PHPCompatibility's sniffs are built to detect - a clean run here is structural blindness, not evidence of safety, and `verification.phpcompatibility` is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.4.0, \"1. Backward Incompatible Changes\" -> Core: \"Indirect modification of readonly properties within __clone() is no longer allowed, e.g. $ref = &$this->readonly. This was already forbidden for readonly initialization, and was an oversight in the \\\"readonly reinitialization during cloning\\\" implementation.\""
+    ]
+}

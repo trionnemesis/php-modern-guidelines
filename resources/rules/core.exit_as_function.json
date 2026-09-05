@@ -1,0 +1,99 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.exit_as_function",
+    "title": "`exit`/`die` now behave like a function: callable, `strict_types`-aware, and type-coercing",
+    "summary": "As of PHP 8.4, exit/die can be used as callables (is_callable('exit') is now true), are subject to the file's strict_types declaration, and coerce their argument using PHP's normal scalar-type rules instead of unconditionally casting any non-integer value to a string - so a value that used to become the printed exit message (a float, a bool, null) can now instead be silently coerced to an integer exit status, or throw a TypeError, depending on whether strict_types=1 is in effect.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.4+ floor, treat exit()/die() as a real function call with a string|int $status parameter, not a language construct that accepts anything: never pass it a value whose type you have not confirmed is int or string. An array, object, or resource now throws a TypeError regardless of strict_types, since none of them ever participate in scalar-type coercion. null, a bool, or a float only throw under declare(strict_types=1); without strict_types they are still silently coerced to int (an integral float or a bool costs nothing at all; a fractional float raises an E_DEPRECATED for the precision loss but still proceeds) - do not rely on that coercion continuing to work if the file later adopts strict_types=1, since the exact same call then throws instead. exit('a message') to print a string and stop remains unaffected either way. If you need exit() usable as a callable (for example via array_map() or call_user_func()), it genuinely is one now - is_callable('exit') is true - but remember calling it that way still terminates the process on first invocation, so it only usefully appears as the very last callable that will run.",
+    "existing_code_policy": "Find every exit($x)/die($x) call whose argument is not a literal int or string constant - a variable, a ternary, a ?? fallback, a function return value - and check what it can actually hold. On PHP 8.4+: if that file has, or later gains, declare(strict_types=1), an argument that evaluates to null, a bool, or a float now throws an uncaught TypeError (a fatal error, process exit status 255) where it previously terminated normally. null is the case most worth searching for specifically, since exit($error ?? null)-shaped code is common and looks completely unremarkable. Without strict_types, the same values are still silently coerced (a bool or an integral float to the matching int status with no diagnostic at all; a fractional float to a truncated int with only an E_DEPRECATED, which this build's display_errors='' swallows by default) rather than being stringified and printed the way any non-integer used to be - so a call site that intentionally used exit($someFloatOrBool) to print a human-readable value now silently prints nothing and exits with a numeric status instead. Fix by validating and, where a specific exit status or message is actually intended, explicitly converting to int or string before the call, rather than passing a value of uncertain type and letting either the old string-cast or the new coercion decide for you. Declaring the surrounding function's own parameter as int|string (instead of mixed) is a stronger fix than a bare check, since a non-nullable int|string parameter rejects null consistently at that function's own boundary regardless of the file's strict_types setting - confirmed directly, unlike passing an unchecked value straight through to exit() itself, where the null case is silent without strict_types and only throws with it.",
+    "guideline": "Pass exit()/die() only a value you know is already an int or a string. As of PHP 8.4, it is a real function - callable by name, honoring the file's strict_types declaration, and applying normal scalar-type coercion instead of stringifying any non-integer value - so a null, bool, or float argument that used to become a printed message now either silently becomes an exit status (without strict_types) or throws a TypeError (with it); null is the value most likely to reach exit() by accident.",
+    "details": "Before PHP 8.4, exit/die were pure language constructs: is_callable('exit') was false, they ignored the file's strict_types declaration, and any argument that was not already an int was cast to a string and printed as the exit message, with the process then exiting 0 - a float, bool, array, or null argument all went through that same stringification, never a TypeError. As of PHP 8.4, exit/die behave like an ordinary function declared as exit(string|int $status = 0): never. Verified directly on the local PHP 8.4.19:\n\nCallable. is_callable('exit'), is_callable('die'), and is_callable('Exit') (case-insensitive, like any PHP function name) all return true. Calling it that way genuinely works, and genuinely still terminates the process: call_user_func('exit', 7) exits with status 7; call_user_func('exit', 'bye-from-callable') prints \"bye-from-callable\" and exits 0; array_map('exit', [9]) calls exit(9) on the first (and, since the process ends there, only) element, and the process exits with status 9.\n\nstrict_types. The declared parameter type is string|int, not a plain int, so under declare(strict_types=1) a float or bool argument is rejected outright regardless of whether it would coerce cleanly: exit(1.9), exit(4.0) (an integral float, not just a fractional one), and exit(true) each throw a TypeError of the shape \"exit(): Argument #1 ($status) must be of type string|int, {float|true} given\". Without strict_types, those same three calls all succeed silently: exit(4.0) exits with status 4 with no diagnostic at all; exit(true) exits with status 1 with no diagnostic at all; exit(1.9) raises E_DEPRECATED (\"Implicit conversion from float 1.9 to int loses precision\", errno 8192) and then exits with status 1. exit('...') and exit(<int>) behave identically in both modes, since both are already within the declared string|int type and need no coercion at all.\n\nnull specifically depends on strict_types in a way the other coercions do not. Without strict_types, exit(null) exits with status 0 silently - no TypeError, no E_DEPRECATED, nothing reported at all - while under declare(strict_types=1), the identical exit(null) throws TypeError \"exit(): Argument #1 ($status) must be of type string|int, null given\", an uncaught fatal error with process exit status 255. This is the sharpest practical consequence of the whole change: exit($value) where $value can be null - a ?? null fallback, an unset array key, a lookup that can miss - is extremely common, was completely silent before 8.4 and remains completely silent without strict_types, and starts hard-crashing the instant the same file (or a project-wide strict_types=1 policy) is adopted, with nothing about the exit() call site itself having changed. Confirmed separately: declaring the wrapping function's own parameter as a plain, non-nullable int|string (rather than mixed) closes this gap consistently - such a parameter rejects a null argument the same way whether or not the calling file has strict_types=1, because a non-nullable type never accepts null regardless of coercion mode, so the failure becomes visible immediately rather than only once strict_types is later adopted.\n\nValues that were never valid. An array (or an object, or a resource) argument throws TypeError \"exit(): Argument #1 ($status) must be of type string|int, array given\" regardless of strict_types, since arrays never participate in scalar-type coercion in either mode. UPGRADING-8.4.0 describes the prior behavior as casting any non-integer argument to a string; PHP's ordinary array-to-string cast - independently confirmed still active on this host, (string) [1, 2] raises E_WARNING \"Array to string conversion\" and yields the literal string \"Array\" - is consistent with what that would have meant for an array argument before 8.4, though the old exit()-specific code path itself no longer exists on this host to confirm directly.\n\nHere introduced_in is set to 8.4 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.4 introduced the exit/die constructs themselves, which have existed since PHP's earliest versions.",
+    "examples": [
+        {
+            "before": [
+                "function bail(mixed $status): never",
+                "{",
+                "    exit($status);",
+                "}"
+            ],
+            "after": [
+                "function bail(int|string $status): never",
+                "{",
+                "    exit($status);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class ConsoleCommand",
+                "{",
+                "    public function run(array $argv): never",
+                "    {",
+                "        $result = $this->execute($argv);",
+                "",
+                "        exit($result['exitCode'] ?? null);",
+                "    }",
+                "",
+                "    /**",
+                "     * @param list<string> $argv",
+                "     * @return array{exitCode?: int}",
+                "     */",
+                "    private function execute(array $argv): array",
+                "    {",
+                "        return [];",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ConsoleCommand",
+                "{",
+                "    public function run(array $argv): never",
+                "    {",
+                "        $result = $this->execute($argv);",
+                "        $exitCode = $result['exitCode'] ?? 1;",
+                "",
+                "        if (!is_int($exitCode)) {",
+                "            throw new UnexpectedValueException('exitCode must be an int');",
+                "        }",
+                "",
+                "        exit($exitCode);",
+                "    }",
+                "",
+                "    /**",
+                "     * @param list<string> $argv",
+                "     * @return array{exitCode?: int}",
+                "     */",
+                "    private function execute(array $argv): array",
+                "    {",
+                "        return [];",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-05), each exit()-invoking case run as its own subprocess so the invoking script's own exit status could be read from $? without losing later cases: is_callable('exit')/('die')/('Exit') => true/true/true, no process exit involved. call_user_func('exit', 7) => process exit status 7. call_user_func('exit', 'bye-from-callable') => prints 'bye-from-callable', exit status 0. array_map('exit', [9]) => process exit status 9. Weak typing (no declare(strict_types=1)): exit(1.5) => [errno=8192] 'Implicit conversion from float 1.5 to int loses precision', exit status 1; exit(4.0) => exit status 4, no diagnostic; exit(true) => exit status 1, no diagnostic; exit(null) => exit status 0, no diagnostic; exit('bye-weak') => prints 'bye-weak', exit status 0; exit([]) => uncaught TypeError (fatal error text on stderr, not stdout - display_errors='' does not suppress an uncaught-exception fatal error on this CLI build), process exit status 255; the same exit([]) wrapped in try/catch is caught as TypeError 'exit(): Argument #1 ($status) must be of type string|int, array given' and the script then continues normally (exit status 0). Strict typing (declare(strict_types=1)): exit(3) => exit status 3, unaffected; exit('bye-strict') => prints 'bye-strict', exit status 0; exit(1.9), exit(4.0), exit(true), and exit(null), each wrapped in try/catch, are all caught as TypeError 'exit(): Argument #1 ($status) must be of type string|int, {float|true|null} given' and the script continues (exit status 0) - confirming the strict-mode rejection applies even to an integral float (4.0) and does not depend on strict_types for null's TypeError coming from a plain int|string parameter on a wrapping function, which was confirmed separately to reject null identically with or without strict_types.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-05) against a class calling exit() with a nullable int parameter and a class calling array_map('exit', ...), at testVersion 8.2-8.5, and produced zero findings; verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility checks version availability (is a function or syntax construct available in a version range), not that a long-standing language construct silently began enforcing argument types and honoring strict_types, so a clean phpcs run gives no signal about any of the consequences above.",
+        "Evidence: UPGRADING-8.4.0, \"1. Backward Incompatible Changes\" -> Core: \"The exit (and die) language constructs now behave more like a function. They can be passed like callables, are affected by the strict_types declare statement, and now perform the usual type coercions instead of casting any non-integer value to a string. As such, passing invalid types to exit/die may now result in a TypeError being thrown.\" No PHP 8.5 UPGRADING file revisits this behavior, so it persists unchanged through PHP 8.5."
+    ]
+}

@@ -1,0 +1,105 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.str_split_empty_string",
+    "title": "`str_split()` returns an empty array for an empty string, not a one-element array",
+    "summary": "As of PHP 8.2, str_split('') returns an empty array instead of an array containing a single empty-string element, so code that indexes the result at [0] to read a possibly-empty string's \"first character\" now hits an undefined-array-key warning and gets null instead of ''; mb_str_split('') is unaffected because it already returned an empty array before this change.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.2",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "On a PHP 8.2+ floor, never assume str_split() returns at least one element: it returns an empty array for an empty-string input, not [''] like earlier PHP. Before indexing the result (for example $chars[0] to read a first character) or relying on its length, check for the empty-input case explicitly - either short-circuit before calling str_split() at all when the input can be '', or check count($chars) / isset($chars[0]) before reading an offset. mb_str_split('') already returns an empty array and is unaffected, so do not treat it as a safe drop-in fix for this specific shape difference - only for genuinely multibyte-aware splitting.",
+    "existing_code_policy": "Search for str_split() call sites that index the result without first checking whether the input could be an empty string - a first-character extraction like str_split($s)[0], a length or count() check that assumes at least one entry, or a loop that assumed at least one iteration for empty input. On PHP 8.2+, every such call site that receives an empty string now gets an empty array where it used to get [''], so an unguarded [0] read raises an \"Undefined array key 0\" warning and evaluates to null instead of the empty string - which is a hard TypeError instead of a warning if that value then flows into a string-typed return or parameter - and any count()-based branch that assumed count() >= 1 silently takes the wrong path instead. Confirm each call site can actually receive an empty string before changing it; where it can, add an explicit empty-string guard rather than reflexively defending every str_split() call in the codebase.",
+    "guideline": "Do not assume str_split() returns at least one element. As of PHP 8.2, str_split('') returns an empty array, not an array containing one empty-string element, so guard for the empty-input case explicitly before indexing the result or relying on its length; mb_str_split('') already behaved this way and is unaffected.",
+    "details": "Before PHP 8.2, str_split('') returned an array with one entry - array(''), a single empty string - so code treating the first element of str_split()'s result as \"the input's first character\" got a defined, if slightly odd, [0] entry even for empty input. As of PHP 8.2, str_split('') instead returns an empty array with no elements at all: verified directly on the local PHP 8.4.19, str_split('') returns array(0) {} (count 0), and reading $chars[0] on that result raises \"Undefined array key 0\" (E_WARNING, errno 2) and evaluates to null. If that null then flows into a string-typed return value or parameter, PHP raises a TypeError instead of merely warning: confirmed directly, a function declared to return string that does `$chars = str_split($value); return $chars[0];` throws \"Return value must be of type string, null returned\" when called with an empty string, even in a file without declare(strict_types=1), since null was never part of string's weak-coercion set. mb_str_split('') was already returning an empty array before this change and continues to on PHP 8.4.19 (also count 0, confirmed directly), which is exactly what UPGRADING-8.2.0 means when it says mb_str_split() is unaffected. The one-argument str_split($string) and two-argument str_split($string, $length) forms behave identically here, since the empty-array result follows from the input being empty, not from the split length.\n\nHere introduced_in is set to 8.2 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.2 introduced str_split() itself, which has existed since PHP's earliest versions.",
+    "examples": [
+        {
+            "before": [
+                "function firstCharacterOrDefault(string $value): string",
+                "{",
+                "    $chars = str_split($value);",
+                "",
+                "    return $chars[0];",
+                "}"
+            ],
+            "after": [
+                "function firstCharacterOrDefault(string $value): string",
+                "{",
+                "    if ($value === '') {",
+                "        return '';",
+                "    }",
+                "",
+                "    $chars = str_split($value);",
+                "",
+                "    return $chars[0];",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class LineInitialsExtractor",
+                "{",
+                "    /**",
+                "     * @param list<string> $lines",
+                "     * @return list<string>",
+                "     */",
+                "    public function initials(array $lines): array",
+                "    {",
+                "        $initials = [];",
+                "        foreach ($lines as $line) {",
+                "            $chars = str_split($line);",
+                "            $initials[] = $chars[0];",
+                "        }",
+                "",
+                "        return $initials;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class LineInitialsExtractor",
+                "{",
+                "    /**",
+                "     * @param list<string> $lines",
+                "     * @return list<string>",
+                "     */",
+                "    public function initials(array $lines): array",
+                "    {",
+                "        $initials = [];",
+                "        foreach ($lines as $line) {",
+                "            if ($line === '') {",
+                "                $initials[] = '';",
+                "                continue;",
+                "            }",
+                "",
+                "            $chars = str_split($line);",
+                "            $initials[] = $chars[0];",
+                "        }",
+                "",
+                "        return $initials;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19 with an active error handler: str_split('') returns array(0) {} (count 0); mb_str_split('') also returns array(0) {} (count 0); str_split('a') returns array(1) { [0] => 'a' } for comparison. Reading $chars = str_split(''); $chars[0]; raises [errno=2] \"Undefined array key 0\" and evaluates to null - the exact old-code failure mode this rule targets. Separately, a function declared `function f(string $v): string { $c = str_split($v); return $c[0]; }` called with '' throws TypeError \"Return value must be of type string, null returned\" even without declare(strict_types=1), since null is outside string's weak-coercion set for a return-type check.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-05) against a class calling str_split() and mb_str_split() and indexing the result at [0] with a null-coalescing fallback, at testVersion 8.2-8.5, and produced zero findings; verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility detects version availability (whether str_split() exists, whether a constant is defined, and so on), not that an existing function's return-value shape silently changed for one specific input, so a clean phpcs run is not evidence that a given str_split() call site is safe on PHP 8.2+.",
+        "Evidence: UPGRADING-8.2.0, \"1. Backward Incompatible Changes\" -> Standard: \"str_split() returns an empty array for an empty string now. Previously it returned an array with a single empty string entry. mb_str_split() is not affected by this change since it was already behaving like that.\" No PHP 8.3, 8.4 or 8.5 UPGRADING file revisits this behavior, so it persists unchanged through PHP 8.5."
+    ]
+}
