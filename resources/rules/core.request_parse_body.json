@@ -1,0 +1,68 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.request_parse_body",
+    "title": "`request_parse_body()` function",
+    "summary": "PHP 8.4 adds request_parse_body(), which parses an RFC 1867 multipart (or urlencoded) request body for non-POST HTTP methods such as PUT and PATCH; verified locally under PHP's built-in web server, it returns a [fields, files] pair shaped like $_POST/$_FILES, consumes the raw request body so a second call in the same request yields empty arrays, and throws RequestParseBodyException when the request carries no content type at all, which is exactly what happens calling it from a plain CLI script.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a PHP 8.4+ floor, use request_parse_body() to read a PUT or PATCH request's multipart or urlencoded body instead of hand-rolling an RFC 1867 parser over php://input. Verified locally (PHP 8.4.19, via `php -S`): the function takes one optional `?array $options = null` parameter (its accepted keys were not exercised here, so this rule does not assert what they configure) and returns a two-element list - index 0 holds the parsed fields shaped exactly like $_POST, index 1 holds parsed uploads shaped exactly like a $_FILES entry (name, full_path, type, tmp_name, error, size) - confirmed for both application/x-www-form-urlencoded and multipart/form-data bodies under PUT and PATCH. Call it at most once per request: verified locally, a second call after a successful first parse returns empty arrays rather than repeating the same result, because the underlying request body has already been consumed. It also throws RequestParseBodyException when the request has no content type - verified locally, this includes an ordinary bodyless GET request as well as any plain CLI invocation - so gate the call behind the actual PUT/PATCH branch that expects a body, not behind every request.",
+    "existing_code_policy": "Below a PHP 8.4 floor this function does not exist at all: function_exists('request_parse_body') is the way to check for it at runtime, since calling it unconditionally on an older interpreter is a call to an undefined function. Search for existing hand-written parsers of a PUT/PATCH request's raw body (typically something that reads php://input directly and either hand-parses application/x-www-form-urlencoded with parse_str() or hand-parses a multipart boundary) and, once the project's floor genuinely reaches PHP 8.4, replace that parsing code with a single request_parse_body() call. If the project must keep supporting a PHP floor below 8.4 while its lifecycle ceiling already reaches 8.4 or newer, gate the new code path behind a function_exists('request_parse_body') check (or an equivalent feature-ceiling guard) and keep the existing manual php://input parser as the fallback branch for the older floor - do not delete the manual parser outright just because request_parse_body() exists on this tool's own PHP 8.4.19; only delete it once the floor itself is raised.",
+    "guideline": "On a PHP 8.4+ floor, replace hand-written RFC 1867/urlencoded body parsing for PUT and PATCH endpoints with request_parse_body(), which returns a [postFields, files] pair shaped like $_POST/$_FILES; call it at most once per request (a second call returns empty arrays) and only when the request actually has a content type, since it throws RequestParseBodyException otherwise. Below an 8.4 floor the function does not exist, so gate new call sites behind function_exists('request_parse_body') (or an equivalent feature-ceiling check) and keep the existing manual parser as the fallback rather than assuming the call is universally available.",
+    "details": "UPGRADING-8.4.0 lists this under New Features -> Core: \"Added request_parse_body() function that allows parsing RFC1867 (multipart) requests in non-POST HTTP requests.\" (RFC rfc1867-non-post). PHP has always auto-populated $_POST and $_FILES only for POST requests; a PUT or PATCH request carrying the exact same multipart or urlencoded body has historically left the raw bytes sitting unparsed in php://input for the application to handle itself, which is precisely the gap request_parse_body() closes. Verified locally (PHP 8.4.19) via ReflectionFunction: its signature is `request_parse_body(?array $options = null): array` - a nullable, optional, defaulting-to-null $options parameter and a non-nullable array return type; this rule does not assert what keys $options accepts, since that was not independently exercised here. Verified locally under PHP's own built-in web server (`php -S`, which - unlike plain CLI execution - gives the SAPI a genuine HTTP request to expose): calling request_parse_body() from a router script handling a PUT request with an application/x-www-form-urlencoded body of `foo=bar&baz=1` returned `[['foo' => 'bar', 'baz' => '1'], []]`; a PUT with a multipart/form-data body containing one text field and one uploaded file returned `[['description' => 'hello'], ['upload' => ['name' => 'upload_sample.txt', 'full_path' => 'upload_sample.txt', 'type' => 'text/plain', 'tmp_name' => '/tmp/...', 'error' => 0, 'size' => 18]]]` - index 0 is shaped exactly like $_POST, and index 1's file entries are shaped exactly like a $_FILES entry, full_path included (the key PHP 8.1 added to $_FILES). The same call under a PATCH request behaved identically. Two things it does NOT do, both verified locally: first, it is not repeatable - calling it a second time in the same request, after a first call already parsed the body, returned `[[], []]` rather than the same data again or an exception, because the underlying request body stream had already been consumed; second, it does not read the $_SERVER superglobal to decide whether a content type is present - manually setting $_SERVER['CONTENT_TYPE'] in a plain CLI script before calling it still threw `RequestParseBodyException: Request does not provide a content type`, so the function consults the SAPI's own real request metadata, which plain CLI execution (and, separately, an ordinary GET request with no body, verified the same way) never has. That exception - RequestParseBodyException, confirmed locally to be a plain, non-final subclass of the built-in \\Exception with no additional members of its own - is exactly what this tool's own PHP 8.4.19 raises for every plain `php -r '...'` or `php script.php` invocation, since CLI has no HTTP content type at all: there is no way to exercise the parsing behavior itself outside a real request context on this host. Below PHP 8.4 the function is simply absent: calling it is a call to an undefined function, which PHP raises as a catchable \\Error since PHP 7 - established PHP behavior this tool could not re-verify against an 8.3-or-earlier interpreter, since only 8.4.19 is installed here. A project whose feature ceiling is still below 8.4 must therefore keep its existing manual php://input parser and reach request_parse_body() only behind a function_exists() or equivalent feature-ceiling guard, not call it unconditionally. Nothing in the 8.2, 8.3 or 8.5 UPGRADING files mentions this function, and nothing marks it deprecated or removed in the versions this tool tracks, so deprecated_in and removed_in both stay null.",
+    "examples": [
+        {
+            "before": [
+                "function parsePutBody(): array",
+                "{",
+                "    parse_str(file_get_contents('php://input'), $fields);",
+                "",
+                "    return $fields;",
+                "}"
+            ],
+            "after": [
+                "function parsePutBody(): array",
+                "{",
+                "    if (function_exists('request_parse_body')) {",
+                "        [$fields] = request_parse_body();",
+                "",
+                "        return $fields;",
+                "    }",
+                "",
+                "    parse_str(file_get_contents('php://input'), $fields);",
+                "",
+                "    return $fields;",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.request_parse_bodyFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally via ReflectionFunction (PHP 8.4.19): request_parse_body() has the signature `request_parse_body(?array $options = null): array` - a nullable, optional $options parameter defaulting to null, and a non-nullable array return type. This rule does not assert what keys $options accepts, since that was not independently exercised here.",
+        "Verified locally under PHP's own built-in web server (`php -S`, which gives the CLI SAPI a genuine HTTP request, unlike plain `php -r`/`php script.php` execution): a PUT request with an application/x-www-form-urlencoded body of foo=bar&baz=1 returned [['foo' => 'bar', 'baz' => '1'], []]; a PUT request with a multipart/form-data body containing one text field and one uploaded file returned [['description' => 'hello'], ['upload' => ['name' => 'upload_sample.txt', 'full_path' => 'upload_sample.txt', 'type' => 'text/plain', 'tmp_name' => '/tmp/...', 'error' => 0, 'size' => 18]]] - confirming index 0 matches $_POST's shape and index 1 matches a $_FILES entry's shape, full_path included. A PATCH request with the same bodies behaved identically.",
+        "Verified locally that the function is not repeatable: calling it a second time in the same request, immediately after a first call that successfully parsed a urlencoded body, returned [[], []] rather than either the same data again or an exception - the underlying request body had already been consumed by the first call.",
+        "Verified locally that it consults the SAPI's own real request metadata, not the $_SERVER superglobal: manually setting $_SERVER['CONTENT_TYPE'] and $_SERVER['REQUEST_METHOD'] in a plain CLI script before calling request_parse_body() still raised RequestParseBodyException: Request does not provide a content type, identically to calling it with no $_SERVER changes at all; the same exception was also raised for a genuine bodyless GET request under the built-in web server, confirming the exception reflects the request's actual content type, not merely \"this is CLI\".",
+        "Verified locally that RequestParseBodyException is a plain subclass of the built-in \\Exception (not \\Error or a dedicated SPL type), is not declared final, and adds no members of its own beyond what \\Exception already provides.",
+        "Calling request_parse_body() on a PHP interpreter below 8.4, where the function does not exist, was not re-verified locally - only PHP 8.4.19 is installed in this environment - but is established PHP behavior: an undefined function call raises a catchable \\Error since PHP 7. A project whose feature ceiling is below 8.4 must keep its manual php://input parser and reach the new function only behind a function_exists()-style guard, as reflected in the example above, rather than assuming universal availability.",
+        "Evidence: UPGRADING-8.4.0, \"2. New Features\" -> Core: \"Added request_parse_body() function that allows parsing RFC1867 (multipart) requests in non-POST HTTP requests.\" (RFC rfc1867-non-post)."
+    ]
+}

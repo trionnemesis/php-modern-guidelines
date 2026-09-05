@@ -1,0 +1,75 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.report_memleaks_ini",
+    "title": "The `report_memleaks` INI directive is deprecated",
+    "summary": "PHP 8.5 deprecates the report_memleaks INI directive, a debug-build-only diagnostic switch for the Zend Engine's own memory-leak reporting at request shutdown; verified locally, it remains an ordinary readable and settable PHP_INI_ALL entry on this tool's non-debug PHP 8.4.19 build, where it already has no effect on any application-observable behavior regardless of its value.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never set report_memleaks anywhere in new code or configuration: not in php.ini, not in a .user.ini file, not via a deployment script or container entrypoint that pipes settings into php.ini, and not via an ini_set('report_memleaks', ...) call in application bootstrap code. It is a debug-build-only diagnostic switch for the Zend Engine's own memory-leak reporting at request shutdown - verified locally on this tool's non-debug PHP 8.4.19 build, it has no effect on any request's observable output, timing, or behavior - so there is nothing for ordinary application code to configure here, on production or ordinary development builds alike.",
+    "existing_code_policy": "Search for the literal string report_memleaks across php.ini and .user.ini files, Dockerfile or deployment-script lines that write php.ini settings, container entrypoint invocations such as `php -d report_memleaks=...`, and any ini_set('report_memleaks', ...) call in bootstrap code. Once the project's floor reaches PHP 8.5, delete every occurrence outright rather than migrating the value anywhere else: verified locally, ini_get('report_memleaks') and ini_set('report_memleaks', ...) both work exactly as an ordinary PHP_INI_ALL directive on this tool's non-debug PHP 8.4.19 build - reading the configured value and durably changing it - yet neither call produced any observable side effect, because this directive only ever governs output from a PHP binary compiled with --enable-debug, which is not how production or ordinary development PHP is built. The one narrow exception worth checking specifically is a project's own debug-build QA or CI pipeline that deliberately runs a --enable-debug PHP to catch native memory leaks in a C extension under test: there, this directive genuinely controls whether the engine's own leak report prints at shutdown, so deleting a report_memleaks=0 line from that specific pipeline would restore leak output that was intentionally suppressed. Outside that narrow case, treat every occurrence as safe to delete.",
+    "guideline": "Stop setting the report_memleaks INI directive anywhere in the project - php.ini, .user.ini, deployment scripts, container entrypoints, or ini_set() calls. It is deprecated in PHP 8.5, and verified locally, it already has no effect on ordinary (non-debug-build) application behavior, so the fix is deletion, not a replacement setting - except in a project's own --enable-debug QA/CI pipeline, where it still genuinely controls leak-report output and needs individual review.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Core, in one line: \"The report_memleaks INI directive has been deprecated.\" (RFC deprecations_php_8_5#deprecate_the_report_memleaks_ini_directive). report_memleaks is not an application-facing feature switch: it is a debug-build diagnostic that governs whether the Zend Engine itself prints a report of unreleased (leaked) memory allocations when a request shuts down, and PHP's own long-standing documentation states it \"has effect only if PHP is compiled using --enable-debug.\" Verified locally on this tool's PHP 8.4.19 (phpinfo() reports \"Debug Build => no\", i.e. this is an ordinary non-debug build): ini_get('report_memleaks') returned \"1\" (On, this build's compiled-in default), and ini_set('report_memleaks', '0') succeeded, returning the prior value \"1\" and durably changing what a subsequent ini_get() call in the same request reported back to \"0\"; setting it back to '1' likewise succeeded and returned '0'. So on this build the directive is a perfectly ordinary, ini_get()/ini_set()-able entry, exactly as it would be on any other non-debug build - nothing about the directive itself is broken or inert at the configuration level. What could not be verified locally, because no PHP compiled with --enable-debug is installed in this environment, is the actual leak-report output the directive is documented to gate: no such output appeared regardless of the directive's value in any of the calls above, which is consistent with the manual's stated --enable-debug-only scope, but that specific claim rests on PHP's own documentation rather than on something this tool executed end-to-end against a debug build. The practical consequence for essentially every consumer of this catalogue is that the fix is pure deletion with no replacement: production and ordinary development PHP builds are never compiled with --enable-debug, so a project referencing report_memleaks anywhere is not giving up any diagnostic capability by removing it, only a setting that already did nothing observable on its own build. No PHP 8.2, 8.3 or 8.4 UPGRADING file mentions report_memleaks, and nothing escalates this to removal in the versions this tool tracks, so introduced_in and removed_in both stay null.",
+    "examples": [
+        {
+            "before": [
+                "ini_set('memory_limit', '256M');",
+                "ini_set('report_memleaks', '0');",
+                "ini_set('display_errors', '0');"
+            ],
+            "after": [
+                "ini_set('memory_limit', '256M');",
+                "ini_set('display_errors', '0');"
+            ]
+        },
+        {
+            "before": [
+                "final class DebugBootstrap",
+                "{",
+                "    public static function configure(): void",
+                "    {",
+                "        ini_set('display_errors', '1');",
+                "        ini_set('report_memleaks', '1');",
+                "        error_reporting(E_ALL);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class DebugBootstrap",
+                "{",
+                "    public static function configure(): void",
+                "    {",
+                "        ini_set('display_errors', '1');",
+                "        error_reporting(E_ALL);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally on this tool's PHP 8.4.19, a non-debug build (phpinfo() reports \"Debug Build => no\"): ini_get('report_memleaks') returned \"1\", and ini_set('report_memleaks', '0') succeeded, returning the previous value \"1\" and durably changing the value a subsequent ini_get() call reported; setting it back to '1' likewise succeeded and returned '0'. No deprecation notice accompanied either call, because PHP 8.4.19 predates this PHP 8.5 deprecation.",
+        "Re-run directly (2026-09-05) against a file containing ini_get('report_memleaks') and, separately, ini_set('report_memleaks', ...) with either value literal: PHPCompatibility 10.0.0-alpha2 flags every one of those forms identically as PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated at testVersion 8.2-8.5, and flags nothing at all in a file that never mentions the directive - so deleting every reference, not merely changing the value, is what actually silences the finding.",
+        "behavior_change_risk is \"low\" rather than \"none\": on the ordinary non-debug PHP builds this catalogue otherwise assumes, deleting every occurrence changes nothing observable, which would argue for \"none\" the way core.e_strict_constant's bit-level non-difference does; \"low\" instead of \"none\" is because a project's own --enable-debug QA/CI pipeline is a real, if narrow, case where this directive still does something, and this tool cannot rule out that a given codebase has one.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core: \"The report_memleaks INI directive has been deprecated.\" (RFC deprecations_php_8_5#deprecate_the_report_memleaks_ini_directive)."
+    ]
+}
