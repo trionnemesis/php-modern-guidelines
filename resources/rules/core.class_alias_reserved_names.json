@@ -1,0 +1,98 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.class_alias_reserved_names",
+    "title": "\"array\" and \"callable\" can no longer be used as `class_alias()` names",
+    "summary": "PHP 8.5 rejects \"array\" and \"callable\" as the alias name passed to `class_alias()`, extending a restriction that already applied to every other reserved type keyword (`int`, `string`, `bool`, `self`, and the rest, forbidden since PHP 7.0 through 8.1); verified directly, `class_alias($class, 'array')` and `class_alias($class, 'callable')` both still return `true` on PHP 8.4.19 - they are the last two reserved names PHP had not yet closed this gap for - while every other reserved name already tried produces an uncatchable fatal error today, not a silent success.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "Never pass \"array\" or \"callable\" (or any other reserved type keyword - `bool`, `false`, `float`, `int`, `null`, `parent`, `self`, `static`, `string`, `true`, `iterable`, `void`, `object`, `mixed`, `never`) as the second argument to `class_alias()`. Validate a caller-supplied or configuration-driven alias name against the reserved-keyword list before calling `class_alias()`, rather than discovering the failure only when the call is reached at runtime - on PHP 8.5+ that failure is the same uncatchable fatal error every other reserved name already produces on every currently supported PHP version.",
+    "existing_code_policy": "Search for every `class_alias(...)` call whose alias-name argument is not a literal, known-safe string - a caller-supplied name, a configuration value, a computed string. Verified directly on PHP 8.4.19: `class_alias($class, 'array')` and `class_alias($class, 'callable')` both return `true` - they succeed silently today - while `class_alias($class, 'int')`, `'float'`, `'string'`, `'bool'`, `'void'`, `'never'`, `'false'`, `'true'`, `'null'`, `'mixed'`, `'object'`, `'iterable'`, `'self'`, `'parent'`, and `'static'` each instead produce an immediate, uncatchable fatal error - `PHP Fatal error: Cannot use \"<name>\" as a class alias as it is reserved` - that a `try`/`catch (\\Throwable)` around the call does not stop. \"array\" and \"callable\" are not a broader category of risk than the rest; they are the last two names on an otherwise-already-enforced list, so any code aliasing to one of them today is exactly as exposed as code aliasing to `int` already always was - it has simply not failed yet. Do not assume the caller finds out safely: because the fatal error is uncatchable, a `class_alias()` call reachable with an attacker- or config-controlled alias name is a full request-ending crash on PHP 8.5+, not a recoverable exception, so the fix is to validate the name *before* the call, not to wrap the call in a `try`/`catch`.",
+    "guideline": "Never call `class_alias($class, 'array')` or `class_alias($class, 'callable')`; PHP 8.5 rejects both with the same uncatchable fatal error every other reserved type keyword already produces as a `class_alias()` target on every currently supported PHP version. Validate any non-literal alias name against the full reserved-keyword list before calling `class_alias()`, since the failure mode is a hard crash, not a catchable exception.",
+    "details": "UPGRADING-8.5.0 lists this under Backward Incompatible Changes -> Core: it is no longer possible to use \"array\" and \"callable\" as class alias names in `class_alias()`. Verified directly on PHP 8.4.19, in an isolated process per name to avoid one fatal error from aborting the rest of the measurement: `class_alias(Thing::class, 'array')` returns `true`, and `class_alias(Thing::class, 'callable')` returns `true` - both succeed, silently, today. Every other reserved type keyword tried the same way - `int`, `float`, `string`, `bool`, `void`, `never`, `false`, `true`, `null`, `mixed`, `object`, `iterable`, `self`, `parent`, `static` - instead produces the identical shape of failure: `PHP Fatal error: Cannot use \"<name>\" as a class alias as it is reserved`, an uncatchable engine fatal (confirmed separately: wrapping the call in `try { ... } catch (\\Throwable $e) { ... }` does not stop it; the script still aborts) rather than a thrown `\\Error` instance. A non-reserved control name (`'NotReserved'`) returns `true` exactly like \"array\"/\"callable\" do, confirming the other fifteen names are rejected specifically for being reserved, not for some unrelated reason. This measured split matches the PHPCompatibility sniff's own reserved-name table exactly (see the verification note below): `bool`/`false`/`float`/`int`/`null`/`parent`/`self`/`static`/`string`/`true` have been forbidden as `class_alias()` targets since PHP 7.0, `iterable`/`void` since 7.1, `object` since 7.2, `mixed` since 8.0, and `never` since 8.1 - all of which this tool independently confirmed already fatal on the local PHP 8.4.19 - while \"array\" and \"callable\" are the two names newly added to that same enforcement in PHP 8.5, which is exactly why they alone still succeed here. The reason this matters beyond the `class_alias()` call site itself was also verified directly: an alias successfully created under the name \"array\" cannot be used to instantiate the class with ordinary `new` syntax - `new array()` is a **parse error** (`syntax error, unexpected token \"array\", expecting \"class\"`), because `array` is tokenized as a reserved keyword at parse time regardless of what `class_alias()` did at runtime - though instantiating through a variable holding the string (`$cls = 'array'; new $cls();`) works and does resolve to the aliased class, confirming the alias itself is real, just unreachable through the literal keyword syntax. Sharper still, a *type declaration* using the same keyword never resolves through the alias at all: with the alias to \"array\" in place, a parameter typed `array $x` still means PHP's native array pseudo-type, not the aliased class, so passing an instance of the aliased class to it throws `TypeError: ...must be of type array, Thing given` - the exact \"fails confusingly elsewhere\" scenario an alias named after a type keyword invites, and precisely what PHP 8.5 now refuses to let happen in the first place by rejecting the `class_alias()` call itself. `introduced_in` is set to \"8.5\" here because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.5 introduced `class_alias()` itself, which has existed since PHP 5.3. On a policy whose entire targeted range sits below 8.5 (for example `8.2.*`), this rule is out of range and does not apply: `class_alias($class, 'array')` and `class_alias($class, 'callable')` are perfectly legal there, verified directly above, so surfacing this rule would falsely tell an agent targeting that floor that the operation is rejected when it is not. Once a project's targeted range reaches 8.5, the restriction applies. The underlying hazard - an alias name colliding with a type keyword - is not itself new in 8.5, only the enforcement against these last two names is. The PHPCompatibility sniff was probed directly and re-confirmed by bisection (2026-09-05), re-running the exact experiment described in this rule's own task brief rather than trusting it: against a file containing only `class_alias('Thing1', 'array'); class_alias('Thing2', 'callable');`, testVersion 8.2, 8.3, 8.4, and 8.2-8.4 each produced zero findings, while testVersion 8.5 and 8.2-8.5 each produced exactly two findings, both `PHPCompatibility.Keywords.ForbiddenClassAlias.Found`, with messages `Type keyword \"array\" is not allowed as a class alias name since PHP 8.5.` and `Type keyword \"callable\" is not allowed as a class alias name since PHP 8.5.` verbatim - the sniff and php-src agree exactly on PHP 8.5 for these two names, so the mapping is sound, not merely plausible. A second probe, against `class_alias('Thing3', 'int'); ...'string'; ...'bool'; ...'never'; ...'false'; ...'NotReserved';`, was run at testVersion 8.2 (and separately 8.2-8.5 and 8.5) specifically to check whether the same sniff id is broader than UPGRADING's two names, per this rule's own task brief: it is - `int`, `string`, `bool`, and `false` were each flagged \"since PHP 7.0\" and `never` \"since PHP 8.1\", all already true at testVersion 8.2 and unchanged by widening the range to include 8.5, while `'NotReserved'` was never flagged at any testVersion tried. This confirms `PHPCompatibility.Keywords.ForbiddenClassAlias.Found` is a single, shared sniff id covering PHP's *entire* historical reserved-class-alias-name list (7.0 through 8.5), not a sniff dedicated to this rule's specific 8.5 change - an agent seeing this sniff id fire must read the message text to tell which case applies: a message ending \"since PHP 8.5\" is this rule's \"array\"/\"callable\" case, while any other \"since PHP <minor>\" suffix names a different, older, already-fatal-on-every-currently-supported-PHP violation that this rule does not itself document.",
+    "examples": [
+        {
+            "before": [
+                "final class LegacyArrayLike",
+                "{",
+                "}",
+                "",
+                "class_alias(LegacyArrayLike::class, 'array');"
+            ],
+            "after": [
+                "final class LegacyArrayLike",
+                "{",
+                "}",
+                "",
+                "class_alias(LegacyArrayLike::class, 'LegacyArrayLikeAlias');"
+            ]
+        },
+        {
+            "before": [
+                "final class LegacyClassRegistrar",
+                "{",
+                "    /**",
+                "     * @param array<string, string> $aliases class => alias name",
+                "     */",
+                "    public function register(array $aliases): void",
+                "    {",
+                "        foreach ($aliases as $class => $alias) {",
+                "            class_alias($class, $alias);",
+                "        }",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class LegacyClassRegistrar",
+                "{",
+                "    private const RESERVED_ALIAS_NAMES = [",
+                "        'array', 'callable', 'bool', 'int', 'float', 'string', 'null',",
+                "        'false', 'true', 'object', 'mixed', 'never', 'void', 'iterable',",
+                "        'self', 'parent', 'static',",
+                "    ];",
+                "",
+                "    /**",
+                "     * @param array<string, string> $aliases class => alias name",
+                "     */",
+                "    public function register(array $aliases): void",
+                "    {",
+                "        foreach ($aliases as $class => $alias) {",
+                "            if (in_array(strtolower($alias), self::RESERVED_ALIAS_NAMES, true)) {",
+                "                throw new \\InvalidArgumentException(\"\\\"{$alias}\\\" is a reserved type keyword and cannot be used as a class alias.\");",
+                "            }",
+                "",
+                "            class_alias($class, $alias);",
+                "        }",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Keywords.ForbiddenClassAlias.Found"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19, one isolated `php -r` process per candidate name (`class_alias(Thing::class, $name)`, `$name` from argv): 'array' => true; 'callable' => true; 'int', 'float', 'string', 'bool', 'void', 'never', 'false', 'true', 'null', 'mixed', 'object', 'iterable', 'self', 'parent', 'static' => each produced `PHP Fatal error: Cannot use \"<name>\" as a class alias as it is reserved` and nothing else; 'NotReserved' (control) => true. Separately, wrapping the call in `try { class_alias(...); } catch (\\Throwable $e) { ... }` for 'int' still aborted the script with the same fatal error - confirming it is an uncatchable engine fatal, not a thrown `\\Error`.",
+        "Verified on PHP 8.4.19: with the alias to \"array\" in place, `new array()` is a parse-time `syntax error, unexpected token \"array\", expecting \"class\"` (confirmed both via `php -l` and by running the file), even though `class_alias()` itself had already succeeded; `$cls = 'array'; new $cls();` (a variable-held class name) does work and produces an instance of the aliased class. Further, `function acceptsArray(array $x): string { return get_class($x); }` called with an instance of the class aliased to \"array\" throws `TypeError: acceptsArray(): Argument #1 ($x) must be of type array, Thing given` - the `array` token in the parameter type never resolves through the alias, it always means the native pseudo-type. Commands run: `php -l rule8_alias_use_new.php && php rule8_alias_use_new.php`; `php -l rule8_alias_use_typehint.php && php rule8_alias_use_typehint.php`; `php -l rule8_new_array_literal.php` (expected and observed to fail at the lint step itself).",
+        "Analyzer bisection re-confirmed directly (2026-09-05) against a probe containing exactly `class_alias('Thing1', 'array'); class_alias('Thing2', 'callable');`: testVersion 8.2 -> 0 findings; testVersion 8.3 -> 0 findings; testVersion 8.4 -> 0 findings; testVersion 8.5 -> 2 findings; testVersion 8.2-8.4 -> 0 findings; testVersion 8.2-8.5 -> 2 findings. Both PHP 8.5 findings are `PHPCompatibility.Keywords.ForbiddenClassAlias.Found`, with messages `Type keyword \"array\" is not allowed as a class alias name since PHP 8.5.` and `Type keyword \"callable\" is not allowed as a class alias name since PHP 8.5.` verbatim - the sniff agrees exactly with the runtime measurement and with php-src's own UPGRADING text, so the mapping is sound rather than merely plausible. Command run each time: `phpcs --standard=PHPCompatibility --runtime-set testVersion <range> --report=json --parallel=1 --extensions=php --severity=1 --no-cache -q <probe>` against `squizlabs/php_codesniffer:3.13.6` + `phpcompatibility/php-compatibility:10.0.0-alpha2`.",
+        "Verified on 2026-09-05 that the same sniff id is broader than this rule's two names: against a second probe (`class_alias('Thing3','int'); ...'string'; ...'bool'; ...'never'; ...'false'; ...'NotReserved';`), testVersion 8.2 alone already produced 5 findings - `int`, `string`, `bool`, and `false` each flagged \"is not allowed as a class alias name since PHP 7.0\", and `never` flagged \"...since PHP 8.1\" - identical at testVersion 8.2-8.5 and 8.5, and 'NotReserved' was never flagged. `PHPCompatibility.Keywords.ForbiddenClassAlias.Found` is therefore one shared sniff id spanning PHP's entire reserved-class-alias-name history (7.0 through 8.5), not a sniff dedicated to the 8.5 \"array\"/\"callable\" change; a finding under this id needs its message text read to tell whether it is this rule's case (\"since PHP 8.5\") or an older, different, already-fatal-on-8.4.19 violation this rule does not document.",
+        "Evidence: UPGRADING-8.5.0, \"1. Backward Incompatible Changes\" -> Core: \"It is no longer possible to use \\\"array\\\" and \\\"callable\\\" as class alias names in class_alias().\""
+    ]
+}
