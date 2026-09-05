@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 6 of 32 shown
+Rules: 6 of 40 shown
 
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated

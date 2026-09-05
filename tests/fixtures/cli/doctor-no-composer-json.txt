@@ -7,8 +7,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage unknown (known 8.2-8.5), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 32 rule file(s)
-  [ok]      rules.load               32 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 40 rule file(s)
+  [ok]      rules.load               40 rule(s) loaded
 
 Details
   cli.build
@@ -50,7 +50,7 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              32
+    file_count              40
   rules.load
-    loaded                  32
+    loaded                  40
     error                   -
