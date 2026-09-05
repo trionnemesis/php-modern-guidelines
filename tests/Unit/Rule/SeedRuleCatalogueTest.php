@@ -17,17 +17,17 @@ use PHPUnit\Framework\TestCase;
  * Every shipped seed rule under resources/rules/: schema-valid (already proven by loading it at all),
  * id == basename, id-prefix == category, source URL shape, checked_at, kind/lifecycle consistency,
  * package_constraints rendered as {} / \stdClass, byte-identity with its canonical re-encoding, and
- * the round-trip claim. Plus the exactly-56-files count and the two rule-16 (WORK-ORDER.md §6.3)
+ * the round-trip claim. Plus the exactly-64-files count and the two rule-16 (WORK-ORDER.md §6.3)
  * assertions.
  */
 final class SeedRuleCatalogueTest extends TestCase
 {
-    private const EXPECTED_COUNT = 56;
+    private const EXPECTED_COUNT = 64;
 
     /** Pinned review dates carried by the catalogue's sources[0].checked_at (WORK-ORDER.md §6.3). */
     private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05'];
 
-    public function testExactlyFiftySixRuleFilesAreShipped(): void
+    public function testExactlySixtyFourRuleFilesAreShipped(): void
     {
         $registry = $this->loader()->loadDirectory(PackagePaths::rulesDirectory());
 
@@ -127,6 +127,7 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.array_first_last',
             'core.assert_options',
             'core.chr_ord_byte_range',
+            'core.class_alias_reserved_names',
             'core.constant_redeclaration',
             'core.csv_escape_parameter',
             'core.date_rfc7231',
@@ -134,16 +135,21 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.directory_functions_implicit_handle',
             'core.dynamic_properties',
             'core.e_strict_constant',
+            'core.exit_as_function',
             'core.get_class_without_arguments',
             'core.get_defined_functions_exclude_disabled',
             'core.http_response_header',
             'core.json_validate',
             'core.lcg_value',
+            'core.list_destructuring_non_array',
+            'core.negative_array_index_append',
             'core.nodiscard_attribute',
             'core.null_array_offset',
             'core.output_in_output_handler',
             'core.override_attribute',
             'core.partially_supported_callables',
+            'core.range_argument_validation',
+            'core.readonly_indirect_modification_clone',
             'core.register_argc_argv_ini',
             'core.report_memleaks_ini',
             'core.request_parse_body',
@@ -151,11 +157,13 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.sensitive_parameter_attribute',
             'core.sleep_wakeup_magic_methods',
             'core.socket_set_timeout',
+            'core.str_split_empty_string',
             'core.stream_context_set_option_arity',
             'core.string_increment_operators',
             'core.strtolower_locale_insensitive',
             'core.trigger_error_e_user_error',
             'core.underscore_class_name',
+            'core.unrepresentable_numeric_casts',
             'core.utf8_encode_decode',
             'extension.curl_close',
             'extension.curl_share_close',

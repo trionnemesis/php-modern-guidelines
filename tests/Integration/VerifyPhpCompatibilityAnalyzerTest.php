@@ -319,6 +319,31 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         'PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed',
     ];
 
+    /**
+     * The 1 distinct sniff id `src/catalogue_expansion_r6_findings.php` proves — the sole v0.3.7 (round 6,
+     * eight-rule expansion) mapping, across the 1 of round 6's eight new rules that carries a proven
+     * PHPCompatibility mapping: core.class_alias_reserved_names. The other 7 of round 6's eight new rules
+     * (core.exit_as_function, core.list_destructuring_non_array, core.negative_array_index_append,
+     * core.range_argument_validation, core.readonly_indirect_modification_clone,
+     * core.str_split_empty_string, core.unrepresentable_numeric_casts) ship with an empty
+     * verification.phpcompatibility and need no fixture here: all 8 draw from UPGRADING's Backward
+     * Incompatible Changes section rather than its Deprecated Functionality section, and PHPCompatibility
+     * detects whether a symbol exists in a version range — it is structurally blind to a symbol that
+     * still exists and merely behaves differently, which is what the other 7 each describe. This sniff id
+     * is itself broader than what core.class_alias_reserved_names documents: the same id also fires for
+     * `int`, `string`, `bool`, `false` ("since PHP 7.0") and `never` ("since PHP 8.1"), all already true at
+     * testVersion 8.2 alone, so the fixture deliberately triggers it only through "array" and "callable" —
+     * the two names UPGRADING-8.5.0 actually names — confirmed by direct bisection to produce zero
+     * findings at testVersion 8.2-8.4 and exactly two (both this id) at testVersion 8.2-8.5. Probed
+     * directly with the CI-pinned analyzer before being written here; the id below is measured, not
+     * assumed.
+     *
+     * @var list<string>
+     */
+    private const CATALOGUE_EXPANSION_R6_SNIFF_IDS = [
+        'PHPCompatibility.Keywords.ForbiddenClassAlias.Found',
+    ];
+
     private string $executable = '';
 
     private string $findingsProject = '';
@@ -398,11 +423,11 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame(
             [
                 'invocation_count' => 3,
-                'finding_count' => 215,
-                'mapped_finding_count' => 212,
+                'finding_count' => 217,
+                'mapped_finding_count' => 214,
                 'unmapped_finding_count' => 3,
-                'mapping_count' => 212,
-                'mapped_rule_count' => 35,
+                'mapping_count' => 214,
+                'mapped_rule_count' => 36,
             ],
             $report['summary'],
         );
@@ -449,7 +474,9 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // then adds CATALOGUE_EXPANSION_R4_SNIFF_IDS's 8 further mapped ids, proved by
         // catalogue_expansion_r4_findings.php. The v0.3.6 (round 5, eight-rule) catalogue expansion then
         // adds CATALOGUE_EXPANSION_R5_SNIFF_IDS's 4 further mapped ids, proved by
-        // catalogue_expansion_r5_findings.php.
+        // catalogue_expansion_r5_findings.php. The v0.3.7 (round 6, eight-rule) catalogue expansion then
+        // adds CATALOGUE_EXPANSION_R6_SNIFF_IDS's 1 further mapped id, proved by
+        // catalogue_expansion_r6_findings.php.
         $expectedIds = array_merge(
             $preImapIds,
             self::imapUnbundledSniffIds(),
@@ -457,6 +484,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             self::CATALOGUE_EXPANSION_R2_SNIFF_IDS,
             self::CATALOGUE_EXPANSION_R4_SNIFF_IDS,
             self::CATALOGUE_EXPANSION_R5_SNIFF_IDS,
+            self::CATALOGUE_EXPANSION_R6_SNIFF_IDS,
             [
                 'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
                 'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
@@ -464,12 +492,12 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         );
         sort($expectedIds, SORT_STRING);
 
-        // (a) the sorted set of external rule ids: 210 distinct ids (207 mapped + 3 unmapped).
+        // (a) the sorted set of external rule ids: 211 distinct ids (208 mapped + 3 unmapped).
         $sortedSet = array_values(array_unique($ids));
         sort($sortedSet, SORT_STRING);
         self::assertSame($expectedIds, $sortedSet);
 
-        // (b) the sorted 215-element multiset: the same 210 distinct ids with five ids each appearing
+        // (b) the sorted 217-element multiset: the same 211 distinct ids with six ids each appearing
         // once more, because each is triggered from two distinct locations (or tokens) that dedupe must
         // not collapse: the dollar-brace expression syntax id (once from mapped_findings.php, once from
         // duplicate_findings.php — different files, so different sortKey()s), the IMAP\Connection class
@@ -477,21 +505,24 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // imap_all_surfaces.php — same file and line, different columns), the imap.enable_insecure_rsh
         // ini-directive id (ini_set() then ini_get(), in imap_ini.php — same file, different lines), the
         // backtick operator id (the opening and closing backtick of the one expression in
-        // catalogue_expansion_findings.php — same file and line, different columns), and the
+        // catalogue_expansion_findings.php — same file and line, different columns), the
         // `private(set)` keyword id (once from catalogue_expansion_findings.php's instance property,
         // once more from catalogue_expansion_r2_findings.php's static property — different files, and a
         // legitimate second-order finding of the round-2 static-asymmetric-visibility construct rather
-        // than anything this round deliberately triggered twice). catalogue_expansion_r4_findings.php
-        // adds no sixth duplicate: every one of its 8 constructs is a single occurrence of a distinct,
-        // previously-unseen sniff id, confirmed by probing it in isolation before it was written. Neither
-        // does catalogue_expansion_r5_findings.php: its 3 constructs (one of which reports 2 sniff ids)
-        // are each a single occurrence of a distinct, previously-unseen sniff id, confirmed the same way.
+        // than anything this round deliberately triggered twice), and the ForbiddenClassAlias id (once for
+        // "array", once for "callable", both in catalogue_expansion_r6_findings.php — same file, different
+        // lines). catalogue_expansion_r4_findings.php adds no further duplicate: every one of its 8
+        // constructs is a single occurrence of a distinct, previously-unseen sniff id, confirmed by
+        // probing it in isolation before it was written. Neither does catalogue_expansion_r5_findings.php:
+        // its 3 constructs (one of which reports 2 sniff ids) are each a single occurrence of a distinct,
+        // previously-unseen sniff id, confirmed the same way.
         $expectedMultiset = $expectedIds;
         $expectedMultiset[] = 'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax';
         $expectedMultiset[] = 'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved';
         $expectedMultiset[] = 'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved';
         $expectedMultiset[] = 'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated';
         $expectedMultiset[] = 'PHPCompatibility.Keywords.NewKeywords.t_private_setFound';
+        $expectedMultiset[] = 'PHPCompatibility.Keywords.ForbiddenClassAlias.Found';
         sort($expectedMultiset, SORT_STRING);
         $sortedMultiset = $ids;
         sort($sortedMultiset, SORT_STRING);
@@ -621,6 +652,13 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             }
         }
 
+        // The one v0.3.7 (round 6) mapping, proved end-to-end through the real analyzer by
+        // catalogue_expansion_r6_findings.php. Both occurrences (the "array" and "callable" calls) map to
+        // the same single rule.
+        foreach ($mappedRuleIdsBySniffId['PHPCompatibility.Keywords.ForbiddenClassAlias.Found'] as $mapped) {
+            self::assertSame(['core.class_alias_reserved_names'], $mapped);
+        }
+
         self::assertArrayNotHasKey(
             'PHPCompatibility.Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated',
             $mappedRuleIdsBySniffId,
@@ -663,6 +701,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
                 'core.array_find_functions',
                 'core.array_first_last',
                 'core.assert_options',
+                'core.class_alias_reserved_names',
                 'core.csv_escape_parameter',
                 'core.date_rfc7231',
                 'core.e_strict_constant',
@@ -864,8 +903,8 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertStringContainsString('Verification: findings (exit 6)', $human);
         self::assertStringContainsString('Planned invocations: 3', $human);
         self::assertStringContainsString('Invocations: 3', $human);
-        self::assertStringContainsString('Findings: 215', $human);
-        self::assertStringContainsString('mapped findings        212', $human);
+        self::assertStringContainsString('Findings: 217', $human);
+        self::assertStringContainsString('mapped findings        214', $human);
         self::assertStringContainsString('unmapped findings      3', $human);
 
         [$jsonExitCode, $report] = $this->verifyReport($this->findingsProject);
@@ -873,7 +912,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame($humanExitCode, $jsonExitCode);
         self::assertSame('findings', $report['status']);
         self::assertSame(ExitCode::VERIFICATION_FINDINGS, $report['exit_code']);
-        self::assertSame(215, $report['summary']['finding_count']);
+        self::assertSame(217, $report['summary']['finding_count']);
     }
 
     public function testJsonOutputIsByteIdenticalAcrossTwoRuns(): void

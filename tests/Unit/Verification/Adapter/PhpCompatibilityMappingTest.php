@@ -215,6 +215,7 @@ final class PhpCompatibilityMappingTest extends TestCase
             ],
             'PHPCompatibility.IniDirectives.RemovedIniDirectives.register_argc_argvDeprecated' => ['core.register_argc_argv_ini'],
             'PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated' => ['core.report_memleaks_ini'],
+            'PHPCompatibility.Keywords.ForbiddenClassAlias.Found' => ['core.class_alias_reserved_names'],
             'PHPCompatibility.Keywords.NewKeywords.t_private_setFound' => ['language.asymmetric_property_visibility'],
             'PHPCompatibility.Keywords.NewKeywords.t_protected_setFound' => ['language.asymmetric_property_visibility'],
             'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated' => [

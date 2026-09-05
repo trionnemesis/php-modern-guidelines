@@ -1,5 +1,5 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 40 of 56 shown
+Rules: 41 of 64 shown
 
   [applicable]                       P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -41,6 +41,8 @@ Rules: 40 of 56 shown
       `__sleep()`/`__wakeup()` are soft-deprecated in favour of `__serialize()`/`__unserialize()`
   [applicable]                       P2  deprecated           core.socket_set_timeout
       The `socket_set_timeout()` alias function is deprecated
+  [applicable]                       P2  behavior_change      core.str_split_empty_string
+      `str_split()` returns an empty array for an empty string, not a one-element array
   [applicable]                       P2  deprecated           core.stream_context_set_option_arity
       Calling `stream_context_set_option()` with 2 arguments is deprecated
   [applicable]                       P2  deprecated           core.string_increment_operators
