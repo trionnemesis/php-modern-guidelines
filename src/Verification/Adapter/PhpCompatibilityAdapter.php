@@ -45,6 +45,7 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
      * @var array<string, list<string>>
      */
     private const SNIFF_RULE_MAP = [
+        'PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated' => ['core.underscore_class_name'],
         'PHPCompatibility.Classes.NewReadonlyClasses.AnonClass' => ['language.readonly_anonymous_classes'],
         'PHPCompatibility.Classes.NewStaticAvizProperties.Found' => ['language.static_asymmetric_visibility'],
         'PHPCompatibility.Classes.NewTypedConstants.Found' => ['language.typed_class_constants'],
@@ -57,6 +58,7 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.Constants.RemovedConstants.cl_expungeRemoved' => ['extension.imap_unbundled'],
         'PHPCompatibility.Constants.RemovedConstants.cp_moveRemoved' => ['extension.imap_unbundled'],
         'PHPCompatibility.Constants.RemovedConstants.cp_uidRemoved' => ['extension.imap_unbundled'],
+        'PHPCompatibility.Constants.RemovedConstants.date_rfc7231Deprecated' => ['core.date_rfc7231'],
         'PHPCompatibility.Constants.RemovedConstants.e_strictDeprecated' => ['core.e_strict_constant'],
         'PHPCompatibility.Constants.RemovedConstants.enc7bitRemoved' => ['extension.imap_unbundled'],
         'PHPCompatibility.Constants.RemovedConstants.enc8bitRemoved' => ['extension.imap_unbundled'],
@@ -143,6 +145,9 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.FunctionUse.NewFunctions.array_firstFound' => ['core.array_first_last'],
         'PHPCompatibility.FunctionUse.NewFunctions.array_lastFound' => ['core.array_first_last'],
         'PHPCompatibility.FunctionUse.NewFunctions.json_validateFound' => ['core.json_validate'],
+        'PHPCompatibility.FunctionUse.NewFunctions.request_parse_bodyFound' => ['core.request_parse_body'],
+        'PHPCompatibility.FunctionUse.RemovedFunctionParameters.get_defined_functions_exclude_disabledDeprecated' => ['core.get_defined_functions_exclude_disabled'],
+        'PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated' => ['extension.mysqli_store_result_mode'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.assert_optionsDeprecated' => ['core.assert_options'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated' => ['extension.curl_close'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.curl_share_closeDeprecated' => ['extension.curl_share_close'],
@@ -222,6 +227,7 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.FunctionUse.RemovedFunctions.imap_utf7_encodeRemoved' => ['extension.imap_unbundled'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.imap_utf8Removed' => ['extension.imap_unbundled'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.imap_utf8_to_mutf7Removed' => ['extension.imap_unbundled'],
+        'PHPCompatibility.FunctionUse.RemovedFunctions.lcg_valueDeprecated' => ['core.lcg_value'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_killDeprecated' => ['extension.mysqli_ping_kill_refresh'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_pingDeprecated' => ['extension.mysqli_ping_kill_refresh'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_refreshDeprecated' => ['extension.mysqli_ping_kill_refresh'],
@@ -233,6 +239,8 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.mysqli_reconnectRemoved' => [
             'extension.mysqli_driver_reconnect',
         ],
+        'PHPCompatibility.IniDirectives.RemovedIniDirectives.register_argc_argvDeprecated' => ['core.register_argc_argv_ini'],
+        'PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated' => ['core.report_memleaks_ini'],
         'PHPCompatibility.Keywords.NewKeywords.t_private_setFound' => ['language.asymmetric_property_visibility'],
         'PHPCompatibility.Keywords.NewKeywords.t_protected_setFound' => ['language.asymmetric_property_visibility'],
         'PHPCompatibility.LanguageConstructs.RemovedLanguageConstructs.t_backtickDeprecated' => [

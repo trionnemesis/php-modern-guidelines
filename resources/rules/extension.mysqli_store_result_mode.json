@@ -1,0 +1,59 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.mysqli_store_result_mode",
+    "title": "Passing an explicit `$mode` argument to `mysqli_store_result()` is deprecated",
+    "summary": "PHP 8.4 deprecates passing an explicit $mode argument to mysqli_store_result(), and, because MYSQLI_STORE_RESULT_COPY_DATA was the only meaningful value that parameter ever accepted, deprecates that constant along with it; the fix is to drop the second argument entirely.",
+    "category": "extension",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": "mysqli",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a target that must run on PHP 8.4+, never pass a second argument to mysqli_store_result() - call it as mysqli_store_result($link). Do not reach for MYSQLI_STORE_RESULT_COPY_DATA; it has had no effect at all since PHP 8.1, three minors before PHP 8.4 formally deprecated both the parameter and the constant.",
+    "existing_code_policy": "Search for mysqli_store_result( calls that pass a second argument - most commonly MYSQLI_STORE_RESULT_COPY_DATA, but the deprecation fires on any explicit $mode value, not only that constant - and drop the argument. This is safe on every currently known minor: the constant it was almost always called with has been a no-op since PHP 8.1, so removing the argument changes nothing observable, only the deprecation notice PHP 8.4+ now raises for passing it at all.",
+    "guideline": "Call mysqli_store_result() with a single argument, the mysqli link; never pass a $mode, and never reference MYSQLI_STORE_RESULT_COPY_DATA.",
+    "details": "PHP 8.4 deprecates two closely linked things in the same UPGRADING-8.4.0 Mysqli entry: \"Passing explicitly the $mode parameter to mysqli_store_result() has been deprecated. As the MYSQLI_STORE_RESULT_COPY_DATA constant was only used in conjunction with this function it has also been deprecated.\" Reflection confirms $mode is the second, optional parameter of mysqli_store_result(), defaulting to 0; MYSQLI_STORE_RESULT_COPY_DATA itself is 16. Because that constant was the only documented meaningful value of the parameter, deprecating the constant follows directly from deprecating the parameter: there was nothing else worth passing, and the fix is simply to drop the second argument entirely rather than to normalize it to some other value. Probing locally confirms the deprecation fires on the mere presence of an explicit argument, not on a specific value: mysqli_store_result($link, 0) - a plain integer, not the named constant - still triggers the $mode-parameter sniff, and mysqli_store_result($link) with the argument dropped is completely silent. This is a distinct PHP 8.4 mysqli deprecation from the mysqli_ping()/mysqli_kill()/mysqli_refresh() cluster covered by the shipped extension.mysqli_ping_kill_refresh rule - both land in the same UPGRADING-8.4.0 Mysqli section and share a deprecation minor, but the construct, replacement and proof covered here are entirely separate; see that rule for the other three functions rather than this one restating them. introduced_in stays null because this rule makes no feature-availability claim, and removed_in stays null because no PHP 8.2-8.5 UPGRADING file removes either the parameter or the constant - only PHP 8.1 changed the behavior of the constant, and PHP 8.4 deprecated both; the notes below resolve a disagreement between the two PHPCompatibility sniffs this construct triggers over exactly when that happened.",
+    "examples": [
+        {
+            "before": [
+                "function fetchBufferedResult(mysqli $link, string $sql): mysqli_result|false",
+                "{",
+                "    mysqli_query($link, $sql, MYSQLI_ASYNC);",
+                "    return mysqli_store_result($link, MYSQLI_STORE_RESULT_COPY_DATA);",
+                "}"
+            ],
+            "after": [
+                "function fetchBufferedResult(mysqli $link, string $sql): mysqli_result|false",
+                "{",
+                "    mysqli_query($link, $sql, MYSQLI_ASYNC);",
+                "    // The $mode parameter of mysqli_store_result() is deprecated since PHP",
+                "    // 8.4, and MYSQLI_STORE_RESULT_COPY_DATA - its only meaningful value -",
+                "    // already became a no-op in PHP 8.1; drop the second argument.",
+                "    return mysqli_store_result($link);",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Probed locally: mysqli_store_result($link, MYSQLI_STORE_RESULT_COPY_DATA) reports two separate PHPCompatibility findings that disagree about history. PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated reports the message: The \"mode\" parameter for function mysqli_store_result() is deprecated since PHP 8.4 - matching UPGRADING-8.4.0 exactly, and the only sniff this rule maps. PHPCompatibility.Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated reports the message: The constant \"MYSQLI_STORE_RESULT_COPY_DATA\" is deprecated since PHP 8.1 - a lifecycle claim UPGRADING-8.1.0 does not support. The MySQLi section of UPGRADING-8.1.0 states plainly that the constant \"no longer has an effect\" - a no-op, not a deprecation - and the constant appears in none of the 8.2, 8.3, or 8.5 UPGRADING files (confirmed locally by searching all four). UPGRADING-8.4.0 is the only official source that deprecates the constant at all, in the very same sentence that deprecates the $mode parameter. Per ADR-005, the official php-src UPGRADING file is authoritative for lifecycle facts, and a third-party analyzer such as PHPCompatibility is only ever an evidence provider, never a source of canonical PHP history in its own right (see also issue #9's verification-boundary contract); where an analyzer sniff table disagrees with php-src about when something was deprecated, the analyzer loses, and its finding is left unmapped rather than reconciled by re-dating this rule to match it. This rule accordingly sets `deprecated_in: \"8.4\"` (matching UPGRADING-8.4.0) and maps only the mysqli_store_result_modeDeprecated sniff; mysqli_store_result_copy_dataDeprecated is deliberately left out of verification.phpcompatibility, because mapping it would attach an unrelated since-8.1 claim - which UPGRADING-8.1.0 does not even call a deprecation, only a no-op - to a rule whose stated lifecycle fact is 8.4.",
+        "Confirmed locally with the pinned PHPCompatibility stack: probing the object-oriented call form, $mysqli->store_result(MYSQLI_STORE_RESULT_COPY_DATA), produces only the constant finding (...Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated) - the $mode-parameter sniff this rule maps did not fire at all for the method-call form, only for the procedural mysqli_store_result($link, $mode) form. UPGRADING-8.4.0 does not distinguish between call forms for this deprecation, so this is the same kind of analyzer coverage gap already documented on the shipped extension.mysqli_ping_kill_refresh rule for mysqli_ping()/mysqli_kill()/mysqli_refresh(): the guidance in this rule applies equally to $mysqli->store_result($mode), even though only the procedural form is provably detected by verification.phpcompatibility.",
+        "Evidence: UPGRADING-8.4.0.txt, '4. Deprecated Functionality' -> Mysqli: \"Passing explicitly the $mode parameter to mysqli_store_result() has been deprecated. As the MYSQLI_STORE_RESULT_COPY_DATA constant was only used in conjunction with this function it has also been deprecated.\""
+    ]
+}

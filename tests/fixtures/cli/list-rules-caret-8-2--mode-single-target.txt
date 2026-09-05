@@ -1,20 +1,30 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 25 of 40 shown
+Rules: 32 of 48 shown
 
   [applicable]                       P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
   [applicable]                       P2  deprecated           core.constant_redeclaration
       Constant redeclaration is deprecated
+  [applicable]                       P2  deprecated           core.date_rfc7231
+      `DATE_RFC7231` and `DateTimeInterface::RFC7231` are deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [applicable]                       P2  deprecated           core.e_strict_constant
       The E_STRICT constant is deprecated
   [applicable]                       P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
+  [applicable]                       P2  deprecated           core.get_defined_functions_exclude_disabled
+      Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated
+  [applicable]                       P2  deprecated           core.lcg_value
+      `lcg_value()` is deprecated
   [applicable]                       P2  deprecated           core.null_array_offset
       Using `null` as an array offset or in `array_key_exists()` is deprecated
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
       Partially supported callables are deprecated
+  [applicable]                       P2  deprecated           core.register_argc_argv_ini
+      `register_argc_argv` and deriving `$_SERVER['argc']`/`$_SERVER['argv']` from the query string are deprecated for non-CLI SAPIs
+  [applicable]                       P2  deprecated           core.report_memleaks_ini
+      The `report_memleaks` INI directive is deprecated
   [applicable]                       P1  feature              core.sensitive_parameter_attribute
       `#[\SensitiveParameter]` attribute
   [applicable]                       P2  deprecated           core.sleep_wakeup_magic_methods
@@ -25,6 +35,8 @@ Rules: 25 of 40 shown
       `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
   [applicable]                       P2  deprecated           core.trigger_error_e_user_error
       Passing `E_USER_ERROR` to `trigger_error()` is deprecated
+  [applicable]                       P2  deprecated           core.underscore_class_name
+      Using `_` as a class name is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
   [applicable]                       P2  deprecated           extension.curl_close
@@ -39,6 +51,8 @@ Rules: 25 of 40 shown
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
   [applicable]                       P2  deprecated           extension.mysqli_ping_kill_refresh
       `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` are deprecated
+  [applicable]                       P2  deprecated           extension.mysqli_store_result_mode
+      Passing an explicit `$mode` argument to `mysqli_store_result()` is deprecated
   [applicable]                       P2  deprecated           language.backtick_shell_exec
       Backtick shell-execution operator is deprecated
   [deprecated_across_range]          P2  deprecated           language.dollar_brace_string_interpolation

@@ -1,0 +1,65 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.register_argc_argv_ini",
+    "title": "`register_argc_argv` and deriving `$_SERVER['argc']`/`$_SERVER['argv']` from the query string are deprecated for non-CLI SAPIs",
+    "summary": "PHP 8.5 deprecates deriving $_SERVER['argc'] and $_SERVER['argv'] from the request's query string on non-CLI SAPIs together with the register_argc_argv INI directive that turns this on; CLI scripts reading $argc/$argv from the real command-line invocation - confirmed locally to be governed by this same directive but wholly unrelated to any query string - are the ordinary, unaffected case, and UPGRADING's own suggested fix flags that $_SERVER['argv'] under a non-CLI SAPI is attacker-controlled query-string data, not trusted operator input.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Never write new non-CLI (web, FPM, embed SAPI) code that reads $_SERVER['argc'] or $_SERVER['argv']. PHP 8.5 deprecates deriving them from the request's query string outside the CLI SAPI, and UPGRADING's own replacement guidance is to configure register_argc_argv=0 for that SAPI and read $_GET (for individual parsed parameters) or $_SERVER['QUERY_STRING'] (for the raw string) instead - only after verifying that the usage is actually safe, since unlike a real command line, a non-CLI $_SERVER['argv'] is built from the URL's query string, which is attacker-controlled input exactly like any other request parameter. None of this touches CLI entry points: a console script reading the ordinary $argc/$argv globals is the normal, expected use of both, needs no change on account of this deprecation, and must keep register_argc_argv enabled for that SAPI - confirmed locally, disabling it removes $argc/$argv entirely, even under the CLI SAPI.",
+    "existing_code_policy": "Search for $_SERVER['argc'] and $_SERVER['argv'] specifically - not the plain $argc/$argv globals, which are a different, unaffected thing addressed below - and separately for every place register_argc_argv is configured (php.ini, .user.ini, ini_set() calls, container or FPM pool configuration). For each $_SERVER['argc']/$_SERVER['argv'] read site, first determine which SAPI it actually runs under, because the two cases need opposite treatment. A site running under the CLI SAPI is not this deprecation's target at all: confirmed locally on this tool's PHP 8.4.19, a CLI script with register_argc_argv left at its default has both $argc/$argv and their identical $_SERVER['argc']/$_SERVER['argv'] copies populated from the real command-line invocation, and explicitly disabling register_argc_argv removes all four - not just the $_SERVER copies, $argc and $argv themselves disappear too - so leave CLI read sites, and register_argc_argv's setting for that SAPI, exactly as they are. A site running under a web server, FPM, or another non-CLI SAPI is the one this deprecation actually targets: there, $_SERVER['argc']/$_SERVER['argv'] are populated by re-splitting the request's raw query string as if it were a shell command line - obscure behavior most maintainers do not expect from an HTTP request, and, per UPGRADING's own phrasing, worth checking for safety before relying on it, since the query string is attacker-controlled. Migrate each such site to $_GET (for named, already-parsed parameters) or $_SERVER['QUERY_STRING'] (for the raw string), then set register_argc_argv=0 for that SAPI once nothing depends on the old derivation - and only after confirming the migrated read is actually safe against attacker-supplied input, the same scrutiny any other request-derived value gets.",
+    "guideline": "Do not derive $_SERVER['argc']/$_SERVER['argv'] from the query string on a non-CLI SAPI; read $_GET or $_SERVER['QUERY_STRING'] instead, verify that usage is safe first since that data is attacker-controlled, and only then set register_argc_argv=0 for that SAPI. Leave CLI scripts alone: $argc/$argv under the CLI SAPI reflect the real command-line invocation, not a query string, remain the normal and unaffected use of both, and depend on register_argc_argv staying enabled for that SAPI.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Core: \"Deriving $_SERVER['argc'] and $_SERVER['argv'] from the query string for non-CLI SAPIs has been deprecated. Configure register_argc_argv=0 and switch to either $_GET or $_SERVER['QUERY_STRING'] to access the information, after verifying that the usage is safe.\" (RFC anchor deprecate_the_register_argc_argv_ini_directive). This packs two facets that must not be blurred, and the RFC anchor's own name - naming the INI directive, not the SAPI-specific derivation - is itself a hint of how easily they get conflated: first, the behavior being deprecated is deriving $_SERVER['argc']/$_SERVER['argv'] from the query string specifically on non-CLI SAPIs; second, the register_argc_argv INI directive - the one switch controlling that derivation - is itself deprecated whenever a codebase configures it at all, on any SAPI, which is exactly how PHPCompatibility's own sniff message reports it (\"INI directive 'register_argc_argv' is deprecated since PHP 8.5\", with no SAPI qualification). Verified locally on this tool's PHP 8.4.19 CLI build: with register_argc_argv left at this build's compiled-in default (On), a script invoked as `php script.php foo bar` has both $argc/$argv (3, ['script.php', 'foo', 'bar']) and identical $_SERVER['argc']/$_SERVER['argv'] copies; passing -d register_argc_argv=0 to the identical script removes all four entirely - not only the $_SERVER copies, the plain $argc/$argv globals vanish too. That is the CLI SAPI, where there is no query string for anything to be derived from - $argc/$argv there are populated straight from the process's real invocation - so this deprecation's actual target, the query-string derivation on non-CLI SAPIs, simply does not apply to CLI usage: a console script reading $argc/$argv (or even $_SERVER['argc']/$_SERVER['argv']) is doing the ordinary, unaffected thing, and this is what the overwhelming majority of code that touches $argv actually is. No php-cgi or other non-CLI SAPI binary is installed in this environment, so the query-string-into-argv mechanism itself was not reproduced end-to-end here; that half of the picture is reported as UPGRADING's and PHP's own long-documented claim, not as something this tool executed. What was verified directly is the CLI-side half: that this same INI directive also gates whether $argc/$argv exist at all under the CLI SAPI, which is why new_code_policy insists on leaving register_argc_argv enabled for CLI entry points rather than disabling it project-wide. UPGRADING's suggested replacement carries its own warning worth taking at face value: a non-CLI $_SERVER['argv'] is not trusted operator input the way a real command line is, it is the request's query string, so code that read it was implicitly trusting attacker-controlled data under an unfamiliar name; \"after verifying that the usage is safe\" is UPGRADING's own hedge on its $_GET/$_SERVER['QUERY_STRING'] replacement, not an embellishment added here. Nothing in the 8.2, 8.3 or 8.4 UPGRADING files mentions register_argc_argv or this derivation, and nothing escalates it to removal in the versions this tool tracks, so introduced_in and removed_in both stay null.",
+    "examples": [
+        {
+            "before": [
+                "function debugModeRequested(): bool",
+                "{",
+                "    // Legacy: on a non-CLI SAPI with register_argc_argv on, this was derived from the query string.",
+                "    return in_array('debug', $_SERVER['argv'] ?? [], true);",
+                "}"
+            ],
+            "after": [
+                "function debugModeRequested(): bool",
+                "{",
+                "    // register_argc_argv is off for this SAPI; read the parsed query parameter instead.",
+                "    return isset($_GET['debug']);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "ini_set('register_argc_argv', '1');"
+            ],
+            "after": [
+                "ini_set('register_argc_argv', '0');"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.IniDirectives.RemovedIniDirectives.register_argc_argvDeprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally on this tool's PHP 8.4.19 CLI build: a script run as `php script.php foo bar` with register_argc_argv left at its default (On on this build) has $argc = 3 and $argv = ['script.php', 'foo', 'bar'], with $_SERVER['argc']/$_SERVER['argv'] identical; the same script run with -d register_argc_argv=0 has none of the four set at all - isset($argc), isset($argv), isset($_SERVER['argc']) and isset($_SERVER['argv']) are all false. This is CLI-specific behavior only; the query-string derivation this deprecation actually targets applies to non-CLI SAPIs and was not reproduced locally, since no php-cgi or other non-CLI SAPI binary is installed in this environment.",
+        "Re-run directly (2026-09-05): PHPCompatibility 10.0.0-alpha2 flags ini_get('register_argc_argv') and ini_set('register_argc_argv', ...) with either '0' or '1' as the value identically as PHPCompatibility.IniDirectives.RemovedIniDirectives.register_argc_argvDeprecated at testVersion 8.2-8.5 - including UPGRADING's own suggested fix, register_argc_argv=0, which still names the directive and therefore still trips this advisory finding, exactly like core.e_strict_constant's token-level sniff. A file that never mentions the directive produces no finding, so fully removing the setting, not merely changing its value, is what actually silences it - not something this rule's own '0'-valued example can do on its own.",
+        "behavior_change_risk is \"medium\": for the rare non-CLI code that actually reads $_SERVER['argc']/$_SERVER['argv'], the fix changes what data the code receives (a different source entirely, $_GET or $_SERVER['QUERY_STRING'], not merely a renamed accessor) and requires verifying the new read is safe against attacker-controlled input, which is a real behavior change - but it is not \"high\" the way trigger_error(E_USER_ERROR)'s control-flow change is, because CLI script behavior (the overwhelming majority of code that touches $argv at all) is untouched as long as register_argc_argv stays enabled for that SAPI.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core: \"Deriving $_SERVER['argc'] and $_SERVER['argv'] from the query string for non-CLI SAPIs has been deprecated. Configure register_argc_argv=0 and switch to either $_GET or $_SERVER['QUERY_STRING'] to access the information, after verifying that the usage is safe.\" (RFC deprecations_php_8_5#deprecate_the_register_argc_argv_ini_directive)."
+    ]
+}

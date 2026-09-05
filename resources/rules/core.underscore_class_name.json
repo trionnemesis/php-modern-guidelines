@@ -1,0 +1,81 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.underscore_class_name",
+    "title": "Using `_` as a class name is deprecated",
+    "summary": "PHP 8.4 deprecates declaring a class named the single underscore `_`, reserving the name because it is both a common throwaway/placeholder identifier and the conventional alias for gettext's translation function; verified locally, the same deprecation, and PHPCompatibility's identical sniff, also cover interface, trait and enum declarations named `_`, while the declared type itself still compiles, instantiates, and behaves completely normally - only the name is affected, and a function named `_()`, the gettext idiom, is unrelated and untouched.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never declare a class, interface, trait, or enum literally named _ in new code. Verified locally, all four declaration kinds raise an identical E_DEPRECATED diagnostic (\"Using \\\"_\\\" as a {class,interface,trait,enum} name is deprecated since 8.4\") at the point of declaration, even though UPGRADING's own prose names only \"class name.\" Pick any other identifier - _ was never a descriptive name to begin with, and it collides conceptually with two unrelated, well-established uses of the same single character: a \"this value is intentionally unused\" placeholder, and the conventional alias for gettext's translation function.",
+    "existing_code_policy": "Search for `class _`, `interface _`, `trait _`, and `enum _` declarations (with or without extends/implements clauses) wherever they appear. Verified locally, renaming one changes nothing about how the type behaves - a renamed class still constructs, its methods still run exactly as before, and no fatal error or behavior change accompanies the rename itself - so the actual risk is entirely at the call sites that reference the type by its literal old name: a hand-written `new _()`, a string passed to class_exists()/is_a()/an instanceof check built from a variable, a serialized object's stored class name, or a dependency-injection/container configuration keyed on the class name as a string. Update every one of those alongside the declaration; a plain rename-the-declaration-only change silently breaks any of them. Do not confuse this with a function named _(): that is gettext's built-in translation alias when the gettext extension is loaded (confirmed locally - declaring a second function of the same name fails with \"Cannot redeclare function _()\", meaning the built-in already exists) and is entirely unrelated to, and unaffected by, this class-name deprecation.",
+    "guideline": "Do not name a class, interface, trait, or enum _. All four are deprecated identically since PHP 8.4 - the deprecation is not class-only despite UPGRADING's wording - though the declared type keeps working normally once compiled; rename it to something descriptive and update every call site that references the old name by string (class_exists(), a container's type key, a serialized payload). This has nothing to do with a function named _(), the ordinary gettext translation idiom, which is untouched.",
+    "details": "UPGRADING-8.4.0 lists this under Deprecated Functionality -> Core, in one line: \"Using \\\"_\\\" as a class name is now deprecated.\" (RFC deprecations_php_8_4#deprecate_using_a_single_underscore_as_a_class_name). The name is being reserved for two concrete reasons, both already in wide informal use before this deprecation: _ is the idiomatic \"I am not using this value\" placeholder identifier borrowed from languages that support it as a genuine discard binding, and it is also the conventional short alias PHP's gettext extension defines for its translation function, so a project that also declared a type named _ was always one _()-call typo away from confusing the two. Verified locally on this tool's PHP 8.4.19: declaring `class _ {}` raises `Deprecated: Using \"_\" as a class name is deprecated since 8.4` at the exact line the class is declared, then continues completely normally - the class can still be instantiated with `new _()`, its methods still run, and get_class() still reports \"_\" as its name; nothing about the type's runtime behavior changes, only a diagnostic is added. UPGRADING's prose names only \"class name,\" but verified locally the deprecation is not actually class-specific: declaring `interface _ {}`, `trait _ {}`, or `enum _ { case A; }` each raise the analogous message (\"...as an interface name...\", \"...as a trait name...\", \"...as an enum name...\"), and PHPCompatibility's single sniff for this rule (PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated, confirmed locally to fire identically for all four declaration kinds and to stay silent for a plain function named _) evidently tracks this broader scope even though its own name says \"Classes.\" Also verified locally, and worth stating precisely because it is easy to conflate: a function named _() is unaffected by any of this. _() already exists as a real built-in function when the gettext extension is loaded - confirmed locally, function_exists('_') returns true before any user code declares anything, (new ReflectionFunction('_'))->getExtensionName() reports \"gettext\", and an attempt to declare a second global function named _() fails outright with \"Cannot redeclare function _()\" rather than with any deprecation notice. So the gettext idiom of calling _($message) to translate a string is exactly as normal after this deprecation as before it; nothing here should discourage using _() as a function call. No PHP 8.2, 8.3 or 8.5 UPGRADING file mentions this further, and nothing escalates it to removal in the versions this tool tracks, so introduced_in and removed_in both stay null.",
+    "examples": [
+        {
+            "before": [
+                "class _",
+                "{",
+                "    public function __invoke(mixed $value): mixed",
+                "    {",
+                "        return $value;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "class NullTransformer",
+                "{",
+                "    public function __invoke(mixed $value): mixed",
+                "    {",
+                "        return $value;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "class _ extends AbstractHandler",
+                "{",
+                "    public function handle(Request $request): Response",
+                "    {",
+                "        return new Response('not implemented', 501);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "class NotImplementedHandler extends AbstractHandler",
+                "{",
+                "    public function handle(Request $request): Response",
+                "    {",
+                "        return new Response('not implemented', 501);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified locally on PHP 8.4.19: declaring `class _ {}` raises `Deprecated: Using \"_\" as a class name is deprecated since 8.4` at the declaration line and nothing else changes - the class instantiates normally afterward (`new _()` and a defined method both work exactly as they would under any other name), confirming this is purely a compile-time diagnostic addition with no runtime behavior change to the declared type itself.",
+        "Verified locally that this is not actually class-specific despite UPGRADING's wording: `interface _ {}`, `trait _ {}` (used via `use _;` inside another class), and `enum _ { case A; }` each raise the identically-worded deprecation for their own declaration kind (\"...as an interface/trait/enum name...\"), and PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated - the one sniff mapped here - was confirmed locally to fire for all four forms and to produce no finding at all for a plain `function _(...) {}` declaration.",
+        "Verified locally that a function named `_` is a pre-existing, unrelated built-in: with the gettext extension loaded, function_exists('_') is already true before any user code runs, (new ReflectionFunction('_'))->getExtensionName() reports \"gettext\", and declaring `function _(string $s): string { ... }` fails with a fatal \"Cannot redeclare function _()\" - not a deprecation notice - because the name is already taken by the built-in gettext alias. This rule's deprecation concerns only class-like declarations named `_`, never a call to the function `_()`.",
+        "Evidence: UPGRADING-8.4.0, \"4. Deprecated Functionality\" -> Core: \"Using \\\"_\\\" as a class name is now deprecated.\" (RFC deprecations_php_8_4#deprecate_using_a_single_underscore_as_a_class_name)."
+    ]
+}

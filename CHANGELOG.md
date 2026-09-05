@@ -2,6 +2,64 @@
 
 All notable changes will be documented in this file.
 
+## [0.3.5] - 2026-09-05
+
+### Added
+
+- Eight source-backed rules, growing the catalogue from 40 to 48 and **emptying Tier A** of the candidate
+  register in [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) — every
+  candidate there whose PHPCompatibility mapping had been measured is now a rule. Seven are lifecycle
+  rules: `core.lcg_value`, `core.underscore_class_name` and `extension.mysqli_store_result_mode` (8.4),
+  and `core.get_defined_functions_exclude_disabled`, `core.date_rfc7231`, `core.report_memleaks_ini` and
+  `core.register_argc_argv_ini` (8.5). One is a feature, `core.request_parse_body` (8.4).
+- Eight PHPCompatibility sniff mappings, one per rule, each produced by running the CI-pinned analyzer —
+  PHP_CodeSniffer 3.13.6 with PHPCompatibility 10.0.0-alpha2 — against a probe file. The committed map
+  now holds 203 entries and the rule files carry the same 203 sniff ids, kept as exact inverses by test.
+- `tests/fixtures/verification/projects/phpcompatibility-findings/src/catalogue_expansion_r4_findings.php`,
+  which triggers each of the eight new sniffs once, so every mapping is proven end to end through a real
+  child process.
+
+### Changed
+
+- **Mapping coverage rises from 24 of 40 rules to 32 of 48**, reversing the decrease `v0.3.4`
+  deliberately took. `v0.3.4` traded breadth for depth by taking Tier B; this round takes the tier whose
+  mappings were already measured, so all eight ship mapped. Sixteen of forty-eight rules still carry no
+  mapping, and coverage is still not described as complete anywhere.
+- `extension.mysqli_store_result_mode` carries a resolved disagreement between the analyzer and php-src.
+  `mysqli_store_result($link, MYSQLI_STORE_RESULT_COPY_DATA)` reports two sniffs: the `$mode` parameter
+  sniff says "deprecated since PHP 8.4", matching `UPGRADING-8.4.0`, while the constant sniff says
+  "deprecated since PHP **8.1**". php-src does not support the latter — `UPGRADING-8.1.0` records only
+  that the constant "no longer has an effect", which makes it a no-op rather than a deprecation, and the
+  constant appears in none of the 8.2, 8.3 or 8.5 files. ADR-005 makes the official source authoritative
+  for lifecycle facts and [issue #9](https://github.com/trionnemesis/php-modern-guidelines/issues/9)
+  makes an external analyzer evidence only, never canon. The rule therefore states `deprecated_in` 8.4,
+  maps only the agreeing sniff, and records the disagreement in a note; the analyzer test asserts that
+  the constant sniff never appears in a report at all, so the exclusion is proven rather than intended.
+- `core.date_rfc7231` records a measurement worse than `UPGRADING`'s wording. The constant is deprecated
+  because "the associated timezone is ignored", but the same wall-clock time in UTC, `Asia/Taipei` and
+  `America/Los_Angeles` all format to the byte-identical `Sat, 05 Sep 2026 03:00:00 GMT` — so it does not
+  merely ignore the timezone, it mislabels local time as GMT, and any HTTP header built with it is wrong
+  rather than merely unhelpful.
+- The Agent Skill's two executed console examples, both READMEs, `AGENTS.md` and the Pages site report
+  the 48-rule catalogue and the increased coverage. The skill's goldens were regenerated from real
+  command output.
+
+### Not included
+
+- A mapping for `PHPCompatibility.Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated`,
+  for the reason above. If a project trips it, it is preserved as an unmapped finding like any other.
+- A mapping for the class-constant twin `DateTimeInterface::RFC7231`. `DATE_RFC7231` has a sniff;
+  `DateTimeInterface::RFC7231`, `DateTime::RFC7231` and `DateTimeImmutable::RFC7231` produced no finding
+  when probed, so `core.date_rfc7231` covers both facts and maps one.
+- Any new analyzer or adapter infrastructure. The PHPStan deprecation adapter (M3-C) stays deferred and
+  the Rector dry-run adapter (M3-D) stays dropped.
+- New PHP version coverage. The known minors are still 8.2–8.5.
+- The two Tier B candidates still open in issue #18 — `__debugInfo()` returning `null` and raising zero
+  to a negative power — and the two structural findings recorded there about what the pinned analyzer
+  can and cannot ever report.
+- Framework rule packs, auto-fixes, target-project writes, network rule fetching, and Packagist
+  publication.
+
 ## [0.3.4] - 2026-09-05
 
 ### Added

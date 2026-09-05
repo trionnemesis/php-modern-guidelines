@@ -1,5 +1,5 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 40 of 40 shown
+Rules: 48 of 48 shown
 
   [not_in_range]                     P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -9,6 +9,8 @@ Rules: 40 of 40 shown
       assert_options() and its ASSERT_* constants are deprecated
   [applicable]                       P2  deprecated           core.constant_redeclaration
       Constant redeclaration is deprecated
+  [applicable]                       P2  deprecated           core.date_rfc7231
+      `DATE_RFC7231` and `DateTimeInterface::RFC7231` are deprecated
   [not_in_range]                     P1  feature              core.deprecated_attribute
       `#[\Deprecated]` attribute
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
@@ -17,8 +19,12 @@ Rules: 40 of 40 shown
       The E_STRICT constant is deprecated
   [applicable]                       P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
+  [applicable]                       P2  deprecated           core.get_defined_functions_exclude_disabled
+      Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated
   [not_in_range]                     P3  modern_preference    core.json_validate
       Prefer `json_validate()` over decode-and-check
+  [applicable]                       P2  deprecated           core.lcg_value
+      `lcg_value()` is deprecated
   [not_in_range]                     P1  feature              core.nodiscard_attribute
       `#[\NoDiscard]` attribute and the `(void)` cast
   [applicable]                       P2  deprecated           core.null_array_offset
@@ -27,6 +33,12 @@ Rules: 40 of 40 shown
       #[\Override] attribute
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
       Partially supported callables are deprecated
+  [applicable]                       P2  deprecated           core.register_argc_argv_ini
+      `register_argc_argv` and deriving `$_SERVER['argc']`/`$_SERVER['argv']` from the query string are deprecated for non-CLI SAPIs
+  [applicable]                       P2  deprecated           core.report_memleaks_ini
+      The `report_memleaks` INI directive is deprecated
+  [not_in_range]                     P1  feature              core.request_parse_body
+      `request_parse_body()` function
   [not_in_range]                     P2  behavior_change      core.resource_to_object_conversions
       `is_resource()` no longer detects DBA, ODBC, and SOAP handles
   [applicable]                       P1  feature              core.sensitive_parameter_attribute
@@ -39,6 +51,8 @@ Rules: 40 of 40 shown
       `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
   [applicable]                       P2  deprecated           core.trigger_error_e_user_error
       Passing `E_USER_ERROR` to `trigger_error()` is deprecated
+  [applicable]                       P2  deprecated           core.underscore_class_name
+      Using `_` as a class name is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
   [applicable]                       P2  deprecated           extension.curl_close
@@ -53,6 +67,8 @@ Rules: 40 of 40 shown
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
   [applicable]                       P2  deprecated           extension.mysqli_ping_kill_refresh
       `mysqli_ping()`, `mysqli_kill()` and `mysqli_refresh()` are deprecated
+  [applicable]                       P2  deprecated           extension.mysqli_store_result_mode
+      Passing an explicit `$mode` argument to `mysqli_store_result()` is deprecated
   [not_in_range]                     P1  feature              language.asymmetric_property_visibility
       Asymmetric property visibility
   [applicable]                       P2  deprecated           language.backtick_shell_exec

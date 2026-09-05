@@ -273,6 +273,30 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         'PHPCompatibility.Syntax.NewDynamicClassConstantFetch.Found',
     ];
 
+    /**
+     * The 8 distinct sniff ids `src/catalogue_expansion_r4_findings.php` proves — one v0.3.5 (round 4,
+     * finishing Tier A) mapping each: the underscore class-name marker, the DATE_RFC7231 constant, the
+     * new request_parse_body() function, the get_defined_functions() $exclude_disabled parameter, the
+     * mysqli_store_result() $mode parameter, lcg_value(), and the register_argc_argv / report_memleaks
+     * INI directives. The mysqli_store_result() line deliberately passes a literal $mode value (0) so it
+     * trips only this parameter sniff, never the constant sniff
+     * (Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated), which WORK-SPEC-R4.md
+     * requires stay unmapped because it asserts a "deprecated since PHP 8.1" fact php-src does not
+     * support — that sniff never fires here and is absent from every list below.
+     *
+     * @var list<string>
+     */
+    private const CATALOGUE_EXPANSION_R4_SNIFF_IDS = [
+        'PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated',
+        'PHPCompatibility.Constants.RemovedConstants.date_rfc7231Deprecated',
+        'PHPCompatibility.FunctionUse.NewFunctions.request_parse_bodyFound',
+        'PHPCompatibility.FunctionUse.RemovedFunctionParameters.get_defined_functions_exclude_disabledDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated',
+        'PHPCompatibility.FunctionUse.RemovedFunctions.lcg_valueDeprecated',
+        'PHPCompatibility.IniDirectives.RemovedIniDirectives.register_argc_argvDeprecated',
+        'PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated',
+    ];
+
     private string $executable = '';
 
     private string $findingsProject = '';
@@ -352,11 +376,11 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame(
             [
                 'invocation_count' => 3,
-                'finding_count' => 203,
-                'mapped_finding_count' => 200,
+                'finding_count' => 211,
+                'mapped_finding_count' => 208,
                 'unmapped_finding_count' => 3,
-                'mapping_count' => 200,
-                'mapped_rule_count' => 24,
+                'mapping_count' => 208,
+                'mapped_rule_count' => 32,
             ],
             $report['summary'],
         );
@@ -399,12 +423,15 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // catalogue_expansion_findings.php (the other 2 of the 12 new mappings are the utf8 ids already
         // present in $preImapIds above). The v0.3.3 (round 2) catalogue expansion then adds
         // CATALOGUE_EXPANSION_R2_SNIFF_IDS's 25 further mapped ids, proved by
-        // catalogue_expansion_r2_findings.php.
+        // catalogue_expansion_r2_findings.php. The v0.3.5 (round 4, finishing Tier A) catalogue expansion
+        // then adds CATALOGUE_EXPANSION_R4_SNIFF_IDS's 8 further mapped ids, proved by
+        // catalogue_expansion_r4_findings.php.
         $expectedIds = array_merge(
             $preImapIds,
             self::imapUnbundledSniffIds(),
             self::CATALOGUE_EXPANSION_SNIFF_IDS,
             self::CATALOGUE_EXPANSION_R2_SNIFF_IDS,
+            self::CATALOGUE_EXPANSION_R4_SNIFF_IDS,
             [
                 'PHPCompatibility.FunctionUse.NewFunctions.imap_is_openFound',
                 'PHPCompatibility.FunctionUse.RemovedFunctions.imap_headerRemoved',
@@ -412,12 +439,12 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         );
         sort($expectedIds, SORT_STRING);
 
-        // (a) the sorted set of external rule ids: 198 distinct ids (195 mapped + 3 unmapped).
+        // (a) the sorted set of external rule ids: 206 distinct ids (203 mapped + 3 unmapped).
         $sortedSet = array_values(array_unique($ids));
         sort($sortedSet, SORT_STRING);
         self::assertSame($expectedIds, $sortedSet);
 
-        // (b) the sorted 203-element multiset: the same 198 distinct ids with five ids each appearing
+        // (b) the sorted 211-element multiset: the same 206 distinct ids with five ids each appearing
         // once more, because each is triggered from two distinct locations (or tokens) that dedupe must
         // not collapse: the dollar-brace expression syntax id (once from mapped_findings.php, once from
         // duplicate_findings.php — different files, so different sortKey()s), the IMAP\Connection class
@@ -429,7 +456,9 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         // `private(set)` keyword id (once from catalogue_expansion_findings.php's instance property,
         // once more from catalogue_expansion_r2_findings.php's static property — different files, and a
         // legitimate second-order finding of the round-2 static-asymmetric-visibility construct rather
-        // than anything this round deliberately triggered twice).
+        // than anything this round deliberately triggered twice). catalogue_expansion_r4_findings.php
+        // adds no sixth duplicate: every one of its 8 constructs is a single occurrence of a distinct,
+        // previously-unseen sniff id, confirmed by probing it in isolation before it was written.
         $expectedMultiset = $expectedIds;
         $expectedMultiset[] = 'PHPCompatibility.TextStrings.RemovedDollarBraceStringEmbeds.DeprecatedExpressionSyntax';
         $expectedMultiset[] = 'PHPCompatibility.Classes.RemovedClasses.imap_connectionRemoved';
@@ -529,6 +558,33 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
             }
         }
 
+        // Every one of the 8 v0.3.5 (round 4, finishing Tier A) mappings, proved end-to-end through the
+        // real analyzer by catalogue_expansion_r4_findings.php. mysqli_store_result_modeDeprecated maps
+        // to extension.mysqli_store_result_mode alone: the companion constant sniff
+        // (Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated) is deliberately unmapped
+        // and never appears as a key here, because it asserts a "since PHP 8.1" fact that disagrees with
+        // php-src (see WORK-SPEC-R4.md and the rule's own notes).
+        foreach ([
+            'PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated' => ['core.underscore_class_name'],
+            'PHPCompatibility.Constants.RemovedConstants.date_rfc7231Deprecated' => ['core.date_rfc7231'],
+            'PHPCompatibility.FunctionUse.NewFunctions.request_parse_bodyFound' => ['core.request_parse_body'],
+            'PHPCompatibility.FunctionUse.RemovedFunctionParameters.get_defined_functions_exclude_disabledDeprecated' => ['core.get_defined_functions_exclude_disabled'],
+            'PHPCompatibility.FunctionUse.RemovedFunctionParameters.mysqli_store_result_modeDeprecated' => ['extension.mysqli_store_result_mode'],
+            'PHPCompatibility.FunctionUse.RemovedFunctions.lcg_valueDeprecated' => ['core.lcg_value'],
+            'PHPCompatibility.IniDirectives.RemovedIniDirectives.register_argc_argvDeprecated' => ['core.register_argc_argv_ini'],
+            'PHPCompatibility.IniDirectives.RemovedIniDirectives.report_memleaksDeprecated' => ['core.report_memleaks_ini'],
+        ] as $sniffId => $expectedRuleIds) {
+            foreach ($mappedRuleIdsBySniffId[$sniffId] as $mapped) {
+                self::assertSame($expectedRuleIds, $mapped, $sniffId);
+            }
+        }
+
+        self::assertArrayNotHasKey(
+            'PHPCompatibility.Constants.RemovedConstants.mysqli_store_result_copy_dataDeprecated',
+            $mappedRuleIdsBySniffId,
+            'mysqli_store_result_copy_dataDeprecated must stay unmapped and must never fire in this fixture tree.',
+        );
+
         // The static-asymmetric-visibility construct's legitimate second-order finding: still mapped to
         // the round-1 instance-property rule, never to language.static_asymmetric_visibility itself
         // (WORK-SPEC-R2.md's "critical for rule 8").
@@ -565,10 +621,17 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
                 'core.array_find_functions',
                 'core.array_first_last',
                 'core.assert_options',
+                'core.date_rfc7231',
                 'core.e_strict_constant',
                 'core.get_class_without_arguments',
+                'core.get_defined_functions_exclude_disabled',
                 'core.json_validate',
+                'core.lcg_value',
+                'core.register_argc_argv_ini',
+                'core.report_memleaks_ini',
+                'core.request_parse_body',
                 'core.trigger_error_e_user_error',
+                'core.underscore_class_name',
                 'core.utf8_encode_decode',
                 'extension.curl_close',
                 'extension.curl_share_close',
@@ -576,6 +639,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
                 'extension.imap_unbundled',
                 'extension.mysqli_driver_reconnect',
                 'extension.mysqli_ping_kill_refresh',
+                'extension.mysqli_store_result_mode',
                 'language.asymmetric_property_visibility',
                 'language.backtick_shell_exec',
                 'language.dollar_brace_string_interpolation',
@@ -755,8 +819,8 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertStringContainsString('Verification: findings (exit 6)', $human);
         self::assertStringContainsString('Planned invocations: 3', $human);
         self::assertStringContainsString('Invocations: 3', $human);
-        self::assertStringContainsString('Findings: 203', $human);
-        self::assertStringContainsString('mapped findings        200', $human);
+        self::assertStringContainsString('Findings: 211', $human);
+        self::assertStringContainsString('mapped findings        208', $human);
         self::assertStringContainsString('unmapped findings      3', $human);
 
         [$jsonExitCode, $report] = $this->verifyReport($this->findingsProject);
@@ -764,7 +828,7 @@ final class VerifyPhpCompatibilityAnalyzerTest extends TestCase
         self::assertSame($humanExitCode, $jsonExitCode);
         self::assertSame('findings', $report['status']);
         self::assertSame(ExitCode::VERIFICATION_FINDINGS, $report['exit_code']);
-        self::assertSame(203, $report['summary']['finding_count']);
+        self::assertSame(211, $report['summary']['finding_count']);
     }
 
     public function testJsonOutputIsByteIdenticalAcrossTwoRuns(): void

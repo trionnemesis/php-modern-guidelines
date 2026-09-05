@@ -11,7 +11,7 @@
 
 🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Agent distribution](#agent-distribution) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**已發布：Rule-catalogue expansion · v0.3.4。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
+**已發布：Rule-catalogue expansion · v0.3.5。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
 
 > **Verification：** `v0.3.0` 導入了明確、opt-in 的 `verify <adapter> --executable=<path-or-name>` surface。其 production `phpcompatibility` adapter 是真實的 PHPCompatibility 實作：它會以 isolated child process 執行 caller 選定、已安裝好的 PHP_CodeSniffer 與 PHPCompatibility standard，回報 advisory evidence——絕非自動修復。PHPStan deprecation adapter（M3-C）已被延後，Rector dry-run adapter（M3-D）則未納入此 release line；原因見 [Changelog](CHANGELOG.md)。
 
@@ -40,6 +40,15 @@
 > 變更，一個未更新的 `is_resource()` 判斷會在呼叫成功時靜默走進 error 分支——本來就永遠無法被
 > mapping 涵蓋。
 
+> **v0.3.5 rule-catalogue expansion：** 新增八條 source-backed 規則（40 → 48），全部取自
+> [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) 中、`v0.3.3` 之後
+> 尚未上線的 Tier A 候選規則——這一層的 PHPCompatibility mapping 早已測得。這一輪方向再次反轉：
+> 八條新規則全數以已 mapping 狀態上線，使 mapping coverage 從 40 條中的 24 條（60%）**上升**為
+> 48 條中的 32 條（67%）。這使 issue #18 的 Tier A 完全清空——這一層中所有已測得 mapping 的候選
+> 規則，現在都已成為正式規則——但名冊尚未窮盡：仍有兩條低頻率的 Tier B 候選規則，以及兩項關於
+> analyzer 本身的結構性發現尚待處理；整體 catalogue 依然是 partial，48 條規則中仍有 16 條完全
+> 沒有 mapping。
+
 ## Why
 
 AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」，但真正的專案常同時支援多個 PHP minor。若專案宣告 `require.php: ^8.2`，單純看到開發機是 PHP 8.5 並不足以證明可以使用 PHP 8.5-only 語法。
@@ -59,7 +68,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 |---|---|---|
 | Policy resolver | 解析 `require.php`、`conflict.php`、`config.platform.php`、`composer.lock` platform override 與 `--php` | 只讀取目標專案輸入，不執行目標專案 |
 | Two-axis policy | 分離 `feature_ceiling` / `lifecycle_ceiling`，輸出 `coverage`、`confidence`、`warnings` | 已知 PHP coverage 為 8.2–8.5 |
-| Rule registry | schema validation、deterministic ordering、40 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
+| Rule registry | schema validation、deterministic ordering、48 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
 | Repository verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
@@ -153,7 +162,7 @@ php bin/php-modern-guidelines version
 預期輸出：
 
 ```text
-php-modern-guidelines 0.3.4
+php-modern-guidelines 0.3.5
 ```
 
 解析目標專案 policy、列出適用規則、解釋單一規則，並診斷本工具自身的輸入：
@@ -168,7 +177,7 @@ php bin/php-modern-guidelines doctor --project-root=/path/to/app
 
 ### 使用 PHPCompatibility 進行 verify
 
-Source checkout 與正式發布的 `v0.3.4` PHAR 都具備 `verify` command。Explicit command shape 為：
+Source checkout 與正式發布的 `v0.3.5` PHAR 都具備 `verify` command。Explicit command shape 為：
 
 ```bash
 php bin/php-modern-guidelines verify phpcompatibility \
@@ -190,7 +199,7 @@ analyzer 精確表達（例如存在 coverage gap 或 allowed minor 不連續）
 以取得可執行的 plan。執行完成會回傳 exit `0`（無 finding）或 exit `6`（一筆以上 advisory
 finding）；analyzer 執行中途失敗則是 exit `8`。
 
-每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 40 條規則中有 24 條——包含整個
+每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 48 條規則中有 32 條——包含整個
 `extension.imap_unbundled` 範圍——具備已提交、經過審查的 sniff id 對 rule id mapping；其餘 finding
 則保留為 `mapping_status: unmapped`，不會被捨棄。同一組 mapping 也以排序後的
 `verification.phpcompatibility` list 儲存在 rule files，並以測試保證它與 adapter map 互為精確反向。
@@ -222,7 +231,19 @@ issue #18 的 Tier B——這一層是 CI-pinned analyzer 完全沒有回報任�
 mapping 廣度換成 catalogue 深度的預期代價，M3-B value gate 已測得這才是真正的瓶頸；這裡如實記錄，
 而非包裝成進步。整個名冊中傷害性最高的一項——PHP 8.4 的 resource-to-object 變更，一個未更新的
 `is_resource()` 判斷會在呼叫成功時靜默走進 error 分支——正是這八條之一，而且在這個 analyzer 的
-PHP 8.2 floor 之下永遠無法被 mapping 涵蓋。
+PHP 8.2 floor 之下永遠無法被 mapping 涵蓋。`v0.3.5` 再次反轉方向：新增八條 source-backed 規則
+（40 → 48），全部取自 `v0.3.3` 之後 issue #18 仍剩下的 Tier A 候選規則——這一層的 mapping 早已
+測得——因此八條全數以已 mapping 狀態上線，使 mapping coverage 從 40 條中的 24 條（60%）**上升**
+為 48 條中的 32 條（67%）。這使 issue #18 的 Tier A 完全清空：這一層中所有已測得 mapping 的候選
+規則，現在都已成為正式規則，名冊中只剩下兩條低頻率的 Tier B 候選規則，以及兩項關於 analyzer 本身
+的結構性發現。這八條之中有一條值得特別說明：`extension.mysqli_store_result_mode` 會觸發兩個
+互相矛盾的 PHPCompatibility sniff——sniff table 記載 `MYSQLI_STORE_RESULT_COPY_DATA` 於 PHP 8.1
+即已 deprecated，但 `UPGRADING-8.1.0` 只記錄該常數在當時變成 no-op，真正將它 deprecated 的唯一
+官方來源是 `UPGRADING-8.4.0`。依照
+[ADR-005](docs/adr/ADR-005-official-source-provenance.md)，analyzer 在這類分歧中不具權威性，因此
+這條規則採用 `deprecated_in: "8.4"`，並刻意不將該常數的 sniff 納入 mapping，而不是為了配合它改動
+規則本身的說法。Mapping coverage 再次加深，但依然是 partial：48 條規則中仍有 16 條完全沒有
+mapping。
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
@@ -385,7 +406,8 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **Rule-catalogue expansion** | `v0.3.2` | ✅ 完成：回應 M3-B value gate 的發現——真正的瓶頸是 mapping coverage 與 16 條規則的 catalogue 深度，而非缺少 analyzer——新增 8 條 source-backed 規則（16 → 24），並新增 12 筆通過驗證的 PHPCompatibility sniff mapping（有 mapping 的規則從 16 條中的 9 條成長為 24 條中的 16 條） | 不新增 adapter infrastructure；mapping coverage 更深，但仍為 partial |
 | **Further catalogue and mapping growth** | `v0.3.3` | ✅ 完成：新增 8 條 source-backed 規則（24 → 32），並新增 25 筆通過驗證的 PHPCompatibility sniff mapping（有 mapping 的規則從 24 條中的 16 條成長為 32 條中的 24 條），這一輪新增的八條規則全數皆有 mapping | 不新增 adapter infrastructure；mapping coverage 更深，但仍為 partial |
 | **Catalogue depth over mapping breadth** | `v0.3.4` | ✅ 完成：新增 8 條 source-backed 規則（32 → 40），全部取自 issue #18 的 Tier B——這一層 analyzer 完全沒有回報任何 finding——因此八條全數以 unmapped 狀態上線，使 mapping coverage 從 32 條中的 24 條**下降**為 40 條中的 24 條 | 不新增 adapter infrastructure；這次下降是刻意、經測量的 catalogue 深度取捨，不是退步 |
-| **Next：rebuilding mapped coverage** | — | 規劃：這一輪刻意選擇 catalogue 深度優先於 mapping coverage 之後，目前 mapping coverage 僅涵蓋 40 條規則中的 24 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含 issue #18 尚未處理的 Tier B 候選規則——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
+| **Emptying issue #18's Tier A** | `v0.3.5` | ✅ 完成：新增 issue #18 Tier A 剩下的 8 條 source-backed 規則（40 → 48），全數以已 mapping 狀態上線，使 mapping coverage 從 40 條中的 24 條（60%）**上升**為 48 條中的 32 條（67%），Tier A 至此完全清空 | 不新增 adapter infrastructure；名冊中仍有兩條低頻率 Tier B 候選規則、兩項 analyzer 結構性發現，以及 48 條規則中 16 條沒有 mapping |
+| **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前仍只涵蓋 48 條規則中的 32 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含名冊中剩餘的 Tier B 候選規則——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
@@ -393,7 +415,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | Path | 用途 |
 |---|---|
 | `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
-| `resources/rules/` | 40 個 source-backed seed rule JSON，一條 rule 一個檔案 |
+| `resources/rules/` | 48 個 source-backed seed rule JSON，一條 rule 一個檔案 |
 | `schemas/` | Versioned rule、policy 與 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |
