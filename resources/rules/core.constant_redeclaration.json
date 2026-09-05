@@ -1,0 +1,76 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.constant_redeclaration",
+    "title": "Constant redeclaration is deprecated",
+    "summary": "PHP 8.5 deprecates constant redeclaration - calling `define()` twice for the same name, or writing the same free-standing `const` declaration twice in one scope - both of which, verified directly, already raise a non-fatal E_WARNING today and silently keep the first value no matter which call was meant to win; this is unrelated to redeclaring the same constant name twice inside one class body, which is, and remains, a fatal compile-time error that this deprecation does not touch.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never define the same constant name twice - not two `define()` calls for the same name, and not two free-standing `const` declarations for the same name in the same scope. Resolve a constant's value once, from whatever configuration or environment source decides it, and call `define()`/`const` exactly once with that resolved value. If a bootstrap or configuration script might legitimately run or be included more than once (for example because it is shared by both a web entry point and a CLI entry point), guard the `define()` call with `if (!defined('NAME')) { define('NAME', ...); }` rather than letting a second, unconditional `define()` call fail.",
+    "existing_code_policy": "Find every constant defined more than once under the same name - most often in bootstrap, configuration, or fixture code that calls `define()` unconditionally in a script that can run or be included more than once, or a constants file edited twice by different changes. Verified directly on PHP 8.4.19: a repeated `define()` or a repeated free-standing `const` for an already-defined name raises a non-fatal E_WARNING and the constant keeps its FIRST value - never the second - regardless of whether the second attempt uses the same value or a different one. Do not assume the more recently written declaration is the one actually in effect; check which value the code currently runs with before deciding a fix, since deleting the wrong one changes the constant's real value, not just silences a warning. Once you know which value should win, either delete the losing declaration outright or wrap the conditionally-executed one in `if (!defined('NAME'))`. Do not confuse this with redeclaring a class constant inside the same class body (`class C { const X = 1; const X = 2; }`): verified separately, that is a fatal compile-time error today, unrelated to and unaffected by this deprecation, and no `defined()`-style guard can rescue it - the only fix is deleting one of the two declarations.",
+    "guideline": "Do not define the same constant name more than once, whether through repeated `define()` calls or repeated free-standing `const` declarations in the same scope; guard a conditionally-executed `define()` with `defined()` instead. This is unrelated to declaring the same constant name twice inside one class body, which is a pre-existing fatal compile error, not a redeclaration this deprecation covers.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Core, in one line: \"Constant redeclaration has been deprecated.\" (RFC deprecations_php_8_5#deprecate_constant_redeclaration). Verified directly on the local PHP 8.4.19, which predates this deprecation: calling `define('NAME', $value)` a second time for a name that is already defined raises `E_WARNING: Constant NAME already defined` and returns `false`, while the constant keeps whatever value the FIRST call gave it - confirmed with both a repeat of the identical value and a repeat with a different value, the outcome is the same either way: the second call is simply rejected and the first value is what survives. A free-standing `const NAME = ...;` declared twice in the same scope (for example twice at the top level of one file) behaves identically: the same `E_WARNING: Constant NAME already defined` wording, execution continues rather than halting, and the first value again wins. Both of these are what \"constant redeclaration\" refers to, and both are already non-fatal warnings today, which PHP 8.5 escalates to a deprecation notice - since PHP 8.5 is not installed in this environment, only the current, pre-deprecation E_WARNING behavior was actually run here; the escalation itself is reported as UPGRADING's documented claim, not as something observed. This is a genuinely different thing from redeclaring the same constant name twice inside one class body - verified separately: `class C { public const FOO = 'a'; public const FOO = 'b'; }` is a compile-time fatal error, \"Cannot redefine class constant C::FOO\", severe enough that `php -l` itself refuses to lint the file. That fatal error is not new, is not part of what this deprecation changes, and cannot be fixed by a `defined()`-style guard - the only fix is to delete one of the two declarations before the file can even be parsed. Because the first-defined value is always the one that survives a `define()` or free-standing `const` redeclaration - never the second, and never whichever one looks more recently written - the safe existing-code fix is either to guard the second attempt with `defined()` (which changes nothing about which value wins, since the guard simply skips the already-losing second call) or to delete the losing declaration outright once it is clear which value should actually be authoritative; assuming last-write-wins semantics, as one would for an ordinary variable, produces the wrong diagnosis of which declaration is the dead one.",
+    "examples": [
+        {
+            "before": [
+                "function bootstrapConstants(): void",
+                "{",
+                "    // Called from both public/index.php and bin/console.php.",
+                "    define('MAX_UPLOAD_BYTES', 10 * 1024 * 1024);",
+                "    define('DEFAULT_TIMEZONE', 'UTC');",
+                "}"
+            ],
+            "after": [
+                "function bootstrapConstants(): void",
+                "{",
+                "    // Called from both public/index.php and bin/console.php.",
+                "    if (!defined('MAX_UPLOAD_BYTES')) {",
+                "        define('MAX_UPLOAD_BYTES', 10 * 1024 * 1024);",
+                "    }",
+                "    if (!defined('DEFAULT_TIMEZONE')) {",
+                "        define('DEFAULT_TIMEZONE', 'UTC');",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "const MAX_RETRIES = 3;",
+                "",
+                "// ... added again, much further down, while extending this constants file ...",
+                "const MAX_RETRIES = 5;"
+            ],
+            "after": [
+                "const MAX_RETRIES = 5;"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: define('NAME', $v) called a second time for an already-defined name raises E_WARNING: Constant NAME already defined and returns false; the constant keeps the value from the FIRST call regardless of whether the second call repeats the same value or supplies a different one.",
+        "Verified on PHP 8.4.19: a free-standing const NAME = ...; declared twice in the same scope raises the identical E_WARNING: Constant NAME already defined wording, is not fatal, and likewise keeps the first value.",
+        "Verified separately on PHP 8.4.19: declaring the same constant name twice inside one class body (class C { const X = 1; const X = 2; }) is a fatal compile-time error, \"Cannot redefine class constant C::X\" - severe enough that php -l refuses to lint the file - and is unrelated to, and unaffected by, this deprecation, which concerns only define() and free-standing const redeclaration.",
+        "PHPCompatibility 10.0.0-alpha2 was re-run directly (2026-09-05) against a file containing a repeated define() call and a repeated free-standing const declaration at testVersion 8.2-8.5 and produced zero findings, confirming there is no proven sniff mapping for this construct; verification.phpcompatibility is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core: \"Constant redeclaration has been deprecated.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_constant_redeclaration"
+    ]
+}

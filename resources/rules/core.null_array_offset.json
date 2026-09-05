@@ -1,0 +1,123 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.null_array_offset",
+    "title": "Using `null` as an array offset or in `array_key_exists()` is deprecated",
+    "summary": "PHP 8.5 deprecates using `null` as an array offset - for reads, writes, `isset()`, and `array_key_exists()` alike - because PHP has always silently coerced a `null` offset to the same array element as the empty string `''`; the deprecation targets that silent coercion itself, not a change in which element gets used, so replacing `null` with `''` mechanically is often just papering over a `null` that should never have reached the offset position in the first place.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never let a `null` value reach an array offset position, whether for a read, a write, `isset()`, or `array_key_exists()`. If a key is optional or may legitimately be absent, check for that explicitly (`if ($key !== null)`, or resolve a real fallback key upstream) instead of letting `null` flow into the subscript operator; write the empty string `''` explicitly only when an empty-string key is genuinely the intended bucket, so the intent is visible in the code instead of relying on the engine's implicit coercion.",
+    "existing_code_policy": "Find every array read, write, `isset()` check, and `array_key_exists()` call whose offset expression can be `null` - a `?string`/`?int`-typed variable, an `?? null` fallback, an untyped property, or the result of a lookup that can miss. Verified directly on PHP 8.4.19: `$a[null]` and `$a['']` are the exact same array element in every one of those four operations, so mechanically replacing `null` with `''` throughout a codebase changes no behavior at all today and will only silence the future notice, not fix anything. Before doing that at any given call site, find out why the offset can be `null` in the first place; if it represents a genuine bug or an unhandled missing case, fix that instead of masking it behind an explicit `''`. Do not blanket-replace `[null]` with `['']` across a codebase without looking at each call site individually - some of those `null`s are exactly the kind of bug this deprecation is trying to surface.",
+    "guideline": "Never use `null` as an array offset, whether reading, writing, or checking with `isset()`/`array_key_exists()`; PHP has always silently treated a `null` offset as the empty-string key `''`, and PHP 8.5 turns that silent coercion into a deprecation notice. Handle the `null` before it reaches the subscript operator rather than reflexively substituting `''` for it.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Core: using `null` as an array offset, or passing `null` as the key argument to `array_key_exists()`, is now deprecated, and an empty string should be used instead (RFC deprecations_php_8_5#deprecate_using_values_null_as_an_array_offset_and_when_calling_array_key_exists). Verified directly on the local PHP 8.4.19, which predates this deprecation and so shows the underlying coercion with no diagnostic at all: `$a[null] = 'x'` and `$a[''] = 'x'` are not merely similar, they are the exact same array element - writing to `$a[null]` first and then to `$a['']` on the same array overwrote the same single slot rather than creating two entries (`count()` stayed at 1), and reading, `isset()`, and `array_key_exists()` all agreed: `isset($d[null]) === isset($d[''])` and `array_key_exists(null, $d) === array_key_exists('', $d)`. This confirms the deprecation is exactly what UPGRADING says it is - a notice added to an existing, unchanged coercion - not a change in behavior; on the local 8.4.19 host none of reading, writing, `isset()`, or `array_key_exists()` with a `null` offset raised any warning, notice, or deprecation of any kind, which is expected since 8.4 predates PHP 8.5's addition of the diagnostic. Because `$a[null]` and `$a['']` are provably the same key, mechanically replacing `null` with `''` at a call site is a behaviorally inert edit - it changes nothing about which element is touched - but that inertness is exactly the trap: the far more common real-world source of a `null` offset is not a deliberate empty-string key, it is an unexpectedly-empty variable reaching the subscript operator - an unguarded `?? null`, an unvalidated request parameter, a lookup that can legitimately miss - and silently rewriting that `null` to `''` only trades tomorrow's deprecation notice for a literal empty-string key that behaves exactly as oddly as the `null` did, without asking why the value was missing at all. The honest fix in that common case is to handle the `null` upstream - short-circuit, fall back to a real key, or reject the input - rather than to find-and-replace `null` with `''` and call it done; writing `''` explicitly is the right fix only in the rarer case where an empty-string key genuinely is the intended bucket.",
+    "examples": [
+        {
+            "before": [
+                "final class FeatureFlags",
+                "{",
+                "    /** @var array<string, array<string, bool>> */",
+                "    private array $overrides = [];",
+                "",
+                "    public function isEnabled(string $flag, ?string $tenantId): bool",
+                "    {",
+                "        if (array_key_exists($tenantId, $this->overrides)) {",
+                "            return (bool) $this->overrides[$tenantId][$flag];",
+                "        }",
+                "",
+                "        return $this->defaultFor($flag);",
+                "    }",
+                "",
+                "    private function defaultFor(string $flag): bool",
+                "    {",
+                "        return false;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class FeatureFlags",
+                "{",
+                "    /** @var array<string, array<string, bool>> */",
+                "    private array $overrides = [];",
+                "",
+                "    public function isEnabled(string $flag, ?string $tenantId): bool",
+                "    {",
+                "        if ($tenantId === null) {",
+                "            return $this->defaultFor($flag);",
+                "        }",
+                "",
+                "        if (array_key_exists($tenantId, $this->overrides)) {",
+                "            return (bool) $this->overrides[$tenantId][$flag];",
+                "        }",
+                "",
+                "        return $this->defaultFor($flag);",
+                "    }",
+                "",
+                "    private function defaultFor(string $flag): bool",
+                "    {",
+                "        return false;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "/**",
+                " * @param list<array{label?: ?string, sku: string}> $items",
+                " * @return array<string, list<array{label?: ?string, sku: string}>>",
+                " */",
+                "function groupByLabel(array $items): array",
+                "{",
+                "    $groups = [];",
+                "    foreach ($items as $item) {",
+                "        $groups[$item['label'] ?? null][] = $item;",
+                "    }",
+                "",
+                "    return $groups;",
+                "}"
+            ],
+            "after": [
+                "/**",
+                " * @param list<array{label?: ?string, sku: string}> $items",
+                " * @return array<string, list<array{label?: ?string, sku: string}>>",
+                " */",
+                "function groupByLabel(array $items): array",
+                "{",
+                "    $groups = [];",
+                "    foreach ($items as $item) {",
+                "        // Items without a label are intentionally grouped under the empty-string bucket.",
+                "        $groups[$item['label'] ?? ''][] = $item;",
+                "    }",
+                "",
+                "    return $groups;",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "This covers all four shapes the offset can appear in: a read (`$a[null]`), a write (`$a[null] = ...`), an `isset()` check (`isset($a[null])`), and `array_key_exists(null, $a)` - all four resolve through the same `null`-to-`''` coercion.",
+        "Verified on PHP 8.4.19: writing `$a[null] = 'x'` produces the single-entry array `['' => 'x']`; writing `$a[null]` and then `$a['']` to the same array overwrites the same slot (`count()` stays 1); `isset($d[null])` equals `isset($d[''])`; and `array_key_exists(null, $d)` equals `array_key_exists('', $d)`. No diagnostic of any kind is raised on 8.4.19, since this host predates PHP 8.5's addition of the deprecation notice - only the coercion itself, which UPGRADING's prescribed `''` replacement already matches exactly, was observed.",
+        "PHPCompatibility 10.0.0-alpha2 was re-run directly (2026-09-05) against a class using `$this->items[$key]`, `isset()`, and `array_key_exists()` with a nullable `$key` at testVersion 8.2-8.5 and produced zero findings, confirming there is no proven sniff mapping for this construct; `verification.phpcompatibility` is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core: \"Using null as an array offset or when calling array_key_exists() is now deprecated. Instead an empty string should be used.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_using_values_null_as_an_array_offset_and_when_calling_array_key_exists"
+    ]
+}
