@@ -1,0 +1,130 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.directory_functions_implicit_handle",
+    "title": "`readdir()`, `rewinddir()`, and `closedir()` without an explicit handle are deprecated",
+    "summary": "PHP 8.5 deprecates passing `null` - or nothing at all, since the parameter already defaults to `null` - to `readdir()`, `rewinddir()`, and `closedir()` to fall back on an implicit \"last opened directory\"; verified locally, that tracked value is a single slot shared across the entire request, so an entirely unrelated `opendir()` call elsewhere silently redirects every later bare call to a different directory, with no warning of any kind on PHP 8.4.19.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never call `readdir()`, `rewinddir()`, or `closedir()` without its directory-handle argument, and never pass `null` for it either - always pass the exact resource `opendir()` returned. Capture that return value in a variable at the `opendir()` call site and thread it through explicitly to every subsequent `readdir()`/`rewinddir()`/`closedir()` call, even inside a single tight loop where \"the directory I just opened\" feels unambiguous. For the common case of simply wanting every entry in a directory, prefer `scandir()`, `glob()`, or `DirectoryIterator` over the `opendir()`/`readdir()` family entirely - none of them need handle bookkeeping, and none can be hijacked by an unrelated `opendir()` call running elsewhere in the same request.",
+    "existing_code_policy": "Search for every `readdir()`, `rewinddir()`, and `closedir()` call and check whether it passes a directory-handle argument; a literal `null` and a fully omitted argument reach the exact same implicit \"last opened directory\" path, so a search for `readdir(null)` alone misses the far more common bare `readdir()` form entirely - confirmed directly on PHP 8.4.19, where `opendir()` followed by a bare `while (($f = readdir()) !== false)` loop, and the identical loop with the handle passed explicitly, produced byte-identical entry lists and identical `rewinddir()`-then-`readdir()` results. Passing the handle explicitly at every one of these call sites is a behaviorally inert fix on its own - it changes nothing about which directory gets read - but do not stop at the mechanical fix without also asking whether the code was ever relying on \"the last opened directory\" as a substitute for tracking its own handle: confirmed directly, a second, completely unrelated `opendir()` call elsewhere in the same request - inside a helper method, a library call, anything that happens to run in between two bare `readdir()` calls - silently redirects every subsequent bare `readdir()`/`rewinddir()`/`closedir()` call to that other directory, with no warning of any kind on PHP 8.4.19. A codebase with two such calls active at different points in the same request already has a latent bug today, whether or not anyone has passed `null` anywhere; adding the explicit handle argument at both call sites is exactly the fix, and its prior absence is exactly what this deprecation exists to surface. Separately, confirm that `readdir()`, `rewinddir()`, and `closedir()` are never reached when no directory has ever been opened at all in the request - that is not the \"implicit last directory\" case this deprecation covers; confirmed directly, each of the three already throws an uncaught `TypeError` (\"No resource supplied\") today, unrelated to and unaffected by this migration.",
+    "guideline": "Always pass the exact resource `opendir()` returned to every `readdir()`, `rewinddir()`, and `closedir()` call that follows it - never omit the argument, and never pass `null`. PHP has always tracked an implicit \"last opened directory\" as the fallback for an omitted argument, and PHP 8.5 deprecates relying on it; that tracked value is shared across the whole request, so any unrelated `opendir()` call running elsewhere silently redirects every later bare call to a different directory. For simple full-directory listing, prefer `scandir()`, `glob()`, or `DirectoryIterator`, none of which need a handle at all.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Standard, with a doubled word verbatim in the official text itself: \"Passing null to to readdir(), rewinddir(), and closedir() to use the last opened directory has been deprecated. Provide the last opened directory explicitly instead.\" (RFC deprecations_php_8_5#deprecate_passing_null_to_readdir_rewinddir_and_closedir). The deprecated behavior is reached two ways that an agent must treat as the same thing: passing `null` explicitly, or omitting the argument entirely - all three functions default their directory-handle parameter to `null`, so `readdir()` and `readdir(null)` are the identical call, not merely similar ones. Verified directly on PHP 8.4.19: `opendir()` followed by a bare `readdir()`/`rewinddir()`/`closedir()` loop with no argument produced the exact same entry list and the exact same `rewinddir()`-then-`readdir()` result as the identical loop with the handle passed explicitly at every call - the implicit path is not an approximation of the explicit one, it resolves through the same underlying resource. What makes the implicit form a genuine, demonstrable hazard rather than a purely cosmetic one: this tool verified that \"the last opened directory\" is a single value shared across the entire request, not scoped to a call site, a function, or a class - with one directory already opened and mid-iteration via a bare `readdir()` loop, having an entirely unrelated function run in between (simulating a helper, a logging routine, or any library code that happens to call `opendir()` of its own and never closes it) and open a second, different directory silently redirected every subsequent bare `readdir()` call in the original loop to the second directory's entries instead of the first's - confirmed with two real, differently-populated directories, with nothing raised on PHP 8.4.19 to indicate the switch had happened. An agent must recognize itself in this rule even where the literal token `null` never appears: the everyday idiom `opendir($path); while (($f = readdir()) !== false) { ... }` is exactly the deprecated form, because it omits the argument rather than passing it - confirmed to hit the identical code path as `readdir(null)` on this host. The consequence is not limited to reading the wrong directory once: when the interfering `opendir()` call happens once per iteration of a bare `readdir()` loop - for example, a per-entry helper method that itself opens a second directory to look something up - this tool confirmed two distinct, directly observed failure modes from the exact same code, differing only in the second directory's contents: with that second directory empty (only the `.`/`..` pseudo-entries), the outer loop silently returned just one of the two real entries it should have collected (a silent, no-error data-loss bug); with one ordinary file added to that same second directory, the identical outer loop never reached `false` at all and had to be killed after exceeding an 8-second bound, because every iteration's helper call opened a fresh handle back at position zero, always leaving at least one more non-`false` read for the outer loop to consume next. Passing the handle explicitly at every call site, verified in the same test, resolved both failure modes identically and correctly collected both real entries regardless of the second directory's contents. Separately, calling any of the three functions with genuinely no directory ever opened in the request - not the \"implicit last directory\" case at all, since there is no last directory to fall back to - already throws an uncaught `TypeError` (\"No resource supplied\") on PHP 8.4.19, confirmed directly for `readdir()`, `rewinddir()`, and `closedir()` individually; that failure mode is unrelated to this deprecation and unaffected by whatever migration is applied here. `scandir()`, `glob()`, and `DirectoryIterator` were each confirmed locally to return the same directory entries as the `opendir()`/`readdir()` loop for an ordinary directory, without any handle to manage at all, making them the simpler default for straightforward directory listing even though this rule's own primary fix - passing the handle explicitly - is what actually addresses the deprecated construct. No PHP 8.2, 8.3 or 8.4 UPGRADING file mentions this, so it is an isolated PHP 8.5 event with no prior escalation on record; `introduced_in` and `removed_in` both stay null.",
+    "examples": [
+        {
+            "before": [
+                "function listEntries(string $path): array",
+                "{",
+                "    opendir($path);",
+                "    $entries = [];",
+                "    while (($name = readdir()) !== false) {",
+                "        $entries[] = $name;",
+                "    }",
+                "",
+                "    return $entries;",
+                "}"
+            ],
+            "after": [
+                "function listEntries(string $path): array",
+                "{",
+                "    $handle = opendir($path);",
+                "    $entries = [];",
+                "    while (($name = readdir($handle)) !== false) {",
+                "        $entries[] = $name;",
+                "    }",
+                "    closedir($handle);",
+                "",
+                "    return $entries;",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class ImportBatchProcessor",
+                "{",
+                "    public function importAll(string $incomingDir): array",
+                "    {",
+                "        opendir($incomingDir);",
+                "        $imported = [];",
+                "        while (($name = readdir()) !== false) {",
+                "            if ($name === '.' || $name === '..') {",
+                "                continue;",
+                "            }",
+                "",
+                "            $this->archiveTemplateFor($name);",
+                "            $imported[] = $name;",
+                "        }",
+                "",
+                "        return $imported;",
+                "    }",
+                "",
+                "    private function archiveTemplateFor(string $name): string",
+                "    {",
+                "        // Looks up a per-file archive template - opens its own directory to do so,",
+                "        // with no idea that importAll() above is mid-iteration over a different one.",
+                "        opendir(__DIR__ . '/templates');",
+                "",
+                "        return readdir() ?: 'default.tpl';",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ImportBatchProcessor",
+                "{",
+                "    public function importAll(string $incomingDir): array",
+                "    {",
+                "        $handle = opendir($incomingDir);",
+                "        $imported = [];",
+                "        while (($name = readdir($handle)) !== false) {",
+                "            if ($name === '.' || $name === '..') {",
+                "                continue;",
+                "            }",
+                "",
+                "            $this->archiveTemplateFor($name);",
+                "            $imported[] = $name;",
+                "        }",
+                "        closedir($handle);",
+                "",
+                "        return $imported;",
+                "    }",
+                "",
+                "    private function archiveTemplateFor(string $name): string",
+                "    {",
+                "        $templatesHandle = opendir(__DIR__ . '/templates');",
+                "        $template = readdir($templatesHandle) ?: 'default.tpl';",
+                "        closedir($templatesHandle);",
+                "",
+                "        return $template;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: `opendir()` on a two-file directory followed by a bare `readdir()` loop produced the entries `.,..,a.txt,b.txt`, byte-identical to the same loop with the handle passed explicitly; a bare `rewinddir()` followed by a bare `readdir()` both returned `.` in both the implicit and explicit forms.",
+        "Verified on PHP 8.4.19, the concrete hazard: with one directory already `opendir()`-opened and mid-iteration via a bare `readdir()` loop, calling an unrelated function that itself calls `opendir()` on a second, different directory (and never closes it) silently redirected every subsequent bare `readdir()` call in the original loop to the second directory's entries - the loop that opened a 2-file directory (`a.txt`, `b.txt`) returned the second, unrelated directory's single entry (`c.txt`) instead, with no warning, notice, or error raised.",
+        "Verified on PHP 8.4.19 against this rule's own shipped realistic example (a batch-import loop whose per-entry helper opens its own 'templates' directory without closing it): with the templates directory containing only `.`/`..`, the outer loop's bare `readdir()` calls got redirected into it and the run silently returned only one of the two files actually present in the batch directory (confirmed twice, run in isolation) - a silent, no-error data-loss bug, not a crash. With one ordinary file added to that same templates directory, the identical code never terminated - it was killed after an enforced 8-second timeout (exit code 124) rather than ever observing readdir() return false - because each iteration's helper call opened a brand-new handle at position zero, leaving the outer loop at least one more non-false read to consume every time. Passing the handle explicitly at every call site, tested against both templates-directory contents, collected both real files correctly in both cases and never hung.",
+        "Verified on PHP 8.4.19: `readdir()`, `rewinddir()`, and `closedir()`, each called individually with no directory ever opened anywhere in the request, throw an uncaught `TypeError` with message \"No resource supplied\" - a separate, pre-existing failure mode unrelated to and unaffected by the implicit-last-directory deprecation this rule covers.",
+        "Verified on PHP 8.4.19: `scandir()`, `glob($dir . '/*')`, and iterating a `DirectoryIterator` all returned the same entries as the `opendir()`/`readdir()` loop for the same directory, with no handle to open, pass, or close.",
+        "Re-run directly (2026-09-05) against three probe files covering the bare-argument loop, the explicit-handle loop, and the `scandir()`/`glob()`/`DirectoryIterator` alternatives: PHPCompatibility 10.0.0-alpha2 at testVersion 8.2-8.5 produced zero findings. `verification.phpcompatibility` is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Standard: \"Passing null to to readdir(), rewinddir(), and closedir() to use the last opened directory has been deprecated. Provide the last opened directory explicitly instead.\" (the doubled \"to to\" is verbatim in the pinned UPGRADING file, quoted here as-is). RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_passing_null_to_readdir_rewinddir_and_closedir"
+    ]
+}

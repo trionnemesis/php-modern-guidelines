@@ -1,0 +1,82 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.chr_ord_byte_range",
+    "title": "`chr()` outside `[0, 255]` and `ord()` on non-single-byte strings are deprecated",
+    "summary": "PHP 8.5 deprecates passing an integer outside the interval `[0, 255]` to `chr()` and passing a string that is not exactly one byte long to `ord()`; verified locally, `chr()` already silently wraps its argument modulo 256 (`chr(-1)` and `chr(255)` are the identical byte) and `ord()` already silently reads only the first byte of its argument (`ord('é')` returns `195`, the lead byte of a two-byte UTF-8 sequence, not the code point `233`), so both new notices flag an existing silent coercion rather than announce a change to either function's return value.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never call `chr()` with an argument that is not already provably within `[0, 255]`; if wraparound is genuinely intended, wrap it explicitly (`chr($n & 0xFF)`, or `chr((($n % 256) + 256) % 256)` if `$n` can be negative) so the intent is visible instead of relying on `chr()`'s implicit modulo-256 coercion, and if wraparound is not intended, validate or clamp the value with an explicit decision before the call. Never call `ord()` on a string that is not already provably exactly one byte long. When the goal is the Unicode code point of a character - not necessarily its first byte - call `mb_ord()` instead, and handle its empty-string case explicitly (`mb_ord('')` throws `\\ValueError`, where `ord('')` silently returns `0`) rather than assuming the two are interchangeable at every input.",
+    "existing_code_policy": "Find every `chr()` call whose argument cannot be shown to already sit inside `[0, 255]` - an arithmetic expression, a running sum, a hash-derived byte, a loop counter, unvalidated input - and every `ord()` call whose argument cannot be shown to already be exactly one byte, including anything that might be multi-byte UTF-8, empty, or user-supplied. Verified directly on PHP 8.4.19: `chr()` silently wraps its argument modulo 256 using floor-style wraparound rather than truncation or clamping - `chr(300)` and `chr(44)` are the identical byte (`0x2C`), `chr(-1)` and `chr(255)` are the identical byte (`0xFF`, not `0x00` and not an error), and `chr(65536)` and `chr(-65536)` are both the identical byte as `chr(0)` (`0x00`). Because this wrap already matches `((($n % 256) + 256) % 256)` exactly, a call site whose argument is always non-negative can be silenced with the plain, behaviorally-identical `$n % 256`; do not instead 'fix' an out-of-range `chr()` call by substituting a clamp (`max(0, min(255, $n))`) for the implicit modulo - clamping and wrapping disagree on exactly the inputs this deprecation exists to flag, so a clamp-based rewrite would silently change the byte produced at every out-of-range call site rather than merely silencing a notice. For `ord()`, verified directly: `ord('abc')` returns `97` (the code point of `'a'` alone, silently discarding `'bc'`), `ord('é')` - a two-byte UTF-8 character - returns `195` (`0xC3`, the UTF-8 lead byte, not `233`, the actual Unicode code point of é), and `ord('')` returns `0` with no error raised. Do not blanket-replace `ord($x)` with `mb_ord($x)` across a codebase: they answer different questions - `ord()` reads one raw byte regardless of encoding, `mb_ord()` reads one full character under the current encoding - and they diverge sharply on empty input, where `mb_ord('')` throws `\\ValueError: mb_ord(): Argument #1 ($string) must not be empty` but `ord('')` silently returns `0`. A call site that genuinely operates on raw bytes (parsing a binary format, walking a byte string one octet at a time) should keep `ord()` after confirming its input is truly one byte; only a call site that actually meant \"the code point of this character\" should move to `mb_ord()`, and it must add explicit empty-string handling that its `ord()` predecessor never needed.",
+    "guideline": "Never pass a value outside `[0, 255]` to `chr()`, and never pass a string that is not exactly one byte long to `ord()`. PHP has always silently coerced both cases - `chr()` wraps its argument modulo 256, `ord()` reads only the first byte - and PHP 8.5 turns each silent coercion into a deprecation notice. Wrap or validate the `chr()` argument explicitly before calling it, and for `ord()`, switch to `mb_ord()` only when a Unicode code point is actually wanted rather than the first raw byte, handling `mb_ord()`'s stricter empty-string behavior explicitly rather than assuming parity with `ord()`.",
+    "details": "UPGRADING-8.5.0 lists two adjacent entries under Deprecated Functionality -> Standard: \"Passing integers outside the interval [0, 255] to chr() is now deprecated. This is because a byte can only hold a value within this interval.\" (RFC deprecations_php_8_5#deprecate_passing_integers_outside_the_interval_0_255_to_chr) and \"Passing a string which is not a single byte to ord() is now deprecated, this is indicative of a bug.\" (RFC deprecations_php_8_5#deprecate_passing_string_which_are_not_one_byte_long_to_ord). They are one rule here, on the same precedent as `core.assert_options` (one function plus five constants), `core.string_increment_operators` (`++` and `--`), and `core.utf8_encode_decode` (both encode and decode directions): both entries are the identical underlying mistake, a byte-domain function fed a value outside the byte domain, just on the two opposite ends of a single conversion pair (`chr()` turns a code point into a byte, `ord()` turns a byte back into a code point). Verified directly on PHP 8.4.19, `chr()`'s coercion is an unsigned modulo-256 wraparound applied identically regardless of sign: `chr(300)` produces the same byte as `chr(44)`, `chr(1000)` the same as `chr(232)`, `chr(256)` and `chr(65536)` both the same as `chr(0)`, and on the negative side - the direction most likely to be gotten wrong - `chr(-1)` produces the same byte as `chr(255)`, and `chr(-257)` the same as `chr(255)` as well; PHP does not error, clamp to `0`, or truncate toward zero, it wraps as if by `((($n % 256) + 256) % 256)`. `ord()`'s coercion, verified directly, is simpler and blunter: it reads exactly the first byte of its argument and ignores everything after it, so `ord('abc')` returns `97` (just `'a'`), and critically, `ord()` operates on bytes, not characters - a multi-byte UTF-8 character's first *byte* is not its code point, so `ord('é')` (a two-byte UTF-8 sequence, confirmed via `bin2hex()` to be `c3a9`) returns `195` (`0xC3`), nowhere near `233` (`0x00E9`), the actual Unicode code point of é; `ord('')` was separately verified to return `0` rather than raising any error. `mb_ord()` was confirmed as the correct code-point-producing replacement - `mb_ord('é')` returns `233`, `mb_ord('€')` returns `8364` (matching the Unicode code points), and `mb_ord('A')` returns `65`, matching `ord('A')` for plain ASCII where the two functions agree - but `mb_ord()` is not a drop-in replacement at every input: called on an empty string, it was confirmed to throw `\\ValueError: mb_ord(): Argument #1 ($string) must not be empty`, a case `ord()` handles silently by returning `0`. UPGRADING's own phrasing for both entries describes only a new diagnostic (\"is now deprecated\"), not a change to either function's return value; this tool could not verify PHP 8.5 behavior directly since the local host predates it, but nothing in the cited text suggests the modulo-wrap or first-byte-read semantics measured here will change once the notice starts firing. No PHP 8.2, 8.3 or 8.4 UPGRADING file mentions either deprecation, so both stay isolated PHP 8.5 events with no prior escalation on record.",
+    "examples": [
+        {
+            "before": [
+                "function checksumByte(array $bytes): string",
+                "{",
+                "    // Relies on chr()'s implicit wraparound to fold the sum back into one byte.",
+                "    return chr(array_sum($bytes));",
+                "}"
+            ],
+            "after": [
+                "function checksumByte(array $bytes): string",
+                "{",
+                "    // Wraparound made explicit: identical result for every non-negative sum, no notice.",
+                "    return chr(array_sum($bytes) % 256);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class InitialLetterIndexer",
+                "{",
+                "    public function codeForIndexing(string $name): int",
+                "    {",
+                "        // Intended: the Unicode code point of the name's first character, for sorting.",
+                "        return ord($name);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class InitialLetterIndexer",
+                "{",
+                "    public function codeForIndexing(string $name): int",
+                "    {",
+                "        if ($name === '') {",
+                "            return 0;",
+                "        }",
+                "",
+                "        // ord() only reads the first raw byte, which mis-sorts multi-byte names",
+                "        // (e.g. \"Émile\"); mb_ord() reads the first full character instead.",
+                "        return mb_ord($name);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: chr(300)=44, chr(-1)=255, chr(256)=0, chr(1000)=232, chr(-256)=0, chr(-257)=255, chr(65536)=0, chr(-65536)=0 - every one of these matches `((($n % 256) + 256) % 256)` exactly, confirming an unsigned floor-style wraparound rather than clamping, truncation, or an error for out-of-range input in either direction.",
+        "Verified on PHP 8.4.19: ord('abc')=97, ord('')=0, ord(\"\\xFF\")=255, and ord('é')=195 where 'é' is confirmed (via bin2hex) to be the two-byte UTF-8 sequence C3 A9 - ord() returned the lead byte 0xC3=195, not the character's actual Unicode code point 233. For comparison, mb_ord('é')=233, mb_ord('€')=8364, and mb_ord('A')=65=ord('A') (the two agree only on plain ASCII); mb_ord('') was separately confirmed to throw `\\ValueError: mb_ord(): Argument #1 ($string) must not be empty` rather than returning 0 the way ord('') does. No warning, notice, or deprecation of any kind was raised for any chr()/ord()/mb_ord() call above other than the empty-string ValueError, since PHP 8.4.19 predates this PHP 8.5 deprecation and the ValueError is mb_ord()'s own documented behavior, unrelated to it.",
+        "Re-run directly (2026-09-05) against two probe files covering every chr()/ord() value above (including the mb_ord() comparisons and the isolated empty-string case): PHPCompatibility 10.0.0-alpha2 at testVersion 8.2-8.5 produced zero findings. `verification.phpcompatibility` is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Standard: \"Passing integers outside the interval [0, 255] to chr() is now deprecated. This is because a byte can only hold a value within this interval.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_passing_integers_outside_the_interval_0_255_to_chr -- and, immediately following it in the same list: \"Passing a string which is not a single byte to ord() is now deprecated, this is indicative of a bug.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_passing_string_which_are_not_one_byte_long_to_ord"
+    ]
+}

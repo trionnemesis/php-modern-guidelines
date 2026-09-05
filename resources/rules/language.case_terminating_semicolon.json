@@ -1,0 +1,97 @@
+{
+    "schema_version": "1.1.0",
+    "id": "language.case_terminating_semicolon",
+    "title": "Terminating a `case`/`default` label with `;` instead of `:` is deprecated",
+    "summary": "PHP 8.5 deprecates terminating a `switch` statement's `case` or `default` label with `;` instead of `:`; verified locally, the two terminators are completely interchangeable today with zero behavioral difference across matched functions, fallthrough, and mixed same-switch usage, and the pinned PHPCompatibility build ships no sniff for this construct at all, so a clean `verify` run cannot be read as evidence that a codebase is free of it.",
+    "category": "language",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Always terminate every `case` and `default` label in a `switch` statement with `:`, never with `;`. PHP accepts `;` as a silent alias for `:` only in this one position - never for the `switch` statement's own block, an `if`, a `while`, or any other control structure - and PHP 8.5 deprecates it; writing `:` keeps the code unambiguous today and stays warning-free on 8.5.",
+    "existing_code_policy": "Search every `switch` statement for a `case` or `default` label terminated with `;` rather than `:`, including a bare `default;` on its own line, and rewrite each one to `:`. This is a purely mechanical, zero-risk rewrite: confirmed directly on PHP 8.4.19, a `switch` using `case 1;`/`case 2;`/`default;` throughout returned identical results to the same `switch` using `case 1:`/`case 2:`/`default:` for every tested input, and a `switch` mixing both terminators in the same statement - combined with real fallthrough between adjacent cases - produced identical results to an all-colon version tested side by side. Unlike most deprecations in this catalogue, there is no case-by-case judgment call to make and no need to inspect surrounding code before rewriting: every `;` found in this position can be replaced with `:` without checking anything else about the call site.",
+    "guideline": "Terminate every `case` and `default` switch label with `:`, never `;`. The two have always been silently interchangeable in exactly this one position, and PHP 8.5 deprecates the semicolon form; because it is a pure spelling difference with no runtime effect, replacing every `;` with `:` throughout a codebase is safe to do mechanically and in bulk, unlike almost every other rule in this catalogue.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Core, in one line: \"Terminating case statements with a semicolon instead of a colon has been deprecated.\" (RFC deprecations_php_8_5#deprecate_semicolon_after_case_in_switch_statement). Verified directly on PHP 8.4.19: a function using `case 1;`, `case 2;`, and a bare `default;` throughout its `switch` returned exactly the same result, for every input tested (`1`, `2`, `3`, and a non-matching string), as an otherwise-identical function using `case 1:`, `case 2:`, and `default:`. A second, more adversarial test mixed both terminators in a single `switch` - `case 1;` immediately followed by `case 2:` sharing one fallthrough body, then `case 3;` with its own `break`, then a bare `default;` - and produced results identical to an all-colon control version for every input, confirming the two terminators can be freely interchanged even within one statement and even across a real fallthrough boundary, with no parse difference and no runtime difference of any kind. This is the rare case in this catalogue with genuinely zero behavior difference to verify at any individual call site, the same category as `language.non_canonical_cast_names`'s cast-name aliases: the deprecated and canonical spellings compile to the identical construct, so the only thing PHP 8.5 changes is which spelling now emits an `E_DEPRECATED` diagnostic, which is exactly why `behavior_change_risk` is `none` rather than `low` here. Because this construct produces no observable symptom of any kind on any PHP version this catalogue tracks (8.2-8.5) - it does not misbehave, it does not warn, it does not differ in output - nothing about actually running the code, on this host or any other minor in range, will ever surface it; the only ways to find it are a source-level search or a sniff built specifically for it. Confirmed directly (2026-09-05): the pinned PHPCompatibility 10.0.0-alpha2 install ships no sniff for this construct at all - listing every `*.php` file under the installed `phpcompatibility/php-compatibility` package found no file or class name referencing a terminating-case semicolon; the only `Switch`-named sniffs present are `ForbiddenSwitchWithMultipleDefaultBlocksSniff` and `DiscouragedSwitchContinueSniff`, neither of which covers this. Upstream PHPCompatibility's own `master` branch has since added a dedicated `ControlStructures/RemovedTerminatingCaseWithSemicolonSniff`, but the pinned `10.0.0-alpha2` release predates it - this is a known, dated gap in the pinned analyzer version, not an oversight in this catalogue, and it means `verify` cannot corroborate this rule until the analyzer pin moves forward. No PHP 8.2, 8.3 or 8.4 UPGRADING file mentions this, so it is an isolated PHP 8.5 event with no prior escalation on record; `introduced_in` and `removed_in` both stay null.",
+    "examples": [
+        {
+            "before": [
+                "switch ($status) {",
+                "    case 'pending';",
+                "        $label = 'Pending';",
+                "        break;",
+                "    case 'done';",
+                "        $label = 'Done';",
+                "        break;",
+                "    default;",
+                "        $label = 'Unknown';",
+                "}"
+            ],
+            "after": [
+                "switch ($status) {",
+                "    case 'pending':",
+                "        $label = 'Pending';",
+                "        break;",
+                "    case 'done':",
+                "        $label = 'Done';",
+                "        break;",
+                "    default:",
+                "        $label = 'Unknown';",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "function httpStatusCategory(int $code): string",
+                "{",
+                "    switch (true) {",
+                "        case $code >= 200 && $code < 300;",
+                "            return 'success';",
+                "        case $code >= 300 && $code < 400;",
+                "            return 'redirect';",
+                "        case $code >= 400 && $code < 500;",
+                "            return 'client_error';",
+                "        default;",
+                "            return 'server_error';",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "function httpStatusCategory(int $code): string",
+                "{",
+                "    switch (true) {",
+                "        case $code >= 200 && $code < 300:",
+                "            return 'success';",
+                "        case $code >= 300 && $code < 400:",
+                "            return 'redirect';",
+                "        case $code >= 400 && $code < 500:",
+                "            return 'client_error';",
+                "        default:",
+                "            return 'server_error';",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: two otherwise-identical functions, one using `case 1;`/`case 2;`/`default;` and the other `case 1:`/`case 2:`/`default:`, returned exactly the same value for inputs `1`, `2`, `3`, and `'x'` in every case.",
+        "Verified on PHP 8.4.19: a single `switch` mixing `;` and `:` terminators across adjacent cases (`case 1;` falling through into `case 2:`, then `case 3;` with its own `break`, then a bare `default;`) produced results identical to an all-colon control version for inputs `1`, `2`, `3`, and `9`, confirming fallthrough behavior is unaffected by which terminator is used on either side of the fallthrough boundary. No warning, notice, or deprecation of any kind was raised in either test, since PHP 8.4.19 predates this PHP 8.5 deprecation.",
+        "Re-run directly (2026-09-05) against both probe files above: PHPCompatibility 10.0.0-alpha2 at testVersion 8.2-8.5 produced zero findings. Separately confirmed by listing every `*.php` file under the installed `phpcompatibility/php-compatibility` package (427 files): none references a terminating-case semicolon by name or class; the pinned `10.0.0-alpha2` release simply does not ship a sniff for this construct (upstream `master` has since added `ControlStructures/RemovedTerminatingCaseWithSemicolonSniff`, but that has not reached this pinned release). `verification.phpcompatibility` is intentionally empty for this reason, not because the construct was probed and cleared - `verify` cannot corroborate this rule at all against the pinned analyzer version, so its absence from a `verify` report must never be read as evidence a codebase is clean of it.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core: \"Terminating case statements with a semicolon instead of a colon has been deprecated.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_semicolon_after_case_in_switch_statement"
+    ]
+}

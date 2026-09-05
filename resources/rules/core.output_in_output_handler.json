@@ -1,0 +1,97 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.output_in_output_handler",
+    "title": "Producing output (e.g. `echo`) within a user output handler is deprecated",
+    "summary": "PHP 8.5 deprecates producing output (e.g. `echo`) from inside a user output handler registered via `ob_start()`; verified locally, any such output attempted today - a direct `echo` or an indirect call such as an uncaptured `print_r()` inside a logger the handler calls - is already silently discarded, on every output-buffering phase and even when an enclosing plain output buffer exists to catch it, so only a handler's returned string ever actually reaches the response.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "Never let a function registered as an `ob_start()` callback produce output through `echo`, `print`, an uncaptured `print_r()`/`var_export()` (i.e. without their boolean `true` return-mode argument), `var_dump()`, or anything else that writes to the standard output stream - directly in the callback or indirectly through a helper it calls, such as a logger. An output handler communicates its result exactly one way: by returning the (optionally transformed) buffer string. If the handler genuinely needs to record diagnostic information, send it somewhere outside the output-buffering pipeline entirely - `error_log()`, a logger writing to its own file or stream - never through a call that writes to standard output.",
+    "existing_code_policy": "Find every `ob_start()` call that registers a named function, a closure, or a `[$object, 'method']`/`[Class::class, 'method']` callable as its handler, then inspect what that callback (and anything it calls) does with output. Verified directly on PHP 8.4.19: an `echo` executed from inside such a callback produces no visible effect anywhere - it does not appear in the actual response output, it is not merged into the string the handler returns, and it does not propagate into an enclosing plain `ob_start()` buffer even when one wraps the callback's own buffer; this holds identically whether the flush that triggers the callback is a mid-stream `ob_flush()` or the terminating `ob_end_flush()`, and whether the output-producing call is a direct `echo` in the callback body or a call to a helper (e.g. a logger method) that itself calls an uncaptured `print_r()`. Because the discarded output already has zero effect on the running application, deleting an output-producing call found this way is a safe, inert edit on its own. Do not instead 'fix' the finding by folding the discarded text into the handler's return value (e.g. `return $buffer . $debugText;`) without deliberately deciding to do so: text that has never once reached the response would then start appearing in it, which is a real, newly-introduced change to output, not a neutral migration. Route any diagnostic information the call site genuinely needs to keep to a destination outside the output-buffering pipeline - `error_log()`, or a logger configured to write to its own file or stream - rather than quietly re-introducing it into the buffer.",
+    "guideline": "Never try to produce output - `echo`, `print`, an uncaptured `print_r()`/`var_export()`, `var_dump()`, or a helper call that does any of these - from inside a function registered with `ob_start()` as an output handler. Only return the (optionally transformed) buffer string; if the handler needs to record diagnostic information, send it somewhere outside the output-buffering pipeline, such as `error_log()` or a logger's own stream, not through anything that writes to standard output.",
+    "details": "UPGRADING-8.5.0 lists this under Deprecated Functionality -> Core: \"Trying to produce output (e.g. with echo) within a user output handler is deprecated. The deprecation warning will bypass the handler producing the output to ensure it is visible; if there are nested output handlers the next one will still be used.\" (the cited RFC link itself reads deprecations_php_8_4, which is php-src's own typo in the 8.5 UPGRADING file - the deprecation is unambiguously listed under 8.5, and the source URL here is left exactly as the pinned UPGRADING file has it). An output handler registered via `ob_start(callable $callback)` is called with `(string $buffer, int $phase): string`, and the only sanctioned way for it to affect what the client sees is its return value - returning a transformed string is the correct, entirely unaffected mechanism this deprecation does not touch. What this tool verified directly on PHP 8.4.19 is the handler's alternative path, actually calling something that writes to standard output from inside the callback: it is not merely discouraged today, it is already inert. An `echo` executed inside a callback registered with `ob_start()` produced no output anywhere - not in the process's actual output, not folded into the handler's returned buffer, and not captured by an enclosing plain `ob_start()` buffer wrapped one level further out (confirmed with an outer, callback-less buffer around the inner callback-driven one: the outer buffer's captured contents contained only the transformed return value, never the inner callback's attempted `echo`). This held across both output-buffering phases exercised (a mid-stream `ob_flush()` and a final `ob_end_flush()`), and held identically for a call written directly in the callback and for the same call reached indirectly - a class method acting as the handler that calls a small `DebugLogger::log()` helper, which itself calls `print_r()` without its capture-mode argument (equivalent to an `echo`): the logged text never appeared anywhere, exactly like the bare `echo` case. This is the realistic trap for an agent auditing a codebase: a handler that looks entirely output-free at the call site - it only calls a named logger or debug helper - can still be exactly the construct this rule targets, several calls deep. Because this is a PHP 8.5 diagnostic, it cannot be observed on this tool's local PHP 8.4.19, which predates it; nothing about the local runs above produced any warning, notice, or deprecation of any kind for any of the `echo`/`print_r()` calls made inside a handler. UPGRADING's own description of the 8.5-only diagnostic's behavior - that the deprecation notice itself is specifically arranged to bypass the very handler that triggered it, so the notice remains visible even though ordinary output from inside a handler is not - is quoted here as PHP's documented design intent, not as something this tool observed end-to-end on a PHP 8.5 build.",
+    "examples": [
+        {
+            "before": [
+                "function debugCompressHandler(string $buffer, int $phase): string",
+                "{",
+                "    echo '[handler] compressing ' . strlen($buffer) . \" bytes\\n\";",
+                "    return (string) gzcompress($buffer);",
+                "}",
+                "",
+                "ob_start('debugCompressHandler');"
+            ],
+            "after": [
+                "function debugCompressHandler(string $buffer, int $phase): string",
+                "{",
+                "    error_log('[handler] compressing ' . strlen($buffer) . ' bytes');",
+                "    return (string) gzcompress($buffer);",
+                "}",
+                "",
+                "ob_start('debugCompressHandler');"
+            ]
+        },
+        {
+            "before": [
+                "final class ResponseCompressionHandler",
+                "{",
+                "    public function __construct(private readonly LoggerInterface $logger)",
+                "    {",
+                "    }",
+                "",
+                "    public function handle(string $buffer, int $phase): string",
+                "    {",
+                "        $this->logger->debug('compressing response of ' . strlen($buffer) . ' bytes');",
+                "        print_r(\"[compress] buffer ready\\n\");",
+                "",
+                "        return (string) gzencode($buffer);",
+                "    }",
+                "}",
+                "",
+                "$handler = new ResponseCompressionHandler($logger);",
+                "ob_start([$handler, 'handle']);"
+            ],
+            "after": [
+                "final class ResponseCompressionHandler",
+                "{",
+                "    public function __construct(private readonly LoggerInterface $logger)",
+                "    {",
+                "    }",
+                "",
+                "    public function handle(string $buffer, int $phase): string",
+                "    {",
+                "        $this->logger->debug('compressing response of ' . strlen($buffer) . ' bytes');",
+                "",
+                "        return (string) gzencode($buffer);",
+                "    }",
+                "}",
+                "",
+                "$handler = new ResponseCompressionHandler($logger);",
+                "ob_start([$handler, 'handle']);"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: a callback registered via `ob_start()` that executes `echo \"[FROM-HANDLER]\"` before returning a transformed buffer produced only the transformed buffer in the actual output - the echoed text appeared nowhere, not even when a second, plain `ob_start()` buffer was wrapped around the callback-driven one to try to catch it (the outer buffer's captured content was exactly the inner handler's return value). The same result held for a mid-stream `ob_flush()` (observed phase value `5`) and the terminating `ob_end_flush()` (observed phase value `8`), and held identically when the output-producing call was indirect - a handler method calling a `DebugLogger::log()` helper that itself calls `print_r()` without capture mode. A handler that only ever returns its (possibly transformed) buffer, with no output-producing call anywhere in its body, produced the expected transformed output with nothing lost. No warning, notice, or deprecation of any kind was raised for any of these calls on PHP 8.4.19, since this host predates PHP 8.5's addition of the diagnostic - only the underlying silent-discard behavior described above was observed.",
+        "Re-run directly (2026-09-05) against six probe files covering a bare `echo`-in-handler, the same wrapped in an outer plain buffer, an indirect `print_r()`-via-logger handler, and a clean return-only handler: PHPCompatibility 10.0.0-alpha2 at testVersion 8.2-8.5 produced zero findings across all of them. `verification.phpcompatibility` is intentionally empty rather than guessed; a clean `verify` run on a project using this pattern says nothing about whether this specific construct is present.",
+        "Evidence: UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core: \"Trying to produce output (e.g. with echo) within a user output handler is deprecated. The deprecation warning will bypass the handler producing the output to ensure it is visible; if there are nested output handlers the next one will still be used.\" RFC: https://wiki.php.net/rfc/deprecations_php_8_4 (verbatim from the pinned UPGRADING file, including its own \"_8_4\" typo in a section otherwise entirely about PHP 8.5)."
+    ]
+}
