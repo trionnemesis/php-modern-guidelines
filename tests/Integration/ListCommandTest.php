@@ -41,7 +41,7 @@ final class ListCommandTest extends TestCase
      * The issue's REQUIRED integration demonstration (ISSUE-3.md PR D acceptance / WORK-ORDER.md §5.5):
      * a broad range forbids too-new syntax while still surfacing deprecations from newer allowed minors,
      * and single-target narrows the same catalogue differently — proof that the two axes never collapse
-     * (ADR-004). Both arms pass --all so the two runs share the identical 32-rule id set and the
+     * (ADR-004). Both arms pass --all so the two runs share the identical 40-rule id set and the
      * inequality can only come from differing statuses.
      */
     public function testBroadRangeForbidsTooNewSyntaxWhileStillSurfacingNewerDeprecations(): void
@@ -54,7 +54,7 @@ final class ListCommandTest extends TestCase
         self::assertSame('8.5', self::str($policy1['lifecycle_ceiling']));
 
         $rules1 = self::objList($arm1['rules']);
-        self::assertCount(32, $rules1);
+        self::assertCount(40, $rules1);
 
         $byId1 = $this->indexById($rules1);
         self::assertSame('forbidden_above_feature_ceiling', self::ruleStatus($byId1['language.property_hooks']));
@@ -72,7 +72,7 @@ final class ListCommandTest extends TestCase
         self::assertSame('8.2', self::str($policy2['lifecycle_ceiling']));
 
         $rules2 = self::objList($arm2['rules']);
-        self::assertCount(32, $rules2);
+        self::assertCount(40, $rules2);
 
         $byId2 = $this->indexById($rules2);
         self::assertSame('not_in_range', self::ruleStatus($byId2['language.property_hooks']));
@@ -105,14 +105,14 @@ final class ListCommandTest extends TestCase
         $default = $this->runJson($fixtureRealPath, ['--mode' => 'single-target']);
         $all = $this->runJson($fixtureRealPath, ['--mode' => 'single-target', '--all' => true]);
 
-        self::assertSame(32, $default['total']);
-        self::assertSame(32, $all['total']);
+        self::assertSame(40, $default['total']);
+        self::assertSame(40, $all['total']);
 
         $defaultRules = self::objList($default['rules']);
         $allRules = self::objList($all['rules']);
 
-        self::assertCount(20, $defaultRules);
-        self::assertCount(32, $allRules);
+        self::assertCount(25, $defaultRules);
+        self::assertCount(40, $allRules);
 
         foreach ($defaultRules as $rule) {
             self::assertNotSame('not_in_range', self::ruleStatus($rule));
@@ -122,7 +122,7 @@ final class ListCommandTest extends TestCase
             $allRules,
             static fn(array $r): bool => self::ruleStatus($r) === 'not_in_range',
         ));
-        self::assertCount(12, $notInRangeInAll);
+        self::assertCount(15, $notInRangeInAll);
 
         $defaultIds = self::ids($defaultRules);
         $allIds = self::ids($allRules);
@@ -224,7 +224,7 @@ final class ListCommandTest extends TestCase
         );
 
         self::assertSame(ExitCode::SUCCESS, $exitCode);
-        self::assertStringContainsString('Rules: 32 of 32 shown', $tester->getDisplay());
+        self::assertStringContainsString('Rules: 40 of 40 shown', $tester->getDisplay());
     }
 
     /** @return iterable<string, array{array<array-key, mixed>, string}> */

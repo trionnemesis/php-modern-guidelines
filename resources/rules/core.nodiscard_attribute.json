@@ -1,0 +1,108 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.nodiscard_attribute",
+    "title": "`#[\\NoDiscard]` attribute and the `(void)` cast",
+    "summary": "PHP 8.5 adds two parts of one RFC together: the `#[\\NoDiscard]` attribute, which marks a function or method's return value as too important to silently discard, and the `(void)` cast, the sanctioned way to mark one specific call's result as a deliberate discard and silence that warning; PHP 8.5 is not installed in this environment so neither half was executed here, but verified directly on the local PHP 8.4.19, the two fail very differently below the 8.5 ceiling - `#[\\NoDiscard]` is a silent no-op while `(void)` is an outright parse error.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "On a PHP 8.5+ floor, mark a function or method with `#[\\NoDiscard]` whenever a caller ignoring its return value would be a real mistake - a commit()-style method whose success/failure result matters, a factory method whose result must be captured, or anything already treated as must-check by convention. Where a specific call site genuinely means to discard that value on purpose, write `(void)` in front of the call to say so explicitly rather than leaving a bare, now-warning call. Do not introduce either on a project floor below 8.5: `#[\\NoDiscard]` will simply do nothing there, and `(void)` is a parse error, not merely an ignored cast, on any earlier minor.",
+    "existing_code_policy": "Once a project's PHP floor reaches 8.5, look for functions and methods whose return value is routinely relied upon but not enforced by the type system - a boolean success flag, a validation result, a builder/factory return - and add `#[\\NoDiscard]`. Expect existing call sites that already discard the value on purpose to start warning; fix a genuinely-a-bug call site by actually using the result, and mark a deliberate discard with `(void)` rather than suppressing the warning some other way. Retrofitting this onto a function with many existing callers can surface a burst of warnings across every discarding call site at once, especially since `#[\\NoDiscard]` is meant for return values that matter and so tends to land on frequently-called code - triage before marking a widely-called function, the same way a wide `#[\\Deprecated]` retrofit can surface a burst of notices. Do not add either half of this feature to code that must also run on a PHP floor below 8.5: verified directly on the local PHP 8.4.19, `#[\\NoDiscard]` there is a silent no-op while `(void)` is an outright parse error, so unlike most attribute-based features in this catalogue, this one cannot be adopted piecemeal on a mixed-version codebase - the cast half will simply refuse to run at all.",
+    "guideline": "Mark a function or method `#[\\NoDiscard]` when a caller ignoring its return value would be a real mistake, and write `(void)` in front of a call where discarding that value is genuinely deliberate. Both require a PHP 8.5+ floor: `#[\\NoDiscard]` is silently inert before 8.5, but `(void)` is a parse error before 8.5, not merely a no-op, so gate both together rather than expecting a graceful fallback from either.",
+    "details": "PHP 8.5 adds two related pieces from one RFC (marking_return_value_as_important): the `#[\\NoDiscard]` attribute, applied to a function or method to declare that its return value matters and should not be silently thrown away, and the `(void)` cast, whose only job is to mark one particular call's result as deliberately unused. They belong in a single rule because the cast exists specifically to answer the attribute - per UPGRADING-8.5.0 itself: \"The (void) cast has no effect on the program's execution by itself, but it can be used to suppress warnings emitted by #[\\NoDiscard] and possibly also diagnostics emitted by external IDEs or static analysis tools.\" Without `#[\\NoDiscard]` there would be nothing for `(void)` to suppress, and without `(void)` there would be no sanctioned way to say \"this discard is deliberate\" once a function is marked; documenting either half alone would misrepresent one RFC's single discard-discipline mechanism as two unrelated additions. Per the pinned UPGRADING-8.5.0 text, calling a `#[\\NoDiscard]`-marked function and not consuming its return value raises a warning, and explicitly casting the call to `(void)` suppresses that warning with no other effect on execution; PHP 8.5 is not installed in this environment, so neither half of that was executed here - both are reported as documented facts from the pinned source, not as something run. What WAS verified directly on the local PHP 8.4.19 is how the two halves fail below that ceiling, and they fail completely differently, which matters because an agent is exactly the kind of author likely to write both together and assume they succeed or fail as a unit. `#[\\NoDiscard]` on 8.4.19 is silently inert: class_exists('NoDiscard') returns false, confirming the class does not exist, but attribute syntax has been valid since PHP 8.0, so `#[\\NoDiscard] function f(): bool { ... }` parses and runs exactly as if the attribute were never written - calling it and discarding the result raised no diagnostic of any kind, confirmed with an error handler registered for every level. The `(void)` cast, by contrast, is a genuine parse error on 8.4.19: `(void) mustCheck();` fails with \"syntax error, unexpected identifier \"mustCheck\"\", and php -l refuses to lint the file at all - there is no graceful degradation to fall back on, the code simply does not run. This is the same asymmetry already recorded for `#[\\Deprecated]` below its own 8.4 floor (see core.deprecated_attribute): the attribute half degrades silently, but here the second half of the same feature - the cast - does not degrade at all, it fails immediately and loudly. Because the pair fails asymmetrically, this rule's single introduced_in: \"8.5\" should be read as gating both artifacts together at the same floor, even though only one of the two would actually tell an author anything is wrong if adopted too early; the other will simply do nothing, with nothing to point at the gap.",
+    "examples": [
+        {
+            "before": [
+                "final class TransactionManager",
+                "{",
+                "    public function commit(): bool",
+                "    {",
+                "        return $this->driver->commit();",
+                "    }",
+                "}",
+                "",
+                "function processOrder(TransactionManager $tx, Order $order): void",
+                "{",
+                "    $tx->commit();",
+                "}"
+            ],
+            "after": [
+                "final class TransactionManager",
+                "{",
+                "    #[\\NoDiscard]",
+                "    public function commit(): bool",
+                "    {",
+                "        return $this->driver->commit();",
+                "    }",
+                "}",
+                "",
+                "function processOrder(TransactionManager $tx, Order $order): void",
+                "{",
+                "    if (!$tx->commit()) {",
+                "        throw new TransactionFailedException($order);",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class ReportGenerator",
+                "{",
+                "    #[\\NoDiscard]",
+                "    public function refreshCache(): bool",
+                "    {",
+                "        return $this->cache->rebuild();",
+                "    }",
+                "",
+                "    public function warmUpInBackground(): void",
+                "    {",
+                "        $this->refreshCache();",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ReportGenerator",
+                "{",
+                "    #[\\NoDiscard]",
+                "    public function refreshCache(): bool",
+                "    {",
+                "        return $this->cache->rebuild();",
+                "    }",
+                "",
+                "    public function warmUpInBackground(): void",
+                "    {",
+                "        (void) $this->refreshCache();",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Per UPGRADING-8.5.0 itself: \"The (void) cast has no effect on the program's execution by itself, but it can be used to suppress warnings emitted by #[\\NoDiscard] and possibly also diagnostics emitted by external IDEs or static analysis tools.\" Neither half was executed in this environment - PHP 8.5 is not installed here, only 8.4.19 is available - so both the NoDiscard-raises-a-warning behavior and the (void)-suppresses-it behavior are reported from this pinned source, not observed directly.",
+        "Verified directly on the local PHP 8.4.19 (below the 8.5 floor): #[\\NoDiscard] is silently inert - class_exists('NoDiscard') returns false, and marking a function with it and then discarding its return value raises no diagnostic of any kind, confirmed with an error handler registered for every level - while (void) is a genuine parse error: (void) mustCheck(); fails to compile (\"syntax error, unexpected identifier\") and php -l refuses to lint the file. The two halves of this one feature therefore fail completely differently below the ceiling this rule gates on.",
+        "This attribute's constructor signature - specifically, whether it accepts an optional message argument the way #[\\Deprecated] does (see core.deprecated_attribute) - was not verified: PHP 8.5 is not installed in this environment, so the examples here use only the bare #[\\NoDiscard] form, which is the one form the pinned UPGRADING text itself describes.",
+        "PHPCompatibility's NewAttributesSniff::process() (Attributes/NewAttributesSniff.php) opens with: if (ScannedCode::shouldRunOnOrBelow('7.4') === false) { return; }. Verified by reading ScannedCode::shouldRunOnOrBelow(), this is true only when the testVersion's low end is <= 7.4, so at this tool's 8.2-8.5 floor the sniff returns before inspecting any attribute, for every file. NoDiscard is also absent from every one of the sniff's own attribute tables ($phpCrossVersionAttributes, $otherPHPNativeAttributes, $doctrineAttributes, $phpstormAttributes, $phpunitAttributes), so even independent of the version guard an unrecognized #[\\NoDiscard] would fall through to the sniff's generic, unbundled 'Found' warning code rather than being identified as a PHP-native, version-relevant attribute. The (void) cast is not an attribute at all, so this sniff - which only registers on T_ATTRIBUTE tokens - is structurally unable to see it regardless of version. PHPCompatibility 10.0.0-alpha2 was re-run directly (2026-09-05) against a probe file containing both #[\\NoDiscard] and (void) at testVersion 8.2-8.5 and produced zero findings; PHP_CodeSniffer's tokenizer processed the file without erroring even though the same file's (void) cast is confirmed above to be a genuine parse error on the actual PHP 8.4.19 engine, since PHPCS tokenizes source rather than fully parsing it.",
+        "Evidence: UPGRADING-8.5.0, \"2. New Features\" -> Core: \"Added the #[\\NoDiscard] attribute to indicate that a function's return value is important and should be consumed.\" and \"Added the (void) cast to indicate that not using a value is intentional. The (void) cast has no effect on the program's execution by itself, but it can be used to suppress warnings emitted by #[\\NoDiscard] and possibly also diagnostics emitted by external IDEs or static analysis tools.\" RFC: https://wiki.php.net/rfc/marking_return_value_as_important"
+    ]
+}

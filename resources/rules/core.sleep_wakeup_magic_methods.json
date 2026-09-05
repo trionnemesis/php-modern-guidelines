@@ -1,0 +1,124 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.sleep_wakeup_magic_methods",
+    "title": "`__sleep()`/`__wakeup()` are soft-deprecated in favour of `__serialize()`/`__unserialize()`",
+    "summary": "PHP 8.5 soft-deprecates the __sleep() and __wakeup() magic methods in favour of __serialize() and __unserialize(). The replacement is not a rename: __sleep() returns a list of property NAMES and __wakeup() takes no argument, while __serialize() returns the actual key => value DATA and __unserialize(array $data) receives that data directly; both pairs may be declared together when PHP 7 compatibility is still required, and __serialize()/__unserialize() take over automatically wherever both exist.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.5",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "On any PHP floor this tool tracks (8.2 through 8.5), write __serialize(): array and __unserialize(array $data): void instead of __sleep(): array and __wakeup(): void for a new class that needs custom (de)serialization behavior. Return __serialize()'s actual key => value data - not a list of property names - under whatever keys make sense for the class, and let __unserialize() assign that array's values onto the object's properties directly; do not assume unserialize() has already populated anything before __unserialize() runs. Only add __sleep()/__wakeup() alongside the new pair if the same class must also work correctly on a PHP version before 7.4.",
+    "existing_code_policy": "For an existing class that declares only __sleep()/__wakeup(), do not simply rename the methods and carry their bodies across unchanged: __sleep() returns an array of property NAMES to include (each must already be a real property, or serialize() emits a warning and silently drops it), while __serialize() must return the array of actual DATA - the values themselves, under whatever keys __unserialize() will expect back - and __wakeup() takes no argument and finishes restoring an object unserialize() has already written properties onto directly, while __unserialize(array $data) receives the payload as its one argument and is solely responsible for assigning it, since unserialize() does not run the constructor and does not otherwise populate properties for a class using this pair. If the class must still run on a PHP version before 7.4, add __serialize()/__unserialize() alongside the existing __sleep()/__wakeup() rather than deleting the old pair: on every runtime this tool tracks (8.2 and above), the new pair takes over automatically the moment both are present, so the old pair becomes inert for parsing purposes there but is still exercised by, and must still work for, any pre-7.4 runtime that also runs this code. Data already serialized under the old __sleep()/__wakeup() pair remains readable once a class has fully switched to __serialize()/__unserialize() only, since the on-the-wire format is keyed by whatever names were serialized regardless of which pair produced it - migrating the class declaration does not by itself require migrating already-stored data.",
+    "guideline": "Do not treat __sleep()/__wakeup() and __serialize()/__unserialize() as if renaming one pair to the other were enough: __sleep() returns a list of property names and __wakeup() takes no argument, while __serialize() returns the actual data as key => value pairs and __unserialize(array $data) receives that data directly as its argument. Prefer __serialize()/__unserialize() for new code; keep both pairs declared together only while PHP 7 compatibility is still required.",
+    "details": "PHP 8.5 soft-deprecates the __sleep() and __wakeup() magic methods in favour of __serialize() and __unserialize() (UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core; RFCs deprecate_the_sleep_and_wakeup_magic_methods and soft-deprecate-sleep-wakeup). \"Soft-deprecated\" is a distinct, weaker status than PHP's ordinary deprecation: verified locally on PHP 8.4.19 (a version that already predates this PHP 8.5 change) with an active error handler installed, a class declaring only __sleep() and __wakeup() raises no diagnostic of any kind - no E_DEPRECATED notice, no warning - when round-tripped through serialize()/unserialize(); this confirms there is no notice before the change lands, though it does not by itself prove what, if anything, PHP 8.5 emits at runtime once the soft-deprecation exists - only UPGRADING's own choice of wording (\"soft-deprecated\", not simply \"deprecated\") speaks to that. The replacement is not a rename: __sleep() returns a plain list of the property NAMES that should be included, and PHP itself pulls each named property's current value at serialization time - if a listed name is not a real property, serialize() emits a warning (verified locally: `serialize(): \"does_not_exist\" returned as member variable from __sleep() but does not exist`) and silently drops it - while __wakeup() takes no argument at all and is expected to finish restoring the object from whatever unserialize() has already written directly onto $this. __serialize(), by contrast, returns the actual key => value DATA to store - the values themselves, under whatever keys the class chooses, not necessarily its real property names (confirmed locally: a class returning `['identifier' => $this->id, 'computed_extra' => $this->extra + 100]` from __serialize() round-trips correctly) - and __unserialize(array $data) receives that exact array as its one argument and is solely responsible for writing it onto the object, since unserialize() does not run the constructor and sets no properties itself for a class using this pair. Copying __sleep()'s body into __serialize() (returning bare names) and __wakeup()'s empty body into __unserialize() (ignoring $data) compiles and runs with no error, exception, warning, or notice of any kind, and silently round-trips every object back with its properties reset to their class-declared defaults instead of their real stored values: reproduced locally with exactly this mistake - a class whose id property held 'user-99' at serialization time came back as 'default-placeholder' (the class's declared default) after an unserialize() round trip, with nothing in the output indicating the loss. Both pairs may be declared on the same class at once, which UPGRADING states explicitly is expected \"if compatibility with PHP 7 is required\"; when both are present, __serialize()/__unserialize() take over on PHP 7.4 and later (confirmed locally: with both pairs declared, only __serialize() and __unserialize() ran, and __wakeup() was never invoked), so on any version this tool tracks (8.2 and above) __sleep()/__wakeup() only still matter as a fallback for a pre-7.4 runtime the same code must also support. Data already serialized under the old __sleep()/__wakeup() pair remains readable once a class has fully switched to __serialize()/__unserialize() only: confirmed locally by serializing an object under an old-style class and then unserializing that exact byte string against a differently-named class carrying only __unserialize(), which received the identical name => value payload and populated the object correctly - migrating a class's declaration does not by itself require migrating already-stored data. Separately, and out of this rule's scope, UPGRADING-8.5.0's Date section also deprecates __wakeup() specifically on DateTimeInterface, DateTime, DateTimeImmutable, DateTimeZone, DateInterval, and DatePeriod, in favour of __unserialize() - a Date-extension-specific fact, not a restatement of this Core-level soft-deprecation.",
+    "examples": [
+        {
+            "before": [
+                "final class UserSession",
+                "{",
+                "    private string $id;",
+                "    private int $expiresAt;",
+                "",
+                "    public function __sleep(): array",
+                "    {",
+                "        return ['id', 'expiresAt'];",
+                "    }",
+                "",
+                "    public function __wakeup(): void",
+                "    {",
+                "        // Properties are already restored onto $this by unserialize() itself.",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class UserSession",
+                "{",
+                "    private string $id;",
+                "    private int $expiresAt;",
+                "",
+                "    public function __serialize(): array",
+                "    {",
+                "        return ['id' => $this->id, 'expiresAt' => $this->expiresAt];",
+                "    }",
+                "",
+                "    public function __unserialize(array $data): void",
+                "    {",
+                "        $this->id = $data['id'];",
+                "        $this->expiresAt = $data['expiresAt'];",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class LegacyPayload",
+                "{",
+                "    private string $token;",
+                "",
+                "    public function __sleep(): array",
+                "    {",
+                "        return ['token'];",
+                "    }",
+                "",
+                "    public function __wakeup(): void",
+                "    {",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class LegacyPayload",
+                "{",
+                "    private string $token;",
+                "",
+                "    // Kept for PHP 7 compatibility; __serialize()/__unserialize() take over on 7.4+.",
+                "    public function __sleep(): array",
+                "    {",
+                "        return ['token'];",
+                "    }",
+                "",
+                "    public function __wakeup(): void",
+                "    {",
+                "    }",
+                "",
+                "    public function __serialize(): array",
+                "    {",
+                "        return ['token' => $this->token];",
+                "    }",
+                "",
+                "    public function __unserialize(array $data): void",
+                "    {",
+                "        $this->token = $data['token'];",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "str_increment()/str_decrement() are unrelated to this rule; do not confuse this Core magic-method deprecation with core.string_increment_operators, which covers the ++/-- operators on strings.",
+        "The two magic-method pairs are not symmetric in what they can express: verified locally, str_increment() and str_decrement() aside, __sleep() can only ever list existing property names verbatim (an unknown name is dropped with a warning, confirmed: `serialize(): \"does_not_exist\" returned as member variable from __sleep() but does not exist`), whereas __serialize() can return entirely computed keys unrelated to any real property, confirmed locally with a class whose __serialize()/__unserialize() pair round-tripped `['identifier' => ..., 'computed_extra' => ...]` correctly despite neither key matching a declared property name.",
+        "Confirmed locally that when both pairs are declared on the same class, only __serialize()/__unserialize() run and __wakeup() is never called - the PHP 7.4+ precedence UPGRADING assumes when it says both may be declared \"at the same time if compatibility with PHP 7 is required\".",
+        "behavior_change_risk is \"medium\" rather than \"low\" or \"none\": leaving __sleep()/__wakeup() exactly as they are changes nothing on any version this tool tracks (8.2 through 8.5), confirmed locally to raise no diagnostic at all - but the tempting one-line-per-method rewrite (renaming __sleep() to __serialize() and __wakeup() to __unserialize() without changing what each body does) is silently wrong, not merely deprecated: reproduced locally, it compiles, runs, and round-trips every object with no error, exception, warning, or notice, while quietly resetting the object's real data to class-declared defaults. This is why a no-automatic-replacement example is included alongside the two illustrative migrations above.",
+        "PHPCompatibility 10.0.0-alpha2 produced no finding - confirmed via `phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5` against probe code declaring __sleep()/__wakeup(), __serialize()/__unserialize(), and both pairs together on separate classes - for any of these constructs at testVersion 8.2-8.5, so there is no proven sniff mapping for this rule; verification.phpcompatibility is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.5.0.txt, \"4. Deprecated Functionality\" -> Core: \"The __sleep() and __wakeup() magic methods have been soft-deprecated. The __serialize() and __unserialize() magic methods should be used instead, or at the same time if compatibility with PHP 7 is required.\" The same file's Date section separately reads: \"The __wakeup() method of DateTimeInterface, DateTime, DateTimeImmutable, DateTimeZone, DateInterval, and DatePeriod has been deprecated in favour of the __unserialize() magic method\" - a distinct, Date-extension-specific fact not covered by this rule."
+    ]
+}

@@ -1,6 +1,8 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 3 of 32 shown
+Rules: 4 of 40 shown
 
+  [applicable]                       P1  feature              core.sensitive_parameter_attribute
+      `#[\SensitiveParameter]` attribute
   [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
       `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
   [applicable]                       P1  compatibility_guard  language.feature_ceiling_guard

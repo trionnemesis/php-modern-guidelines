@@ -84,18 +84,26 @@ Then filter the rule catalogue to what you are about to write:
 ```console
 $ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 15 of 32 shown
+Rules: 19 of 40 shown
 
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
+  [deprecated_in_range]              P2  deprecated           core.constant_redeclaration
+      Constant redeclaration is deprecated
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [deprecated_in_range]              P2  deprecated           core.e_strict_constant
       The E_STRICT constant is deprecated
   [deprecated_in_range]              P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
+  [deprecated_in_range]              P2  deprecated           core.null_array_offset
+      Using `null` as an array offset or in `array_key_exists()` is deprecated
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
       Partially supported callables are deprecated
+  [deprecated_in_range]              P2  deprecated           core.sleep_wakeup_magic_methods
+      `__sleep()`/`__wakeup()` are soft-deprecated in favour of `__serialize()`/`__unserialize()`
+  [deprecated_in_range]              P2  deprecated           core.string_increment_operators
+      `++`/`--` on empty, non-numeric, or non-alphanumeric strings
   [deprecated_in_range]              P2  deprecated           core.trigger_error_e_user_error
       Passing `E_USER_ERROR` to `trigger_error()` is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
@@ -134,8 +142,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage coverage_gap (known 8.2-8.5, open upper bound), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 32 rule file(s)
-  [ok]      rules.load               32 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 40 rule file(s)
+  [ok]      rules.load               40 rule(s) loaded
 
 Details
   cli.build
@@ -177,9 +185,9 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              32
+    file_count              40
   rules.load
-    loaded                  32
+    loaded                  40
     error                   -
 ```
 

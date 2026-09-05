@@ -1,0 +1,79 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.string_increment_operators",
+    "title": "`++`/`--` on empty, non-numeric, or non-alphanumeric strings",
+    "summary": "PHP 8.3 deprecates the ++ operator on an empty, non-numeric, or non-alphanumeric string and the -- operator on an empty or non-numeric string, while only soft-deprecating (no runtime notice yet) incrementing an ordinary alphanumeric non-numeric string such as 'a'; PHP 8.5 then enacts the follow-up phase, deprecating that last case too. str_increment()/str_decrement(), added in PHP 8.3, are the intended replacements, but neither is a safe drop-in for every deprecated ++/-- call.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.3",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.3+ floor, never use ++/-- on a string that might be empty or might not hold a genuine number: both already emit a deprecation notice for that today. Reserve ++ for values already known to be numeric strings or integers, and call str_increment() - not ++ - whenever the actual intent is the Perl-style alphanumeric increment ('a' -> 'b', 'z' -> 'aa') on an ordinary alphanumeric string, after confirming the value cannot be empty or contain a non-alphanumeric character, since str_increment() throws on exactly those inputs instead of warning. There is no decrement helper to reach for in place of --, because decrementing a non-numeric string has only ever been a silent no-op, not a real feature worth preserving. On a project whose feature ceiling is below 8.3, str_increment()/str_decrement() do not exist at all, so restructure the logic (for example, stop routing the value through a string in the first place) instead of relying on either the deprecated operator behavior or a function that cannot be called yet.",
+    "existing_code_policy": "Find every `$x++`/`$x--` (and their prefix forms) where $x could hold something other than a proven numeric string or integer - user input, a config default, an array key sourced from external data - and check what PHP 8.3+ already flags on it today: an empty string, or a string containing a character outside A-Za-z0-9, is deprecated now under ++, and an empty or otherwise non-numeric string is deprecated now under --; only incrementing an ordinary alphanumeric non-numeric string (for example 'a' or 'Az9') is still silent on 8.3/8.4 and becomes deprecated too once the code runs on PHP 8.5. Do not mechanically replace every flagged $x++ with `$x = str_increment($x)`: the function's contract is stricter than the operator's, not merely a rename - it throws a ValueError on an empty string and on a non-alphanumeric string, the exact two inputs the operator only ever warned about and kept running on - so a blind substitution turns a previously-tolerated, if noisy, code path into an uncaught fatal error in production. Confirm at each call site that the value cannot be empty or contain a non-alphanumeric character before switching to str_increment(), or validate/normalize it first; very often the actual fix is to stop defaulting the value to an empty string in the first place (default it to a genuine numeric string instead) rather than to reach for str_increment() at all. For -- there is no replacement function to switch to: because decrementing a non-numeric string has always been a silent no-op, a call site that is really manipulating a number needs its variable's type corrected to int, not a drop-in string substitute. On a project whose feature ceiling is below 8.3, str_increment()/str_decrement() are not available at all, so any migration that would call them must first raise the feature ceiling, or be deferred until it does.",
+    "guideline": "Do not increment or decrement a string with ++/-- unless it already holds a genuine number: ++ deprecates an empty, non-alphanumeric, or (from PHP 8.5) any other non-numeric string, and -- deprecates an empty or non-numeric string outright, with no alphanumeric carve-out and no useful effect to preserve. Where the Perl-style alphanumeric increment is genuinely intended, call str_increment() (PHP 8.3+) instead of ++, only after confirming the value cannot be empty or contain a non-alphanumeric character - it throws exactly where the operator only warns.",
+    "details": "PHP 8.3 deprecates ++ on an empty, non-numeric, or non-alphanumeric string, and -- on an empty or non-numeric string (UPGRADING-8.3.0, \"4. Deprecated Functionality\" -> Core; RFC saner-inc-dec-operators), but the two operators are not deprecated to the same degree in 8.3: incrementing an ordinary alphanumeric non-numeric string - the classic Perl-style case such as 'a' -> 'b' or 'z' -> 'aa' - is only soft-deprecated in 8.3, meaning documented as discouraged without yet raising a runtime notice, while -- gets no such carve-out for any non-numeric string, alphanumeric or not. Verified locally on PHP 8.4.19 (still within the 8.3/8.4 soft-deprecation window), with an active error handler installed: `$s = 'a'; $s++;` silently produces 'b' with no diagnostic at all, and so does `$s = 'z'; $s++;` ('aa'); `$s = ''; $s++;` raises `E_DEPRECATED: Increment on non-alphanumeric string is deprecated` and still evaluates to '1', and `$s = 'a-b'; $s++;` raises the identical notice and still evaluates to 'a-c'; meanwhile both `$s = 'a'; $s--;` and `$s = 'z'; $s--;` raise `E_DEPRECATED: Decrement on non-numeric string has no effect and is deprecated` while leaving the string completely unchanged - confirming -- was already a documented no-op on non-numeric strings before this deprecation and remains one, just with a notice attached now. Ordinary numeric strings and integers are entirely unaffected: verified locally, `$s = '9'; $s++;` evaluates to the integer 10 with no diagnostic whatsoever. UPGRADING-8.5.0 then enacts what it calls \"the follow-up phase of the 'Path to Saner Increment/Decrement operators' RFC\": incrementing a non-numeric string - the case 8.3 only soft-deprecated - is now deprecated outright too, closing the gap; this rule's deprecated_in is set to the 8.3 minor because that is where deprecation of ++/-- on these strings begins in earnest, and the 8.5 follow-up is the completion of the same RFC's scope rather than a second, independent fact. str_increment() and str_decrement() were added in PHP 8.3 (UPGRADING-8.3.0, \"6. New Functions\" -> Standard) as the intended replacement for the alphanumeric-increment idiom, but neither is a safe drop-in for every deprecated ++/-- call: verified locally, str_increment('a') gives 'b' and str_increment('z') gives 'aa', matching the operator, but str_increment('') throws `ValueError: str_increment(): Argument #1 ($string) must not be empty` and str_increment('a-b') throws `ValueError: str_increment(): Argument #1 ($string) must be composed only of alphanumeric ASCII characters` - the exact two inputs ++ merely warns about and keeps running on. str_decrement() is likewise stricter than -- rather than a replacement for its no-op behavior: verified locally, str_decrement('b') gives 'a', but str_decrement('a') throws `ValueError: str_decrement(): Argument #1 ($string) \"a\" is out of decrement range` and str_decrement('A') throws the equivalent message naming \"A\" instead, where -- on 'a' or 'z' instead silently leaves the string unchanged (confirmed above). A project whose feature ceiling is below 8.3 cannot call either function at all, since both are new API surface introduced in 8.3, not a change to an already-available function; such a project has no choice but to keep the deprecated operator (accepting its notices on 8.3 and above, if error reporting surfaces them) or rewrite the specific call site's logic instead of using str_increment()/str_decrement().",
+    "examples": [
+        {
+            "before": [
+                "function nextSlug(string $slug): string",
+                "{",
+                "    $slug++;",
+                "",
+                "    return $slug;",
+                "}"
+            ],
+            "after": [
+                "function nextSlug(string $slug): string",
+                "{",
+                "    if ($slug === '' || preg_match('/[^A-Za-z0-9]/', $slug) === 1) {",
+                "        throw new InvalidArgumentException(\"Cannot increment slug: '{$slug}'\");",
+                "    }",
+                "",
+                "    return str_increment($slug);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "function previousPage(string $page): string",
+                "{",
+                "    $page--;",
+                "",
+                "    return $page;",
+                "}"
+            ],
+            "after": [
+                "function previousPage(int $page): int",
+                "{",
+                "    return max(0, $page - 1);",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "str_increment() is not restricted to non-numeric input despite existing to replace the alphanumeric-increment idiom: verified locally, str_increment('9') returns '10' and str_increment('007') returns '008' (preserving the leading zero, unlike arithmetic +1, which would produce '8'), confirming it applies the same alphanumeric carry algorithm as ++ rather than integer arithmetic, and does not reject purely numeric input the way it rejects empty or non-alphanumeric input.",
+        "The two operators are not symmetric on the empty string either: verified locally, ''++ evaluates to the string '1' while ''-- evaluates to the integer -1 (not the string '-1') - a longstanding asymmetry in how each operator's legacy special-casing treats an empty string, unrelated to str_increment()/str_decrement() and unchanged by this deprecation.",
+        "behavior_change_risk is \"high\": str_increment()/str_decrement() are not drop-in replacements for ++/-- - the operator merely warns and keeps running on an empty or non-alphanumeric string, while the function throws a ValueError on that exact input (confirmed locally for both functions), so blindly substituting the function call for the operator can turn a previously-tolerated, if noisy, code path into an uncaught fatal error in production. This is why a no-automatic-replacement example is included alongside the two illustrative migrations above rather than presenting either as a safe default.",
+        "PHPCompatibility 10.0.0-alpha2 produced no finding - confirmed via `phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5` against probe code exercising ++/-- on empty, alphanumeric, and non-alphanumeric strings alongside str_increment()/str_decrement() calls - for any of these constructs at testVersion 8.2-8.5, so there is no proven sniff mapping for this rule; verification.phpcompatibility is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.3.0.txt, \"4. Deprecated Functionality\" -> Core: \"Using the ++ operator on empty, non-numeric, or non-alphanumeric strings is now deprecated. Moreover, incrementing non-numeric strings is soft deprecated and the new str_increment() function should be used instead.\" and \"Using the -- operator on empty or non-numeric strings is now deprecated.\"; \"6. New Functions\" -> Standard: \"Added the str_increment() and str_decrement() functions.\" UPGRADING-8.5.0, \"4. Deprecated Functionality\" -> Core additionally reads: \"Enacted the follow-up phase of the 'Path to Saner Increment/Decrement operators' RFC, meaning that incrementing non-numeric strings is now deprecated. Instead the str_increment() function should be used.\" - cited here in prose only, per this rule's own deprecated_in of 8.3, not as a second sources[] entry."
+    ]
+}

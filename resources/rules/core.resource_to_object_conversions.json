@@ -1,0 +1,95 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.resource_to_object_conversions",
+    "title": "`is_resource()` no longer detects DBA, ODBC, and SOAP handles",
+    "summary": "As of PHP 8.4, dba_open()/dba_popen(), odbc_connect()/odbc_pconnect(), odbc_prepare()/odbc_exec() and related ODBC functions, and the SoapClient::$httpurl/SoapClient::$sdl properties return objects instead of resources, so any surviving is_resource() guard silently returns false for a perfectly healthy value and takes the error branch on success; the correct replacement check is false for the DBA and ODBC values but null for the two SOAP properties specifically, and the two must not be conflated.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.4+ floor, never guard the return value of dba_open(), dba_popen(), odbc_connect(), odbc_pconnect(), odbc_prepare(), odbc_exec(), or any other ODBC result-producing function with is_resource(); check it against false instead (`$handle !== false`). For SoapClient::$httpurl and SoapClient::$sdl specifically, check against null (`$client->sdl !== null`), never against false and never with is_resource() - those two properties are an object or null, never false.",
+    "existing_code_policy": "Search a codebase for every is_resource() call that touches a DBA, ODBC, or SOAP value - dba_open()/dba_popen() results, odbc_connect()/odbc_pconnect() connections, odbc_prepare()/odbc_exec()-family results, and the SoapClient::$httpurl/SoapClient::$sdl properties - and replace each with the check that matches its own source API, not one blanket substitution: DBA and ODBC values become `!== false` checks, because false was already their failure sentinel before PHP 8.4 and remains so after it, while the two SOAP properties become `!== null` checks specifically, because UPGRADING documents them as the stated exception to the false rule. Trace each is_resource() call back to where its argument actually came from before choosing a replacement - a shared helper function, or a variable that could carry a DBA handle down one call path and a SOAP property down another, cannot be fixed with a single mechanical rewrite across the whole codebase.",
+    "guideline": "Do not use is_resource() to test whether a DBA, ODBC, or SOAP handle is open, on a PHP 8.4+ floor: check DBA and ODBC values against false, and check SoapClient::$httpurl and SoapClient::$sdl against null instead - the two are not interchangeable, and using the same replacement for both gets one of them wrong.",
+    "details": "PHP 8.4 turned several long-standing resource types into objects (UPGRADING-8.4.0, \"1. Backward Incompatible Changes\" -> \"Resource to Object conversions\"): dba_open() and dba_popen() now return a Dba\\Connection instead of a resource; odbc_connect() and odbc_pconnect() now return an Odbc\\Connection, and odbc_prepare(), odbc_exec(), and various other ODBC functions now return an Odbc\\Result; and SoapClient::$httpurl and SoapClient::$sdl are now Soap\\Url and Soap\\Sdl objects rather than resources. is_resource() returns false for every value that is not an actual resource - including a perfectly healthy object - and raises no diagnostic of any kind when handed one (confirmed locally on PHP 8.4.19: is_resource() on a plain object and on null both return false silently, with an active error handler installed and nothing reported). So a guard written as `if (!is_resource($handle))` or `if (is_resource($handle))`, which used to distinguish an open handle from a failed one on PHP 8.3 and earlier, now takes the \"failed\" branch every single time it runs on PHP 8.4+, even when the connection, statement, or WSDL parse succeeded outright: the check silently and permanently fails closed, and because the resulting error path is usually a generic \"could not open/connect\" exception, the failure looks exactly like a real connection problem with nothing pointing at the actual cause. UPGRADING-8.4.0 states the general rule - \"Return value checks using is_resource() should be replaced with checks for `false`, unless specified otherwise\" - and then immediately specifies otherwise for the two SOAP properties: SoapClient::$httpurl and SoapClient::$sdl \"should be replaced with checks for null\", not false. This is because, unlike the DBA and ODBC functions (which already returned false on failure before PHP 8.4, so `!== false` is simply the typed equivalent of the old check), these two SOAP properties were never false-on-failure to begin with: they hold an object on success or are left null when there is nothing to report (for example, no WSDL was parsed), so null is, and always was, their absent-value sentinel. Treating all five affected APIs the same way and mechanically replacing every is_resource() with a false-check gets the DBA and ODBC cases right and silently gets the SOAP case wrong. Because this change spans three unrelated extensions - DBA, ODBC, and SOAP - with nothing extension-specific about the fix itself, no single `extension` value would be accurate for this rule; what is actually actionable is the is_resource() idiom, which is a Core function, so this rule is filed as `core` rather than under any one of the three extensions it touches.",
+    "examples": [
+        {
+            "before": [
+                "$dba = dba_open($path, 'c', 'flatfile');",
+                "if (!is_resource($dba)) {",
+                "    throw new RuntimeException('Unable to open DBA database: ' . $path);",
+                "}"
+            ],
+            "after": [
+                "$dba = dba_open($path, 'c', 'flatfile');",
+                "if ($dba === false) {",
+                "    throw new RuntimeException('Unable to open DBA database: ' . $path);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "$connection = odbc_connect($dsn, $user, $password);",
+                "if (!is_resource($connection)) {",
+                "    throw new RuntimeException(\"Unable to connect to ODBC data source: {$dsn}\");",
+                "}",
+                "",
+                "$result = odbc_exec($connection, $sql);",
+                "if (!is_resource($result)) {",
+                "    throw new RuntimeException('ODBC query failed: ' . odbc_errormsg($connection));",
+                "}"
+            ],
+            "after": [
+                "$connection = odbc_connect($dsn, $user, $password);",
+                "if ($connection === false) {",
+                "    throw new RuntimeException(\"Unable to connect to ODBC data source: {$dsn}\");",
+                "}",
+                "",
+                "$result = odbc_exec($connection, $sql);",
+                "if ($result === false) {",
+                "    throw new RuntimeException('ODBC query failed: ' . odbc_errormsg($connection));",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "$client = new SoapClient($wsdl);",
+                "if (!is_resource($client->sdl)) {",
+                "    throw new RuntimeException('SOAP client has no parsed WSDL definition.');",
+                "}"
+            ],
+            "after": [
+                "$client = new SoapClient($wsdl);",
+                "if ($client->sdl === null) {",
+                "    throw new RuntimeException('SOAP client has no parsed WSDL definition.');",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "is_resource() returns false unconditionally for any value that is not an actual resource, and raises no notice, warning, or deprecation of any kind when handed one - confirmed locally on PHP 8.4.19 with an active error handler installed: is_resource(new class {}) and is_resource(null) both return false with nothing reported. This is exactly why a stale guard fails silently and indistinguishably from a real connection failure once its argument becomes an object instead of a resource.",
+        "The DBA, ODBC, and SOAP extensions are not installed in this verification environment (`php -m` lists none of dba, odbc, or soap, and function_exists('dba_open'), function_exists('odbc_connect'), and class_exists('SoapClient') all report false here), so the affected functions and SoapClient itself could not be executed or have their return types inspected directly in this environment. The API-level facts above - which functions and properties are affected, and which of them require a false-check versus a null-check - are drawn directly from the pinned UPGRADING-8.4.0 source text quoted below, not from local execution.",
+        "A mechanical, codebase-wide replacement of is_resource($x) with $x !== false is unsafe: it is correct for DBA and ODBC handles but silently wrong for SoapClient::$httpurl and SoapClient::$sdl, which UPGRADING specifies as checks for null instead - and a text-level rewrite has no way to know, from the shape of `is_resource($x)` alone, which of the three extensions actually produced $x, especially once $x has passed through a shared helper function or several layers of code before reaching the check. This is why behavior_change_risk is \"high\" and why a no-automatic-replacement example is included alongside the three illustrative ones above: a stale guard fails closed while looking exactly like an unrelated connection error, with no diagnostic anywhere pointing at the actual cause.",
+        "PHPCompatibility 10.0.0-alpha2 produced no finding - confirmed via `phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5` against probe code exercising is_resource() guards on dba_open(), odbc_connect(), odbc_exec(), SoapClient::$sdl, and SoapClient::$httpurl - for any of these constructs at testVersion 8.2-8.5, so there is no proven sniff mapping for this rule; verification.phpcompatibility is intentionally empty rather than guessed.",
+        "Evidence: UPGRADING-8.4.0.txt, \"1. Backward Incompatible Changes\" -> \"Resource to Object conversions\": \"Return value checks using is_resource() should be replaced with checks for `false`, unless specified otherwise.\" DBA: \"dba_open() and dba_popen() will now return Dba\\Connection\". ODBC: \"odbc_connect() and odbc_pconnect() will now return Odbc\\Connection\", \"odbc_prepare(), odbc_exec(), and various other functions will now return Odbc\\Result\". SOAP: \"SoapClient::$httpurl is now a Soap\\Url object rather than a resource. Checks using is_resource() (i.e. is_resource($client->httpurl)) should be replaced with checks for null (i.e. $client->httpurl !== null).\" and the equivalent line for SoapClient::$sdl / Soap\\Sdl."
+    ]
+}

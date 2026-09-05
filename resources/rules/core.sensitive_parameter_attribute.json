@@ -1,0 +1,93 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.sensitive_parameter_attribute",
+    "title": "`#[\\SensitiveParameter]` attribute",
+    "summary": "PHP 8.2 added the `#[\\SensitiveParameter]` attribute which, verified directly, replaces the marked parameter's value with an opaque, unprintable object wherever a call's arguments are captured in a stack trace or exception backtrace, without changing the value the function itself receives or affecting logs, var_dump(), or anything outside trace capture; because this tool's oldest known PHP minor is 8.2, this rule is never gated by the feature-ceiling axis and is always applicable.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.2",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "none",
+    "new_code_policy": "Whenever writing a function, method, or constructor parameter that carries a password, API key, token, secret, or other credential, mark that parameter `#[\\SensitiveParameter]`, regardless of the project's PHP floor, since this attribute has been available on every minor this tool tracks (8.2 and up). Do this even for parameters on functions that \"shouldn't\" throw - an unrelated exception raised anywhere during the call still captures the full argument list in its trace, and an unmarked secret parameter is exposed exactly as if the code had referenced it directly in the error.",
+    "existing_code_policy": "Search existing signatures for credential-shaped parameters - password, secret, token, apiKey, key, credential, and similar names, or any parameter documented as sensitive - that are not already marked `#[\\SensitiveParameter]`, and add the attribute. This is a purely additive edit with no execution risk: verified directly, marking a parameter does not alter the value the function receives, does not change control flow, and does not affect anything except how that one argument appears when a trace is captured, so it can be applied broadly without the caution most other retrofits in this catalogue need. Do not treat it as complete protection: it redacts backtraces only, not logs the application writes itself, var_dump()/print_r()/serialize() output, or any other direct use of the value - a call site that manually logs the secret remains just as exposed as before, and marking the parameter does not fix that.",
+    "guideline": "Mark every parameter that carries a password, API key, token, or other secret with `#[\\SensitiveParameter]`, on any PHP floor this tool tracks - it has been available since PHP 8.2, this tool's oldest known minor, so it is never version-gated. It redacts the value only from stack traces and exception backtraces, not from logs, var_dump(), or any other direct use, so it complements rather than replaces careful handling of the secret elsewhere.",
+    "details": "PHP 8.2 introduced the `#[\\SensitiveParameter]` attribute (RFC redact_parameters_in_back_traces). Verified directly on the local PHP 8.4.19: marking a parameter with `#[\\SensitiveParameter]` causes that argument's value, wherever it is captured by trace-producing machinery - Throwable::getTrace(), Throwable::getTraceAsString(), and debug_backtrace() alike - to be replaced with an instance of the engine's internal SensitiveParameterValue class instead of the real value. This was confirmed by inspecting the raw arguments array directly, not just the formatted trace string: in the same call, an unmarked sibling parameter's slot held its literal string value while the marked parameter's slot held a SensitiveParameterValue object whose var_dump() shows zero visible properties, whose print_r() and var_export() output show nothing at all, and which only yields the real value back through its own explicit ->getValue() method. One ini interaction is worth stating plainly so this rule is not misread: this host's default zend.exception_string_param_max_len (0) already truncates every string argument shown in getTraceAsString()'s formatted text to '...', marked or not, so the human-readable trace string alone can look identical for a redacted and an ordinary string parameter under that setting - the raw arguments array is the unambiguous evidence, and that is what was inspected directly. Verified: marking the parameter does not change what the function body itself receives - printing the parameter directly inside the function, or calling var_dump() on it directly rather than through a captured trace, shows the real, unredacted value every time. This is a backtrace-only redaction: it does not touch the value's use anywhere else - not application logs the code writes itself, not var_dump()/print_r()/serialize() called directly on the variable, not a database write, nothing. Because this tool's feature-ceiling floor is PHP 8.2 (KnownPhpMinors::KNOWN_MIN) and `#[\\SensitiveParameter]` was introduced in exactly 8.2, every known minor this tool evaluates (8.2 through 8.5) already has it; unlike a rule gated to a later minor, this one is never excluded by the feature-gate axis on any project this tool evaluates - it applies everywhere this tool looks, not merely once a project reaches some floor. This matters in practice for AI-generated code specifically because agents write login(), connect(), setApiKey(), authenticate(), and similar signatures constantly, and essentially never mark the secret-carrying parameter; an unhandled exception thrown anywhere during such a call - a wrong-credentials error, a connection failure, an unrelated bug - still captures the full argument list in its trace, and an unmarked secret parameter is exposed exactly as if the throwing code had logged it directly.",
+    "examples": [
+        {
+            "before": [
+                "final class AuthService",
+                "{",
+                "    public function login(string $username, string $password): bool",
+                "    {",
+                "        if (!$this->credentialsValid($username, $password)) {",
+                "            throw new AuthenticationException('Invalid credentials');",
+                "        }",
+                "",
+                "        return true;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class AuthService",
+                "{",
+                "    public function login(string $username, #[\\SensitiveParameter] string $password): bool",
+                "    {",
+                "        if (!$this->credentialsValid($username, $password)) {",
+                "            throw new AuthenticationException('Invalid credentials');",
+                "        }",
+                "",
+                "        return true;",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class ApiClient",
+                "{",
+                "    public function __construct(",
+                "        private string $baseUrl,",
+                "        private string $apiKey,",
+                "    ) {",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ApiClient",
+                "{",
+                "    public function __construct(",
+                "        private string $baseUrl,",
+                "        #[\\SensitiveParameter] private string $apiKey,",
+                "    ) {",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.2.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: a #[\\SensitiveParameter]-marked argument's slot in Throwable::getTrace()['args'] and in debug_backtrace()'s args entry holds a SensitiveParameterValue object (gettype() = \"object\", get_class() = \"SensitiveParameterValue\") whose var_dump(), print_r(), and var_export() output show no properties at all; the real value is retrievable only by explicitly calling that object's own ->getValue() method. An unmarked sibling parameter's slot in the identical arrays held its literal, unredacted value.",
+        "This host's default zend.exception_string_param_max_len is 0, which truncates every string argument in getTraceAsString()'s formatted output to '...' regardless of #[\\SensitiveParameter] - an unrelated, pre-existing truncation setting. The unambiguous evidence of this attribute's redaction is the raw arguments array, not the formatted trace string, under that setting.",
+        "Verified on PHP 8.4.19: printing or var_dump()-ing a #[\\SensitiveParameter]-marked parameter directly inside the function that receives it shows the real, unredacted value - the attribute only affects how the value appears when captured by trace-producing machinery, not the value's ordinary use inside the function or anywhere else in the program.",
+        "PHPCompatibility's NewAttributesSniff::process() (Attributes/NewAttributesSniff.php) opens with: if (ScannedCode::shouldRunOnOrBelow('7.4') === false) { return; }. Verified by reading ScannedCode::shouldRunOnOrBelow(), this is true only when the testVersion's low end is <= 7.4, so at this tool's 8.2-8.5 floor the sniff returns before inspecting any attribute, for every file. Unlike \\Deprecated and \\NoDiscard (see core.deprecated_attribute and core.nodiscard_attribute), this sniff's $otherPHPNativeAttributes table does list 'sensitiveparameter' => '8.2', so if the version guard did not apply, this attribute could in principle be recognized by name and bundled under a 'PHPNativeAttributeFound' warning - but the guard means that table is still never reached at this tool's floor, so the recognition is moot in practice. PHPCompatibility 10.0.0-alpha2 was re-run directly (2026-09-05) against a #[\\SensitiveParameter]-bearing probe file at testVersion 8.2-8.5 and produced zero findings, confirming this measurement.",
+        "Evidence: UPGRADING-8.2.0, \"2. New Features\" -> Core: \"Added the #[\\SensitiveParameter] attribute to redact sensitive data in backtraces.\" RFC: https://wiki.php.net/rfc/redact_parameters_in_back_traces"
+    ]
+}

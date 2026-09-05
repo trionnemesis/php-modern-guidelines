@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 32 of 32 shown
+Rules: 40 of 40 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -7,6 +7,10 @@ Rules: 32 of 32 shown
       Prefer array_first() and array_last()
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
+  [deprecated_in_range]              P2  deprecated           core.constant_redeclaration
+      Constant redeclaration is deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              core.deprecated_attribute
+      `#[\Deprecated]` attribute
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [deprecated_in_range]              P2  deprecated           core.e_strict_constant
@@ -15,10 +19,22 @@ Rules: 32 of 32 shown
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [forbidden_above_feature_ceiling]  P3  modern_preference    core.json_validate
       Prefer `json_validate()` over decode-and-check
+  [forbidden_above_feature_ceiling]  P1  feature              core.nodiscard_attribute
+      `#[\NoDiscard]` attribute and the `(void)` cast
+  [deprecated_in_range]              P2  deprecated           core.null_array_offset
+      Using `null` as an array offset or in `array_key_exists()` is deprecated
   [forbidden_above_feature_ceiling]  P1  feature              core.override_attribute
       #[\Override] attribute
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
       Partially supported callables are deprecated
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.resource_to_object_conversions
+      `is_resource()` no longer detects DBA, ODBC, and SOAP handles
+  [applicable]                       P1  feature              core.sensitive_parameter_attribute
+      `#[\SensitiveParameter]` attribute
+  [deprecated_in_range]              P2  deprecated           core.sleep_wakeup_magic_methods
+      `__sleep()`/`__wakeup()` are soft-deprecated in favour of `__serialize()`/`__unserialize()`
+  [deprecated_in_range]              P2  deprecated           core.string_increment_operators
+      `++`/`--` on empty, non-numeric, or non-alphanumeric strings
   [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
       `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
   [deprecated_in_range]              P2  deprecated           core.trigger_error_e_user_error

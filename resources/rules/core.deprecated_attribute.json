@@ -1,0 +1,92 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.deprecated_attribute",
+    "title": "`#[\\Deprecated]` attribute",
+    "summary": "PHP 8.4 added the `#[\\Deprecated]` attribute which, verified directly, makes the engine raise an E_USER_DEPRECATED notice on every call to a marked function or method and every read of a marked class constant - including the class's own internal calls - with optional `message` and `since` named arguments describing the replacement; it is not a substitute for a `@deprecated` docblock read by other tooling, and on PHP 8.3 or earlier it is a silent no-op rather than a parse error, since attribute syntax itself has been valid since PHP 8.0.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a PHP 8.4+ floor, mark any function, method, or class constant that should no longer be used with `#[\\Deprecated]`, optionally supplying `message` (what to do instead) and `since` (the version it was deprecated in) as named arguments, so every caller - including the class's own internal call sites - gets a real, engine-emitted E_USER_DEPRECATED notice at the moment of use rather than relying on a docblock convention nobody enforces at runtime. Keep a matching `@deprecated` docblock alongside it for tooling that only reads docblocks; the attribute and the docblock reach different audiences and neither replaces the other. Do not attempt to place `#[\\Deprecated]` on a class declaration itself - the allowed targets are function, method, and class constant, and doing so is a compile-time fatal error.",
+    "existing_code_policy": "When retrofitting `#[\\Deprecated]` onto an already-existing function, method, or class constant, find every call site first, not only the external ones - verified directly, the attribute fires on the class's own internal calls too, so a \"keep the old method around, mark it deprecated, and have the new method secretly call it\" shim will make the class spam its own deprecation notice from inside itself; update internal callers to call the replacement directly instead. Check whether the project's test suite or CI configuration converts deprecation notices into failures (a common PHPUnit setup does, via convertDeprecationsToExceptions or an equivalent strict-error handler); adding this attribute to something still exercised by tests can turn previously passing tests red even though nothing about the code's actual behavior changed. Do not treat `#[\\Deprecated]` as a replacement for an existing `@deprecated` docblock - update or add both, since tooling that only reads one will not see the other.",
+    "guideline": "Mark a function, method, or class constant that should no longer be used with `#[\\Deprecated]`, with `message`/`since` named arguments where useful, so every caller - internal or external - gets a real runtime E_USER_DEPRECATED notice; keep it in sync with any existing `@deprecated` docblock rather than treating one as a replacement for the other.",
+    "details": "PHP 8.4 introduced the `#[\\Deprecated]` attribute (RFC deprecated_attribute). Verified directly on the local PHP 8.4.19: applying `#[\\Deprecated]` to a plain function, an instance method, a static method, or a class constant, and then using it, raises E_USER_DEPRECATED (errno 16384) and lets the call complete completely normally - the return value is unaffected, this is a notice, not a behavior change. The message takes one of two forms depending on whether the attribute is given arguments: bare `#[\\Deprecated]` produces a message like \"Function plainDeprecatedFunction() is deprecated\" / \"Method Widget::legacyMethod() is deprecated\" / \"Constant Widget::LEGACY_LIMIT is deprecated\", while `#[\\Deprecated(message: 'use newHelper() instead', since: '8.4')]` produces \"Function oldHelper() is deprecated since 8.4, use newHelper() instead\" - both named arguments are optional and both were exercised directly. Verified: the allowed targets on PHP 8.4.19 are exactly function, method, and class constant - attempting to place the attribute on a class declaration itself raises a compile-time fatal error, \"Attribute \"Deprecated\" cannot target class (allowed targets: function, method, class constant)\", so this attribute cannot be used to deprecate an entire class on this floor. Verified: the notice fires on every call site, internal as well as external - a method that delegates to its own deprecated sibling from elsewhere in the same class raised the identical notice on that internal call, with no special exemption for the class's own code; this differs from the informal convention around a @deprecated docblock, which is normally read as advice to external consumers and has zero runtime effect either way, whereas `#[\\Deprecated]` is an active runtime mechanism that fires for every caller equally. Because of that, `#[\\Deprecated]` is not a substitute for an existing @deprecated docblock - keep both in sync, since older static analysis, IDE tooling, and documentation generators that only read docblocks will not see the attribute at all, just as newer tooling that only reads the attribute will not see a docblock-only deprecation. The failure mode below this rule's PHP 8.4 floor deserves stating plainly because it differs from a typical syntax feature: `#[\\Deprecated]` was not executed on PHP 8.3 in this environment - no PHP 8.3 install is available here, only 8.4.19 - but attribute syntax itself has been valid since PHP 8.0, so `#[\\Deprecated]` on an 8.3-or-earlier engine parses and runs exactly as if it had never been written: no parse error, no fatal, and critically no deprecation notice either, since the engine simply does not recognize this attribute name specially before 8.4. That makes the sub-8.4 failure mode a silent no-op rather than a loud syntax error - a codebase that ships this attribute expecting it to steer every caller away, but that still runs on a mixed fleet with some hosts on 8.3 or older, will find the attribute simply does nothing there, with no diagnostic pointing at the gap. Finally, PHP 8.5 extends attribute support to free-standing, non-class const declarations and extends `#[\\Deprecated]` to apply there too (UPGRADING-8.5.0: \"Added support for attributes on compile-time non-class constants\" and \"The #[\\Deprecated] attribute can now be used on constants\"); that extension is about free-standing constants specifically - class constants, confirmed above, are already a working target on this rule's PHP 8.4 floor, and the 8.5 extension is out of this rule's scope.",
+    "examples": [
+        {
+            "before": [
+                "final class Mailer",
+                "{",
+                "    public function legacySend(string $body): void",
+                "    {",
+                "        $this->send($body);",
+                "    }",
+                "",
+                "    public function send(string $body): void",
+                "    {",
+                "        // ...",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class Mailer",
+                "{",
+                "    #[\\Deprecated(message: 'use send() instead', since: '8.4')]",
+                "    public function legacySend(string $body): void",
+                "    {",
+                "        $this->send($body);",
+                "    }",
+                "",
+                "    public function send(string $body): void",
+                "    {",
+                "        // ...",
+                "    }",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class HttpClient",
+                "{",
+                "    public const DEFAULT_TIMEOUT = 30;",
+                "    public const TIMEOUT_SECONDS = 30;",
+                "}"
+            ],
+            "after": [
+                "final class HttpClient",
+                "{",
+                "    #[\\Deprecated(message: 'use TIMEOUT_SECONDS instead', since: '8.4')]",
+                "    public const DEFAULT_TIMEOUT = 30;",
+                "    public const TIMEOUT_SECONDS = 30;",
+                "}"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-05"
+        }
+    ],
+    "notes": [
+        "Verified on PHP 8.4.19: bare #[\\Deprecated] produces a message of the form \"Function f() is deprecated\" / \"Method C::m() is deprecated\" / \"Constant C::X is deprecated\"; supplying message and/or since named arguments produces \"... is deprecated since 8.4, use ... instead\" - both forms raise errno 16384 (E_USER_DEPRECATED), confirmed via a registered error handler, not merely inferred from the default display text.",
+        "Verified on PHP 8.4.19: the allowed attribute targets are exactly function, method, and class constant; attempting #[\\Deprecated] on a class declaration raises the compile-time fatal error \"Attribute \"Deprecated\" cannot target class (allowed targets: function, method, class constant)\", quoted verbatim from the engine's own message.",
+        "Verified on PHP 8.4.19: calling a #[\\Deprecated] method from elsewhere in the same class (an internal, self-referential call through a current sibling method) raises the identical notice as an external call - there is no exemption for the class's own code.",
+        "Not executed: PHP 8.3 is not installed in this environment (only 8.4.19 is available), so the claim that #[\\Deprecated] is a silent no-op on 8.3 and earlier - rather than a parse error - is stated as a documented consequence of attribute syntax having been valid since PHP 8.0 and this attribute's engine recognition beginning only in 8.4, not as something run here.",
+        "PHPCompatibility's NewAttributesSniff::process() (Attributes/NewAttributesSniff.php) opens with: if (ScannedCode::shouldRunOnOrBelow('7.4') === false) { return; }. Verified by reading ScannedCode::shouldRunOnOrBelow(), this returns true only when the low end of the configured testVersion is <= 7.4, so at this tool's 8.2-8.5 floor (version_compare('8.2', '7.4', '<=') is false) the sniff returns before it ever inspects which attribute is present, for every file. Independent of that guard, the sniff's own tables have no entry for the native Deprecated attribute under its $otherPHPNativeAttributes list (which does contain 'override' => '8.3' and 'sensitiveparameter' => '8.2'); the only 'deprecated' entry anywhere in the sniff is in a separate $phpstormAttributes list, for the unrelated JetBrains PHPStorm IDE annotation of the same short name, which the sniff's own name-only matching cannot distinguish from PHP's native \\Deprecated - so even without the version guard, this sniff could not correctly identify this attribute as a PHP-native, version-relevant one. PHPCompatibility 10.0.0-alpha2 was re-run directly (2026-09-05) against a #[\\Deprecated]-bearing probe file at testVersion 8.2-8.5 and produced zero findings, confirming this measurement rather than assuming it from the source reading alone.",
+        "Evidence: UPGRADING-8.4.0, \"2. New Features\" -> Core: \"Added the #[\\Deprecated] attribute.\" RFC: https://wiki.php.net/rfc/deprecated_attribute"
+    ]
+}
