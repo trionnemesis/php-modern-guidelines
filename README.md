@@ -288,8 +288,8 @@ from thirty-two of forty-eight rules (67%) to thirty-five of fifty-six (62%) —
 honesty `v0.3.4` applied to its own decrease. Four of the thirteen newly-found gaps, all unmappable,
 remain open. Measured directly against php-src rather than through the analyzer, twenty-two of the
 thirty-five Core/Standard deprecation entries `UPGRADING` records for 8.2–8.5 were already in the
-catalogue before this round; this round raises that figure, though the catalogue still does not mirror
-php-src's own register completely. Twenty-one of the catalogue's fifty-six rules now carry no mapping
+catalogue before this round; this round raises that to thirty-one of the thirty-five, though the
+catalogue still does not mirror php-src's own register completely. Twenty-one of the catalogue's fifty-six rules now carry no mapping
 at all.
 
 For a target project declaring `require.php: ^8.2`, representative `resolve` output is:

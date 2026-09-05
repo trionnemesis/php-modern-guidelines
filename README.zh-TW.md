@@ -277,7 +277,7 @@ mapping 候選，三條全數以已 mapping 狀態上線；`core.http_response_h
 為 56 條中的 35 條（62%）——與 `v0.3.4` 當年如實陳述下降方向的做法一致。這次重新測量找到的
 13 項缺口中，仍有 4 項——全數 unmappable——尚未處理。直接對照 php-src 而非透過 analyzer 測量，
 `UPGRADING` 為 PHP 8.2–8.5 記錄的 35 項 Core/Standard deprecation 中，這一輪之前已有 22 項納入
-catalogue；這一輪使這個數字提高，但 catalogue 依然不是 php-src 名冊的完整鏡像。56 條規則中
+catalogue；這一輪使這個數字提高為 35 項中的 31 項，但 catalogue 依然不是 php-src 名冊的完整鏡像。56 條規則中
 現在有 21 條完全沒有 mapping。
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
