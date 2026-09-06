@@ -1,0 +1,129 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.trait_static_property_redeclaration",
+    "title": "Re-using a trait with a static property in a subclass now redeclares separate storage",
+    "summary": "As of PHP 8.3, if a class uses a trait declaring a static property, and a subclass uses the same trait again, the subclass gets its own, separate static property storage instead of sharing the parent's - verified directly, setting the parent's copy no longer changes what the child sees. A subclass that extends the parent WITHOUT re-using the trait is unaffected and still shares the exact same storage as the parent, as it always has.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.3+ floor, never add `use SomeTrait;` to a subclass whose parent already uses the same trait, if that trait declares a static property you expect to keep sharing with the parent - verified directly, doing so silently forks a brand-new, independent static property storage for the subclass, analogous to declaring that static property directly on the subclass instead of inheriting it. If shared, single-source-of-truth state across a class hierarchy is genuinely what you want, declare the static property once on a common base class instead of inside a trait, or let subclasses inherit it plainly without re-using the trait - inheriting without re-using the trait keeps sharing the parent's storage on every PHP version this catalog tracks, unaffected by this change. If independent per-subclass storage is what you actually want (each subclass tracking its own count, cache, or registry seeded from the same trait), re-using the trait in each subclass is now precisely the mechanism for that, but say so explicitly in a comment, since the difference between \"shares\" and \"forks\" now hinges entirely on whether a `use` statement is repeated - a detail easy to miss in review.",
+    "existing_code_policy": "Search for every class hierarchy where a trait declaring a static property (public, protected, or private) is used by more than one class in the same inheritance chain - most commonly, a base class and one or more of its subclasses each writing `use SameTrait;`. On PHP 8.3+, verified directly, each subclass that re-uses the trait now gets its own separate static property storage instead of sharing the parent's: a value written through the parent's accessor is no longer visible through the subclass's, and vice versa, with no warning, deprecation notice, or error of any kind marking the split - the code keeps compiling and running, just against silently divergent state. Distinguish two previously-identical-looking cases that now behave differently: a subclass that merely extends the trait-using parent (no `use` of its own) is unaffected and still aliases the parent's single storage, exactly as before 8.3; a subclass that re-declares `use SameTrait;` now forks. If the redundant `use` in the subclass was there for an unrelated reason (bringing in other members from the same trait) and the shared-state behavior was actually relied upon, either remove the redundant `use` (letting the subclass inherit the static property in the usual, single-storage way) or, if independent per-subclass storage is what the code should have had all along, keep the `use` and adjust any logic that assumed the old shared behavior - do not assume the fix in either direction without checking what each specific call site actually reads through, since ReflectionProperty::getDeclaringClass() on the property will confirm which storage a given class is actually using (the subclass itself, if forked; the original trait-using ancestor, if not).",
+    "guideline": "Do not re-use a trait that declares a static property in both a parent class and one of its subclasses unless you specifically want each class to get its own, independent copy of that static property. As of PHP 8.3, a subclass re-using the same trait its parent already uses gets separate static property storage - the same effect as if that static property had been declared directly on the subclass - whereas a subclass that merely extends the parent, without re-using the trait, keeps sharing the parent's single storage exactly as it always has.",
+    "details": "UPGRADING-8.3.0 lists this under Backward Incompatible Changes -> Core: \"Uses of traits with static properties will now redeclare static properties inherited from the parent class. This will create a separate static property storage for the current class. This is analogous to adding the static property to the class directly without traits.\" Verified directly on the local PHP 8.4.19 with a three-class fixture - trait Cnt { public static int $n = 0; }, class B { use Cnt; }, class D extends B { use Cnt; } (re-uses the trait), and class E extends B {} (extends B but does NOT re-use the trait):\n\nRe-using the trait forks storage. Setting B::$n = 5 leaves D::$n at 0 - the two are already independent at that point, confirming the trait redeclared a wholly separate static property for D rather than D inheriting B's. Setting D::$n = 99 afterwards leaves B::$n unchanged at 5, in either direction: the fork is total, not a one-time copy-on-first-read.\n\nExtending without re-using the trait is the contrasting, unaffected case. E - which extends B but has no `use Cnt;` of its own - was NOT forked: after B::$n = 5, E::$n also reads 5 (not 0, the way D did), and after separately setting E::$n = 42, B::$n changes to 42 as well, confirming E and B still share one single storage location exactly as plain inheritance without traits always has. D remains untouched by either of these writes (still 99), confirming D's fork is fully independent of both B and E.\n\nReflection confirms the mechanism, not just the symptom. (new ReflectionProperty(...))->getDeclaringClass()->getName() for the static property reports B for B::$n (declared via the trait, on B, as expected), D for D::$n (its own, separate declaration - exactly what UPGRADING means by \"redeclare\"), and B again for E::$n (E has no declaration of its own; it inherits B's). This is the same declaring-class signal UPGRADING's own wording predicts: re-using the trait is \"analogous to adding the static property to the class directly\" on D, which is precisely what a fresh declaration on D would also report.\n\nThis is a genuine OOP trap because the two cases - D (re-uses the trait) and E (does not) - look interchangeable at the call site: both are `class Foo extends B { ... }`, both compile and run without any diagnostic in either direction, and the only textual difference is whether a `use Cnt;` line was also copied into the subclass, something that often happens automatically when a subclass template is copy-pasted from a sibling that needed other members of the same trait. Before PHP 8.3, both D-shaped and E-shaped subclasses shared B's single storage identically; as of 8.3, only the E shape still does.\n\nSeparately confirmed to be a distinct, unrelated fact: PHP 8.5 (UPGRADING-8.5.0, Backward Incompatible Changes -> Core) additionally changes trait/parent *bind order* (\"Traits are now bound before the parent class\"), which concerns precedence when a trait and a parent class declare conflicting members, not the static-property-storage forking this rule documents; this host is 8.4.19 and that 8.5 change has not happened here, and it does not revisit or alter the fact described above either way.\n\nHere introduced_in is set to 8.3 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.3 introduced traits, static properties, or inheritance themselves, all of which predate it by many years.",
+    "examples": [
+        {
+            "before": [
+                "trait RequestCounter",
+                "{",
+                "    public static int $count = 0;",
+                "}",
+                "",
+                "class BaseController",
+                "{",
+                "    use RequestCounter;",
+                "}",
+                "",
+                "class AdminController extends BaseController",
+                "{",
+                "    use RequestCounter;",
+                "}"
+            ],
+            "after": [
+                "trait RequestCounter",
+                "{",
+                "    public static int $count = 0;",
+                "}",
+                "",
+                "class BaseController",
+                "{",
+                "    use RequestCounter;",
+                "}",
+                "",
+                "class AdminController extends BaseController",
+                "{",
+                "    // No redundant \"use RequestCounter;\" here: AdminController inherits",
+                "    // BaseController's single, shared $count instead of forking its own.",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "trait HasCache",
+                "{",
+                "    private static array $cache = [];",
+                "",
+                "    public static function remember(string $key, callable $factory): mixed",
+                "    {",
+                "        return self::$cache[$key] ??= $factory();",
+                "    }",
+                "}",
+                "",
+                "class BaseRepository",
+                "{",
+                "    use HasCache;",
+                "}",
+                "",
+                "final class UserRepository extends BaseRepository",
+                "{",
+                "    use HasCache;",
+                "",
+                "    public function find(int $id): array",
+                "    {",
+                "        return self::remember(\"user.{$id}\", fn (): array => ['id' => $id]);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "trait HasCache",
+                "{",
+                "    private static array $cache = [];",
+                "",
+                "    public static function remember(string $key, callable $factory): mixed",
+                "    {",
+                "        return self::$cache[$key] ??= $factory();",
+                "    }",
+                "}",
+                "",
+                "class BaseRepository",
+                "{",
+                "    use HasCache;",
+                "}",
+                "",
+                "final class UserRepository extends BaseRepository",
+                "{",
+                "    // Deliberately re-uses the trait: UserRepository's cache is meant to be",
+                "    // its own, separate from BaseRepository's and from any sibling repository's.",
+                "    use HasCache;",
+                "",
+                "    public function find(int $id): array",
+                "    {",
+                "        return self::remember(\"user.{$id}\", fn (): array => ['id' => $id]);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-06"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-06) with trait Cnt { public static int $n = 0; }, class B { use Cnt; }, class D extends B { use Cnt; }, class E extends B {}: after B::$n = 5, values were B::$n=5, D::$n=0, E::$n=5 (D already forked; E still aliases B). After D::$n = 99, values were B::$n=5, D::$n=99, E::$n=5 (D's write does not touch B or E). After E::$n = 42, values were B::$n=42, D::$n=99, E::$n=42 (E's write DOES change B, confirming E and B share one storage; D remains unaffected). ReflectionProperty declaring-class check: B::$n => B, D::$n => D, E::$n => B.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-06) via `phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5 --report=json --parallel=1 --extensions=php --severity=1 --no-cache -q` against a trait with a static property used by a base class, a subclass re-using the trait, and a subclass that only extends without re-using it, at testVersion 8.2-8.5, and produced zero findings ({\"errors\":0,\"warnings\":0,\"fixable\":0}); verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility checks version availability of syntax and symbols, not that re-using a trait silently changes which static property storage a class ends up bound to, so a clean phpcs run gives no signal about this behavior at all.",
+        "Evidence: UPGRADING-8.3.0, \"1. Backward Incompatible Changes\" -> Core: \"Uses of traits with static properties will now redeclare static properties inherited from the parent class. This will create a separate static property storage for the current class. This is analogous to adding the static property to the class directly without traits.\" Grepping the PHP 8.4 and 8.5 UPGRADING files for \"trait\" found no re-statement of this static-property-storage behavior; UPGRADING-8.5.0 separately changes trait/parent-class *bind order* (\"Traits are now bound before the parent class\", GH-15753/GH-16198), an unrelated fact about member-conflict precedence, not about static property storage, so the behavior documented here persists unchanged through PHP 8.5."
+    ]
+}

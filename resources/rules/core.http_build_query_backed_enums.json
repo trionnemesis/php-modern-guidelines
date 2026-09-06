@@ -1,0 +1,103 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.http_build_query_backed_enums",
+    "title": "`http_build_query()` now correctly handles backed enums",
+    "summary": "As of PHP 8.4, http_build_query() special-cases a backed enum value (top-level, nested in an array, or held in an object property) and contributes its scalar ->value directly, e.g. ['s' => Status::Active] now yields \"s=active\" - verified directly. A pure (non-backed) enum anywhere in the input now throws ValueError: Unbacked enum ... cannot be converted to a string, also verified directly. Passing $enum->value explicitly instead of the enum case itself produces the identical output on every PHP version this catalog tracks and is the range-safe instruction for a mixed 8.2-8.5 floor.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.4+ floor, it is fine to pass a backed enum case directly into the array given to http_build_query() - verified directly, a top-level value, a value nested inside an array, and a value held in an object's public property are all handled identically: the enum contributes its ->value as a plain scalar (['s' => Status::Active] yields \"s=active\"; an int-backed case contributes its int value the same way). Never pass a pure (non-backed) enum case anywhere in the input, at any nesting depth: verified directly, it throws ValueError: Unbacked enum X cannot be converted to a string unconditionally, with no fallback and no way to opt out other than not passing one - not a warning, and not something the function silently tolerates the way it tolerates some other odd inputs. On a project whose floor still includes anything below 8.4, do not rely on either behavior: pass $enum->value explicitly for a backed enum instead of the case itself - verified directly, this produces byte-for-byte identical output on this host and, being a plain string or int, has never depended on this fix - and for a pure enum's case name, pass $enum->name explicitly rather than the case itself, since there has never been a version where passing a bare pure-enum case to http_build_query() was reliable.",
+    "existing_code_policy": "Search for every http_build_query() call whose input array (at any level of nesting, including inside a value that is itself an object with public properties) can contain an enum case rather than an already-extracted scalar. Split by enum kind. For a backed enum: on PHP 8.4+, verified directly, the case now contributes its ->value directly (a flat \"key=value\" segment, not an expanded sub-structure); reasoning from the same object-property-serialization path confirmed still active today for an ordinary object with public properties (each public property becomes its own \"key[prop]=value\" segment), the pre-8.4 output for a bare backed-enum case was most likely a similarly expanded, incorrect shape exposing both of its real, reflection-visible properties (name and value) as separate sub-keys, rather than nothing - this is an inference from the current behavior of that unrelated code path, not an observation of pre-8.4 PHP, which was not available to run here. Either way, if a query string built from this call is consumed by anything else (a URL parsed by another service, a test asserting an exact query string, a cached or logged request), check what shape that consumer expects before upgrading: the flat \"s=active\" shape is very likely what was always intended, but a consumer that had adapted to parsing an expanded \"s[value]=active\" shape would break silently when this fix changes the output. For a pure (non-backed) enum: check whether any call site could receive one - it now throws ValueError: Unbacked enum X cannot be converted to a string unconditionally, at any nesting depth, where prior behavior (again inferred, not observed, from the same object-property path) most likely serialized only its one real property (name) rather than failing outright. Fix both cases the same, version-independent way: extract the scalar explicitly before passing it in - $enum->value for a backed enum, $enum->name for a pure one - rather than depending on how http_build_query() itself treats the case object, which is the only approach that behaves identically whether the floor is 8.2, 8.3, or 8.4+.",
+    "guideline": "Do not pass an enum case directly into data destined for http_build_query() on a mixed-version floor; extract $enum->value (backed) or $enum->name (pure) explicitly first, since that produces identical output on every PHP version this catalog tracks. As of PHP 8.4, a backed enum case (top-level, nested in an array, or reached through an object's public property) contributes its ->value as a flat scalar, while a pure enum case anywhere in the input throws ValueError: Unbacked enum ... cannot be converted to a string.",
+    "details": "UPGRADING-8.4.0 lists this under Backward Incompatible Changes -> Standard as a single line: \"http_build_query() now correctly handles backed enums.\" Verified directly on the local PHP 8.4.19:\n\nThe headline case. http_build_query(['s' => Status::Active, 'n' => 1]) (Status being a string-backed enum) yields \"s=active&n=1\" - the case contributes its backing value, not an object representation. An int-backed enum behaves the same way: http_build_query(['p' => Priority::High, 'n' => 1]) yields \"p=2&n=1\".\n\nA pure (non-backed) enum throws. http_build_query(['s' => Suit::Hearts, 'n' => 1]) (Suit being a plain, unbacked enum) throws ValueError: Unbacked enum Suit cannot be converted to a string - not a warning, not a silently-empty contribution, an uncaught fatal error if not guarded against. This is unconditional and was confirmed at every nesting depth tested: the identical ValueError is thrown whether the pure enum case is a top-level array value, nested one level inside another array, or reached through a public property of an object that is itself one of the input array's values.\n\nRecursion was verified, not assumed. A backed enum nested one level inside another array (http_build_query(['outer' => ['inner' => Status::Active, 'x' => 2]])) correctly recurses and yields \"outer[inner]=active&outer[x]=2\" (URL-encoded as outer%5Binner%5D=active&outer%5Bx%5D=2). A backed enum reached through an object's public property (a Wrap class holding public Status $s, passed as http_build_query(['w' => new Wrap(Status::Active)])) also recurses correctly and yields the flat \"w[s]=active\" - not an expanded \"w[s][name]=Active&w[s][value]=active\" - confirming the BackedEnum special-case intercepts before the generic per-property object expansion would otherwise apply to it (see below). The pure-enum ValueError was independently confirmed to propagate through this same object-property path as well as the plain-nested-array path.\n\nWhat the pre-8.4 behavior most likely was: an inference, and a correction to an assumption this rule started from. This tool cannot run PHP 8.3 to observe the prior output directly, so this section reasons from what http_build_query() still does today with an object that is not a BackedEnum: verified directly, an ordinary object with two public properties (a class with public string $a and public int $b) passed directly to http_build_query() expands into two sub-keys, \"t[a]=x&t[b]=2\", while an object verified to have zero public properties at all contributes nothing under its key - not even an empty value. This generic \"expand an object's visible public properties\" path is evidently still what runs for any object http_build_query() does not specifically recognize as a BackedEnum. The natural assumption going in was that an enum case has no public properties for that generic path to find, implying the pre-8.4 output would simply have been empty - but this was checked directly, not assumed, and turned out to be wrong: get_object_vars(Status::Active) returns a real, non-empty array ['name' => 'Active', 'value' => 'active']; the identical two entries appear from an (array) cast and from a plain foreach ($enum as $k => $v) loop (confirming these are genuinely accessible instance properties, not an introspection-only illusion produced by a helper function); and ReflectionEnum(Status::class)->getProperties() lists exactly two declared properties, $name and $value, matching getBackingType() reporting \"string\". A pure enum case has exactly one such property: get_object_vars(Suit::Hearts) returns only ['name' => 'Hearts'], and ReflectionEnum(Suit::class)->getProperties() lists only $name, with getBackingType() returning null. Given that a backed enum genuinely has the same two-public-property shape as the TwoProps object that was confirmed to expand into \"t[a]=x&t[b]=2\" today, the considerably more specific and better-supported inference is that pre-8.4 http_build_query(['s' => Status::Active]) most likely produced an expanded, incorrect \"s[name]=Active&s[value]=active\"-shaped segment - not nothing - and that a pure enum case (one real property, name) most likely produced a similarly expanded \"s[name]=Hearts\"-shaped segment rather than throwing. This whole paragraph is inference from the still-active generic object-property code path, not an observation of pre-8.4 PHP.\n\nThe range-safe workaround was verified to be exact. http_build_query(['s' => Status::Active->value, 'n' => 1]) yields \"s=active&n=1\", byte-for-byte identical to the fixed 8.4+ behavior for the enum case itself - unsurprising, since ->value is already a plain string or int and has never depended on this fix, making it the one instruction that behaves identically on 8.2, 8.3, and 8.4+.\n\nHere introduced_in is set to 8.4 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.4 introduced http_build_query() or enums themselves; enums were added in PHP 8.1, well before this fix.",
+    "examples": [
+        {
+            "before": [
+                "enum AccountStatus: string",
+                "{",
+                "    case Active = 'active';",
+                "    case Suspended = 'suspended';",
+                "}",
+                "",
+                "function buildStatusQuery(AccountStatus $status): string",
+                "{",
+                "    return http_build_query(['status' => $status]);",
+                "}"
+            ],
+            "after": [
+                "enum AccountStatus: string",
+                "{",
+                "    case Active = 'active';",
+                "    case Suspended = 'suspended';",
+                "}",
+                "",
+                "function buildStatusQuery(AccountStatus $status): string",
+                "{",
+                "    return http_build_query(['status' => $status->value]);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class SearchFilters",
+                "{",
+                "    public function __construct(",
+                "        private readonly AccountStatus $status,",
+                "        private readonly int $page,",
+                "    ) {",
+                "    }",
+                "",
+                "    public function toQueryString(): string",
+                "    {",
+                "        return http_build_query([",
+                "            'status' => $this->status,",
+                "            'page' => $this->page,",
+                "        ]);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class SearchFilters",
+                "{",
+                "    public function __construct(",
+                "        private readonly AccountStatus $status,",
+                "        private readonly int $page,",
+                "    ) {",
+                "    }",
+                "",
+                "    public function toQueryString(): string",
+                "    {",
+                "        return http_build_query([",
+                "            'status' => $this->status->value,",
+                "            'page' => $this->page,",
+                "        ]);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-06"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-06), with set_error_handler() installed and each risky call wrapped in try/catch: http_build_query(['s'=>Status::Active,'n'=>1]) => 's=active&n=1' (string-backed). http_build_query(['p'=>Priority::High,'n'=>1]) => 'p=2&n=1' (int-backed). http_build_query(['s'=>Suit::Hearts,'n'=>1]) => uncaught ValueError 'Unbacked enum Suit cannot be converted to a string'. http_build_query(['outer'=>['inner'=>Status::Active,'x'=>2]]) => 'outer%5Binner%5D=active&outer%5Bx%5D=2' (correct recursion into a nested array). http_build_query(['outer'=>['inner'=>Suit::Hearts,'x'=>2]]) => identical ValueError, confirming the failure at nested depth too. http_build_query(['w'=>new Wrap(Status::Active)]) (Wrap has public Status $s) => 'w%5Bs%5D=active' (flat, correct recursion through an object property). http_build_query(['w'=>new WrapPure(Suit::Hearts)]) (WrapPure has public Suit $s) => identical ValueError, confirming the failure propagates through the object-property path too. http_build_query(['e'=>new EmptyPublic(),'n'=>3]) (EmptyPublic has zero public properties) => 'n=3' only - nothing at all is contributed under 'e'. http_build_query(['t'=>new TwoProps()]) (TwoProps has public string $a='x', public int $b=2) => 't%5Ba%5D=x&t%5Bb%5D=2' (generic object-property expansion, still active today for a non-enum object). get_object_vars(Status::Active) => ['name'=>'Active','value'=>'active']; (array) Status::Active => the identical two entries; foreach (Status::Active as $k=>$v) yields the same two pairs; (new ReflectionEnum(Status::class))->getProperties() lists $name and $value, getBackingType()=>'string'. get_object_vars(Suit::Hearts) => ['name'=>'Hearts'] (one entry); (new ReflectionEnum(Suit::class))->getProperties() lists only $name, getBackingType()=>NULL. http_build_query(['s'=>Status::Active->value,'n'=>1]) => 's=active&n=1', identical to passing the enum case directly.",
+        "The brief handed to this task asserted \"An enum case has no public properties\" as a starting assumption for reasoning about pre-8.4 behavior; this was checked directly rather than taken on faith, and turned out to be incorrect on this host - get_object_vars(), (array) casting, plain foreach, and ReflectionEnum::getProperties() all agree that a backed enum case has two real, publicly-visible instance properties (name, value) and a pure enum case has one (name). The inference about pre-8.4 output in this rule's details is built from that corrected, measured fact, not from the brief's original assumption.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-06) via `phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5 --report=json --parallel=1 --extensions=php --severity=1 --no-cache -q` against a string-backed enum and a class building a query string from an array containing that enum, spread with extra scalar values, at testVersion 8.2-8.5, and produced zero findings ({\"errors\":0,\"warnings\":0,\"fixable\":0}); verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility checks version availability of functions and syntax, not that a function's internal handling of a specific input's runtime type silently changed, so a clean phpcs run gives no signal about this behavior at all.",
+        "Evidence: UPGRADING-8.4.0, \"1. Backward Incompatible Changes\" -> Standard: \"http_build_query() now correctly handles backed enums.\" Grepping the PHP 8.5 UPGRADING file for \"http_build_query\" found no matches, so this behavior persists unchanged through PHP 8.5."
+    ]
+}
