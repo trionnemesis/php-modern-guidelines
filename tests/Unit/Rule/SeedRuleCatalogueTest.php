@@ -17,17 +17,17 @@ use PHPUnit\Framework\TestCase;
  * Every shipped seed rule under resources/rules/: schema-valid (already proven by loading it at all),
  * id == basename, id-prefix == category, source URL shape, checked_at, kind/lifecycle consistency,
  * package_constraints rendered as {} / \stdClass, byte-identity with its canonical re-encoding, and
- * the round-trip claim. Plus the exactly-64-files count and the two rule-16 (WORK-ORDER.md §6.3)
+ * the round-trip claim. Plus the exactly-72-files count and the two rule-16 (WORK-ORDER.md §6.3)
  * assertions.
  */
 final class SeedRuleCatalogueTest extends TestCase
 {
-    private const EXPECTED_COUNT = 64;
+    private const EXPECTED_COUNT = 72;
 
     /** Pinned review dates carried by the catalogue's sources[0].checked_at (WORK-ORDER.md §6.3). */
-    private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05'];
+    private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05', '2026-09-06'];
 
-    public function testExactlySixtyFourRuleFilesAreShipped(): void
+    public function testExactlySeventyTwoRuleFilesAreShipped(): void
     {
         $registry = $this->loader()->loadDirectory(PackagePaths::rulesDirectory());
 
@@ -126,6 +126,7 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.array_find_functions',
             'core.array_first_last',
             'core.assert_options',
+            'core.attribute_target_validation',
             'core.chr_ord_byte_range',
             'core.class_alias_reserved_names',
             'core.constant_redeclaration',
@@ -133,21 +134,27 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.date_rfc7231',
             'core.deprecated_attribute',
             'core.directory_functions_implicit_handle',
+            'core.disable_classes_ini',
             'core.dynamic_properties',
             'core.e_strict_constant',
             'core.exit_as_function',
+            'core.file_flags_validation',
             'core.get_class_without_arguments',
             'core.get_defined_functions_exclude_disabled',
+            'core.http_build_query_backed_enums',
             'core.http_response_header',
             'core.json_validate',
             'core.lcg_value',
             'core.list_destructuring_non_array',
+            'core.loose_object_boolean_comparison',
             'core.negative_array_index_append',
             'core.nodiscard_attribute',
             'core.null_array_offset',
             'core.output_in_output_handler',
             'core.override_attribute',
             'core.partially_supported_callables',
+            'core.printf_empty_precision',
+            'core.proc_get_status_repeated_calls',
             'core.range_argument_validation',
             'core.readonly_indirect_modification_clone',
             'core.register_argc_argv_ini',
@@ -161,6 +168,7 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.stream_context_set_option_arity',
             'core.string_increment_operators',
             'core.strtolower_locale_insensitive',
+            'core.trait_static_property_redeclaration',
             'core.trigger_error_e_user_error',
             'core.underscore_class_name',
             'core.unrepresentable_numeric_casts',

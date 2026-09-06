@@ -236,6 +236,7 @@ final class PhpCompatibilityAdapter implements VerificationAdapter
         'PHPCompatibility.FunctionUse.RemovedFunctions.socket_set_timeoutDeprecated' => ['core.socket_set_timeout'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_decodeDeprecated' => ['core.utf8_encode_decode'],
         'PHPCompatibility.FunctionUse.RemovedFunctions.utf8_encodeDeprecated' => ['core.utf8_encode_decode'],
+        'PHPCompatibility.IniDirectives.RemovedIniDirectives.disable_classesRemoved' => ['core.disable_classes_ini'],
         'PHPCompatibility.IniDirectives.RemovedIniDirectives.imap_enable_insecure_rshRemoved' => [
             'extension.imap_unbundled',
         ],

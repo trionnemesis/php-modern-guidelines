@@ -1,5 +1,5 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 41 of 64 shown
+Rules: 42 of 72 shown
 
   [applicable]                       P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -13,6 +13,8 @@ Rules: 41 of 64 shown
       `DATE_RFC7231` and `DateTimeInterface::RFC7231` are deprecated
   [applicable]                       P2  deprecated           core.directory_functions_implicit_handle
       `readdir()`, `rewinddir()`, and `closedir()` without an explicit handle are deprecated
+  [applicable]                       P0  removed              core.disable_classes_ini
+      The `disable_classes` INI directive was removed
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [applicable]                       P2  deprecated           core.e_strict_constant
