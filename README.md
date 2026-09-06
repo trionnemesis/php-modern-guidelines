@@ -11,7 +11,7 @@
 
 🌐 **[GitHub Pages overview](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md)** ・ [Quick start](#quick-start) ・ [Current capabilities](#current-capabilities) ・ [Agent distribution](#agent-distribution) ・ [Policy flow](#policy-flow) ・ [Trust boundary](#trust-boundary) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**Released: Rule-catalogue expansion · v0.3.7.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
+**Released: Rule-catalogue expansion · v0.3.8.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
 
 > **Verification:** `v0.3.0` introduced the explicit, opt-in `verify <adapter> --executable=<path-or-name>` surface. Its production `phpcompatibility` adapter is a real PHPCompatibility implementation: it runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and reports advisory evidence — never an automatic fix. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from this release line; see [Changelog](CHANGELOG.md) for why.
 
@@ -85,6 +85,26 @@
 > nine entries (`core.unrepresentable_numeric_casts` carries two: the float-to-int cast and the `NAN`
 > cast); 25 remain uncovered. Twenty-eight of the catalogue's sixty-four rules now carry no mapping at
 > all.
+>
+> **v0.3.8 rule-catalogue expansion:** eight more source-backed rules (64 → 72), and the **second**
+> round drawn from `UPGRADING`'s Backward Incompatible Changes section — the section `v0.3.7` opened.
+> Probing sixteen more candidates from it against the pinned analyzer produced, again, **exactly one
+> finding**: two independent samples (eighteen candidates last round, sixteen this round) landing on the
+> identical ratio confirms this is a structural property of the analyzer, not sampling noise —
+> PHPCompatibility is blind by construction to a function that still exists and now behaves differently,
+> so coverage will keep falling as the catalogue works through this section, and that is the correct
+> outcome rather than a regression. Seven of the eight new rules ship unmapped; only
+> `core.disable_classes_ini` (the round's one `removed`-kind rule) does, with one sniff id. Mapping
+> coverage **falls** again, from thirty-six of sixty-four rules (56%) to thirty-seven of seventy-two
+> (51%) — the fourth deliberate breadth-for-depth trade, after `v0.3.4`, `v0.3.6`, and `v0.3.7`, and the
+> deepest yet. Two measured findings are worth stating here: `$object == true` and `$object == $variable`
+> can disagree for the identical object and value — a class constant agrees with `(bool) $object`, a
+> global `const` or `define()` does not — and `sprintf('%.f', 1.5)` is `'1.500000'` today and `'2'` on PHP
+> 8.5, with no diagnostic on either side. Measured directly against php-src: of the 36 Core/Standard
+> Backward Incompatible Changes entries in PHP 8.2–8.5, the catalogue covered 11 before this round and
+> now covers 19, because the eight new rules cover eight entries — one each, unlike last round's one rule
+> covering two — leaving 17 uncovered. Thirty-five of the catalogue's seventy-two rules now carry no
+> mapping at all.
 
 ## Why
 
@@ -105,7 +125,7 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 |---|---|---|
 | Policy resolver | Resolves `require.php`, `conflict.php`, `config.platform.php`, Composer lock platform overrides, and `--php` | Reads target-project inputs without executing the target project |
 | Two-axis policy | Separates `feature_ceiling` and `lifecycle_ceiling`; outputs `coverage`, `confidence`, and `warnings` | Known PHP coverage is 8.2–8.5 |
-| Rule registry | Schema validation, deterministic ordering, and 64 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
+| Rule registry | Schema validation, deterministic ordering, and 72 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
 | Agent query surface | `resolve`, `list-rules`, and `explain` with human and JSON output | `resolve --json` must satisfy `policy.schema.json` |
 | CLI foundation | `version` and a consistent exit-code contract | Never writes to the target repository |
 | Repository verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, and PHP 8.2–8.5 CI | Verifies this repository; it does not scan the target project |
@@ -199,7 +219,7 @@ php bin/php-modern-guidelines version
 Expected output:
 
 ```text
-php-modern-guidelines 0.3.7
+php-modern-guidelines 0.3.8
 ```
 
 Resolve a target-project policy, list applicable rules, explain one rule, and diagnose the tool's own inputs:
@@ -214,7 +234,7 @@ php bin/php-modern-guidelines doctor --project-root=/path/to/app
 
 ### Verifying with PHPCompatibility
 
-Both the source checkout and the published `v0.3.7` PHAR expose the `verify` command. The explicit
+Both the source checkout and the published `v0.3.8` PHAR expose the `verify` command. The explicit
 shape is:
 
 ```bash
@@ -239,7 +259,7 @@ a non-contiguous allowed set) is refused with exit `9` rather than approximated;
 a project. Completed runs exit `0` with no findings or `6` with one or more advisory findings; an
 analyzer that fails mid-run exits `8`.
 
-Every finding keeps the analyzer's own sniff identifier verbatim. Thirty-six of this project's sixty-four
+Every finding keeps the analyzer's own sniff identifier verbatim. Thirty-seven of this project's seventy-two
 rules — including the whole `extension.imap_unbundled` surface — have a committed, reviewed mapping from
 sniff id to rule id; every other finding is preserved with `mapping_status: unmapped` rather than discarded.
 The same mappings are stored as sorted `verification.phpcompatibility` lists on the rule files and tested
@@ -342,6 +362,48 @@ round. It now covers 11, because the eight new rules cover nine of the 36 entrie
 `core.unrepresentable_numeric_casts` alone carries two, the float-to-int cast and the `NAN` cast. 25 of
 the 36 Core/Standard Backward Incompatible Changes entries remain uncovered, and twenty-eight of the
 catalogue's sixty-four rules now carry no mapping at all.
+
+`v0.3.8` is the **second** round drawn from this same `UPGRADING` section — Backward Incompatible
+Changes rather than Deprecated Functionality — and it confirms rather than merely repeats last round's
+finding. Probing sixteen more candidates from that section against the CI-pinned analyzer produced,
+again, exactly one finding; two independent samples (eighteen candidates in `v0.3.7`, sixteen here)
+landing on the identical one-finding ratio moves this from an observation to a property the catalogue can
+plan around: PHPCompatibility answers whether a symbol exists in a version range and is blind by
+construction to a function that still exists and now behaves differently, so as the catalogue keeps
+working through this section, coverage will keep falling, and that is the correct outcome rather than a
+regression (see [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18)). This round
+takes eight candidates, each covering one `UPGRADING` entry rather than one rule spanning two as in
+`v0.3.7`: `core.file_flags_validation` (8.3, `file()` now validates its `$flags` argument and throws
+`ValueError` for a bit outside its accepted mask — `FILE_APPEND` is a real constant but belongs to
+`file_put_contents()`, not `file()`, and now throws when passed here), `core.trait_static_property_redeclaration`
+(8.3, a subclass that re-uses a trait its parent already uses now gets its own, separate static property
+storage instead of silently sharing the parent's), `core.proc_get_status_repeated_calls` (8.3, a bug fix
+rather than a regression: `proc_get_status()` now returns the correct state on every call rather than
+only the first), `core.http_build_query_backed_enums` (8.4, `http_build_query()` now contributes a backed
+enum's scalar `->value` directly and throws `ValueError` for a pure enum), `core.loose_object_boolean_comparison`
+(8.5, detailed below), `core.attribute_target_validation` (8.5, marking an abstract class, enum,
+interface, or trait with `#[\Attribute]` moves from a runtime `Error` on instantiation to a compile-time
+error), `core.printf_empty_precision` (8.5, detailed below), and `core.disable_classes_ini` (8.5, `kind:
+removed`, P0: the `disable_classes` php.ini directive is deleted outright, silently restoring
+instantiability to whatever classes it used to block). Only the last of those, the round's one `removed`
+rule, ships mapped, with the single sniff id
+`PHPCompatibility.IniDirectives.RemovedIniDirectives.disable_classesRemoved`; the other seven ship
+unmapped, each recording its own zero-finding measurement rather than a guess. Two of those seven are
+worth stating plainly. `core.loose_object_boolean_comparison` measured that `$object == true` and
+`$object == $variable` — the identical object, the identical boolean value — can disagree depending only
+on the syntactic shape of the right-hand side: a bare literal and, unexpectedly, a scalar class constant
+both agree with `(bool) $object`, while a variable, a global `const`, or a `define()` all return `false`
+regardless, so `if ($enum == $flag)` can silently never fire and no analyzer sees it.
+`core.printf_empty_precision` measured that `sprintf('%.f', 1.5)` is `'1.500000'` today and becomes `'2'`
+on PHP 8.5, with no diagnostic on either version; the same empty-precision change means `'%.s'` will start
+silently truncating strings to `''`. Growing the catalogue from sixty-four rules to seventy-two while
+adding only one new mapping **drops** coverage from thirty-six of sixty-four rules (56%) to thirty-seven
+of seventy-two (51%) — the fourth deliberate breadth-for-depth trade, after `v0.3.4`, `v0.3.6`, and
+`v0.3.7`, and the deepest yet. Measured directly against php-src `UPGRADING` rather than through the
+analyzer: of the 36 Core/Standard Backward Incompatible Changes entries recorded across PHP 8.2–8.5, the
+catalogue covered 11 before this round. It now covers 19, because the eight new rules cover eight of the
+36 entries — one rule per entry this time, unlike `v0.3.7` where one rule carried two — leaving 17 of the
+36 entries uncovered. Thirty-five of the catalogue's seventy-two rules now carry no mapping at all.
 
 For a target project declaring `require.php: ^8.2`, representative `resolve` output is:
 
@@ -507,7 +569,8 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | **Emptying issue #18's Tier A** | `v0.3.5` | ✅ Complete: added the 8 remaining source-backed rules from issue #18's Tier A (40 → 48), every one shipping mapped, so mapping coverage **rises** from 24 of 40 rules (60%) to 32 of 48 (67%); Tier A, as bounded by analyzer-probed candidates, was believed exhausted — a `v0.3.6` re-measurement from php-src `UPGRADING` found this incomplete | No new adapter infrastructure; the register still holds two low-frequency Tier B candidates, two structural analyzer findings, and 16 of 48 rules with no mapping |
 | **Re-measuring issue #18 from php-src** | `v0.3.6` | ✅ Complete: enumerating issue #18 candidates from php-src `UPGRADING` first, rather than by probing the analyzer, found 13 uncovered Core/Standard deprecations in 8.2–8.5 (3 mappable) and disproved `v0.3.5`'s "Tier A exhausted" claim; this round ships 8 rules covering 9 of the 13 entries (48 → 56 rules), so mapping coverage **falls** from 32 of 48 rules (67%) to 35 of 56 (62%) | No new adapter infrastructure; 4 of the 13 newly-found gaps remain open, all unmappable, and 21 of 56 rules carry no mapping |
 | **Backward Incompatible Changes from php-src** | `v0.3.7` | ✅ Complete: the first round drawn from `UPGRADING`'s Backward Incompatible Changes section instead of Deprecated Functionality — behavior that silently changed rather than an API marked deprecated; probing 18 candidates against the analyzer produced exactly 1 finding, so 7 of the 8 new rules (56 → 64) ship unmapped and mapping coverage **falls** from 35 of 56 rules (62.5%) to 36 of 64 (56%), the steepest of the three deliberate breadth-for-depth trades (with `v0.3.4` and `v0.3.6`); measured directly against php-src, catalogue coverage of the 36 Core/Standard Backward Incompatible Changes entries in 8.2–8.5 rises from 2 to 11, because the eight rules cover 9 of the 36 entries | No new adapter infrastructure; 25 of the 36 Backward Incompatible Changes entries and the 4 Deprecated Functionality gaps `v0.3.6` left open remain uncovered, and 28 of 64 rules carry no mapping |
-| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage still covers only 36 of 64 rules, so growing further source-backed PHP rules and their proven mappings — including the 4 Deprecated Functionality gaps `v0.3.6`'s re-measurement left open and the 25 still-uncovered Backward Incompatible Changes Core/Standard entries this round's probe found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
+| **Second Backward Incompatible Changes round** | `v0.3.8` | ✅ Complete: the second round drawn from `UPGRADING`'s Backward Incompatible Changes section; probing 16 more candidates against the analyzer again produced exactly 1 finding, confirming the pattern `v0.3.7` first observed rather than sampling noise, so 7 of the 8 new rules (64 → 72) ship unmapped and mapping coverage **falls** from 36 of 64 rules (56%) to 37 of 72 (51%), the fourth deliberate breadth-for-depth trade (with `v0.3.4`, `v0.3.6`, `v0.3.7`) and the deepest yet; measured directly against php-src, catalogue coverage of the 36 Core/Standard Backward Incompatible Changes entries in 8.2–8.5 rises from 11 to 19, because the eight rules cover 8 of those entries, one each | No new adapter infrastructure; 17 of the 36 Backward Incompatible Changes entries and the 4 Deprecated Functionality gaps `v0.3.6` left open remain uncovered, and 35 of 72 rules carry no mapping |
+| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage still covers only 37 of 72 rules, so growing further source-backed PHP rules and their proven mappings — including the 4 Deprecated Functionality gaps `v0.3.6`'s re-measurement left open and the 17 still-uncovered Backward Incompatible Changes Core/Standard entries this round's probe found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
 ## Repository structure
@@ -515,7 +578,7 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | Path | Purpose |
 |---|---|
 | `src/` | Symfony Console application, Composer/PHP policy resolver, rule registry/query engine, and explicit verification boundary |
-| `resources/rules/` | 64 source-backed seed-rule JSON files, one rule per file |
+| `resources/rules/` | 72 source-backed seed-rule JSON files, one rule per file |
 | `schemas/` | Versioned rule, policy, and verification contracts |
 | `docs/adr/` | Binding architecture decisions and trust boundaries |
 | `tests/` | CLI, schema, and static-page verification |
