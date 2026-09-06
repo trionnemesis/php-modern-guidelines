@@ -1,0 +1,87 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.printf_empty_precision",
+    "title": "printf-family precision left empty (`%.f`) will mean precision `0`, not \"no precision\"",
+    "summary": "As of PHP 8.5, a printf-family conversion specifier whose precision is given as a bare `.` with no digits (`%.f`) is treated as an explicit precision of `0`, matching `%.0f`. Verified directly on PHP 8.4.19, the same `%.f` today is silently treated as if no precision were given at all, identical to plain `%f`; for a float this changes the output from a fully-formatted number (`sprintf('%.f', 1.5)` is `'1.500000'` today) to a rounded integer (`'2'` on 8.5), with no diagnostic on either PHP version. The same empty-precision form on a string conversion, `%.s`, is even sharper: it is silently ignored today (the full string passes through unmodified) but will silently truncate the string to zero characters - producing `''` - once precision `0` is enforced.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "Never write a printf-family format string with a bare `.` and no following digit before a conversion specifier - not `'%.f'`, not `'%.s'`, and not a precision built by concatenating a variable that might be empty (`'%.' . $decimals . 'f'` where `$decimals` can be `''`). On a PHP 8.5+ floor this silently changes what such a format string produces; write the precision you actually mean every time - either the digit(s) themselves (`'%.0f'`, `'%.2f'`, `'%.10s'`) or no dot at all (`'%f'`, `'%s'`) if no precision limit is intended - so the format string's meaning does not depend on which PHP minor is running it. When precision comes from a variable, type it so it can never be an empty string: an `int` parameter with a real default, or a nullable `?int` with the dot only appended when it is not `null`, rather than a `string` parameter that defaults to `''`.",
+    "existing_code_policy": "Search for printf-family calls (`sprintf()`, `printf()`, `vsprintf()`, `vprintf()`, `fprintf()`, `vfprintf()` - confirmed directly to share the same formatter, spot-checked on `sprintf()`, `printf()`, `vsprintf()`, `vprintf()`, and `fprintf()`) whose format string can contain a bare `.` immediately before a conversion specifier with nothing between them - most often because the precision digits come from a variable, config value, or string concatenation that can be empty (`'%.' . $precision . 'f'` with `$precision === ''`, confirmed directly to build the literal string `'%.f'`, byte for byte).\n\nVerified directly on PHP 8.4.19 across every conversion specifier: for the specifiers where PHP's precision has defined, documented meaning - `e`, `E`, `f`, `F`, `g`, `G`, and `s` - an empty precision (`%.e` etc.) today produces exactly the same output as no precision at all (confirmed identical for every one of the seven), while an explicit zero precision (`%.0e` etc.) produces a materially different, rounded-or-truncated result; on 8.5 the empty form starts producing the zero-precision result instead. The `%s` case is the most dangerous of the seven precisely because it is easy to build by accident and its consequence is total: `sprintf('%.s', 'hello')` is `'hello'` today (identical to `'%s'`, i.e. no truncation) but `sprintf('%.0s', 'hello')` is already `''` today - meaning any code that constructs a `%.` + variable + `s` format string with an empty/unset \"max length\" will keep working by accident until the 8.5 upgrade, and then silently start emitting the empty string everywhere that format string is used, with no exception, warning, or other diagnostic marking the change.\n\n`%d` and `%u`, by contrast, were verified to be unaffected in practice even though the empty-vs-zero distinction technically applies to them too: `sprintf('%.0d', 5)` and `sprintf('%d', 5)` already produce the identical `'5'` today, so the 8.5 change alters what the empty precision *means* for these two specifiers without altering what it *outputs* - no fix is needed at `%d`/`%u` call sites purely for this change, though a stray `.` there is still worth removing for clarity. `%c` was verified to ignore precision entirely in every form (literal, empty, or explicit) and is likewise unaffected. `%b`, `%o`, `%x`, and `%X` were separately verified to already produce an empty string under any explicit precision at all (`.0` through `.5` alike), independently of the empty-vs-zero question this rule is about - a pre-existing quirk of those four specifiers that this catalog does not otherwise characterize, since it is unrelated to the 8.5 change and precision was already unreliable there before it.\n\nConcatenating a `null` value into a precision string (`'%.' . null . 'f'`) was separately verified to raise no diagnostic and simply produce `'%.f'`, so this is not a case a deprecation notice will surface either. Fix every affected call site by writing the precision explicitly and unambiguously - never relying on an absent value happening to render as an empty string that PHP currently discards.",
+    "guideline": "Never leave a printf-family precision as a bare `.` with nothing after it (`'%.f'`, `'%.s'`) - especially not by building it from a variable that can be empty (`'%.' . $precision . 'f'`). Verified directly, PHP 8.4.19 silently treats that as \"no precision at all\", but PHP 8.5 will silently treat it as an explicit precision of `0` instead, with no diagnostic on either version; for a float that rounds to an integer, and for a string - confirmed directly to be affected the same way - it truncates to the empty string. Always write the precision digits you mean, or omit the dot entirely.",
+    "details": "UPGRADING-8.5.0 lists this under Backward Incompatible Changes -> Standard: \"Using a printf-family function with a formatter that did not specify the precision previously incorrectly reset the precision instead of treating it as a precision of 0. See GH-18897.\"\n\nVerified directly on PHP 8.4.19, with `set_error_handler()` installed (no diagnostic was raised by any call described here): `sprintf('%.f', 1.5)` is `'1.500000'`, identical to `sprintf('%f', 1.5)` - today, the bare `.` with no digit is discarded, not treated as a precision of `0`. `sprintf('%.0f', 1.5)` - what UPGRADING says `%.f` will mean on 8.5 - is `'2'`. The same empty-vs-zero split was measured across every printf conversion specifier PHP defines (`b`, `c`, `d`, `e`, `E`, `f`, `F`, `g`, `G`, `o`, `s`, `u`, `x`, `X`) against both a float value (`1.5`) and integer/string values as appropriate. It reproduces, with the empty form matching \"no precision\" and disagreeing with the explicit-zero form, for `e`, `E`, `f`, `F`, `g`, and `G` (the specifiers where PHP's manual gives precision a defined floating-point meaning) and, critically, for `s` as well: `sprintf('%.s', 'hello')` is `'hello'` (matching plain `%s`, i.e. unlimited length) while `sprintf('%.0s', 'hello')` is already `''` today. Building the format string from a variable reproduces the identical bug mechanically: with `$maxLen = '';`, `'%.' . $maxLen . 's'` evaluates to the literal string `'%.s'`, byte-for-byte, so `sprintf('%.' . $maxLen . 's', $anyString)` silently passes the full string through today and will silently become `''` on 8.5, for every call site built this way with an empty length.\n\n`%d` and `%u` were separately verified to be practically unaffected: `sprintf('%.0d', 5)` and `sprintf('%d', 5)` are both `'5'`, so the empty-vs-zero split changes precision's *meaning* for these two specifiers without changing the *output*, since a precision of `0` was already a no-op for them. `%c` ignores precision in every form tested (literal, empty, explicit-zero, explicit-one all give the unpadded character). `%b`, `%o`, `%x`, and `%X` were found to already produce an empty string under any nonzero-length explicit precision at all (`.0` through `.5` were all tried and all four gave `''`) - a separate, pre-existing quirk of those specifiers, unrelated to the empty-vs-zero distinction this rule documents, since precision was already unreliable there before 8.5 and remains so after; this rule does not characterize that behavior further. `printf()`, `vsprintf()`, `vprintf()`, and `fprintf()` were spot-checked directly and share `sprintf()`'s exact output for the `%.f` case, confirming they share the same underlying formatter rather than needing to be verified specifier-by-specifier again. Concatenating a `null` into the precision position (`'%.' . null . 'f'`) was verified to build the literal string `'%.f'` with no diagnostic of any kind, so PHP's null-to-string-parameter deprecation (which applies to passing `null` as an argument to an internal function's non-nullable parameter, not to `.`-concatenation) does not give any warning here either.\n\nHere `introduced_in` is set to 8.5 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.5 introduced the printf family or its precision syntax, both of which predate 8.5 by decades.",
+    "examples": [
+        {
+            "before": [
+                "function formatTotal(float $total): string",
+                "{",
+                "    return sprintf('%.f', $total);",
+                "}"
+            ],
+            "after": [
+                "function formatTotal(float $total): string",
+                "{",
+                "    return sprintf('%f', $total);",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class ReportFormatter",
+                "{",
+                "    public function formatAmount(float $amount, string $decimals = ''): string",
+                "    {",
+                "        return sprintf('%.' . $decimals . 'f', $amount);",
+                "    }",
+                "",
+                "    public function truncate(string $value, string $maxLength = ''): string",
+                "    {",
+                "        return sprintf('%.' . $maxLength . 's', $value);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ReportFormatter",
+                "{",
+                "    public function formatAmount(float $amount, int $decimals = 6): string",
+                "    {",
+                "        return sprintf('%.' . $decimals . 'f', $amount);",
+                "    }",
+                "",
+                "    public function truncate(string $value, ?int $maxLength = null): string",
+                "    {",
+                "        if ($maxLength === null) {",
+                "            return sprintf('%s', $value);",
+                "        }",
+                "",
+                "        return sprintf('%.' . $maxLength . 's', $value);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-06"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-06) with `set_error_handler()` installed (no `[errno=...]` line was ever printed for any call in this matrix, confirming zero diagnostics throughout). Baseline: sprintf('%.f', 1.5) = '1.500000'; sprintf('%.0f', 1.5) = '2'; sprintf('%.e', 1.5) = '1.500000e+0'; sprintf('%.g', 1.5) = '1.5'; sprintf('%f', 1.5) = '1.500000'. Full specifier sweep (none vs empty-precision \".\" vs zero-precision \".0\"): e/E/f/F/g/G all show empty-precision identical to no-precision, and different from zero-precision (e.g. f: none='1.500000', empty='1.500000', zero='2'). d/u show empty-precision identical to BOTH no-precision AND zero-precision (all '5' for value 5) - the 8.5 change is inert for these two. c shows precision has no effect in any form ('A' throughout). b/o/x/X show empty-precision identical to no-precision, but zero-precision (and any explicit precision .0 through .5) already produces '' today, independently of this rule's empty-vs-zero distinction.",
+        "The %s discovery, verified directly: sprintf('%s', 'hello') = 'hello'; sprintf('%.s', 'hello') = 'hello' (matches no-precision); sprintf('%.0s', 'hello') = '' (what %.s will mean on 8.5); sprintf('%.1s', 'hello') = 'h'. Built accidentally via an empty max-length variable: $maxLen = ''; $fmt = '%.' . $maxLen . 's'; gives $fmt === '%.s' (byte-identical to the literal), and sprintf($fmt, 'user visible text') = 'user visible text' today (unchanged) but would become '' on PHP 8.5. Null-concatenation control, verified directly with no @ suppression: $fmt2 = '%.' . null . 'f'; gives '%.f' with zero diagnostics printed by the installed handler. printf()/vsprintf()/vprintf()/fprintf() were each spot-checked on '%.f' against value 1.5 and all produced '1.500000', confirming they share sprintf()'s formatter.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-06) via `<analyzer>/vendor/bin/phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5 --report=json --parallel=1 --extensions=php --severity=1 --no-cache -q <probe-dir>` against a class calling sprintf('%.f', ...), sprintf('%.' . $precision . 'f', ...), and sprintf('%.' . $maxLen . 's', ...), and produced zero findings ({\"errors\": 0, \"warnings\": 0}); verification.phpcompatibility is therefore intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility's sniffs check version-availability facts about functions, constants, and syntax, not a runtime formatting outcome that depends on a format string's exact byte content, so a clean phpcs run gives no signal about any of the above.",
+        "Evidence: UPGRADING-8.5.0, \"1. Backward Incompatible Changes\" -> Standard: \"Using a printf-family function with a formatter that did not specify the precision previously incorrectly reset the precision instead of treating it as a precision of 0. See GH-18897.\""
+    ]
+}
