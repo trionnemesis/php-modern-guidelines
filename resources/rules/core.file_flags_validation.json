@@ -1,0 +1,94 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.file_flags_validation",
+    "title": "`file()` now validates its `$flags` argument instead of silently tolerating invalid values",
+    "summary": "As of PHP 8.3, file() validates its $flags argument and throws a ValueError for any bit outside the mask FILE_USE_INCLUDE_PATH|FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES|FILE_NO_DEFAULT_CONTEXT; FILE_APPEND - a real constant, but one that belongs to file_put_contents(), not file() - is the headline case UPGRADING calls out, and was verified directly to now throw. file_put_contents() itself was verified to be unaffected: it still silently accepts a nonsense flags value exactly as before.",
+    "category": "core",
+    "kind": "behavior_change",
+    "priority": "P2",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "high",
+    "new_code_policy": "On a PHP 8.3+ floor, build file()'s $flags argument only from FILE_USE_INCLUDE_PATH, FILE_IGNORE_NEW_LINES, FILE_SKIP_EMPTY_LINES, and FILE_NO_DEFAULT_CONTEXT (bitwise-ORed as needed, or 0 for none) - verified directly, that four-constant mask (1|2|4|16 = 23) is exactly the set of bits file() accepts, and anything outside it, alone or OR'd into an otherwise-valid combination, throws ValueError: file(): Argument #2 ($flags) must be a valid flag value. Never reach for FILE_APPEND here: it is a real, currently-defined constant, so it will not be caught by a linter or an IDE the way a made-up name would, but it belongs to file_put_contents(), not file(), and passing it now throws. Also never reach for LOCK_EX: it sounds file()-adjacent (it is flock()'s exclusive-lock flag) and does not belong to file() either, but its integer value (2) happens to be numerically identical to FILE_IGNORE_NEW_LINES, so passing it does not throw at all - it silently makes file() behave exactly as if FILE_IGNORE_NEW_LINES had been passed, which is a worse trap than FILE_APPEND's because there is no diagnostic whatsoever, on any PHP version this catalog tracks.",
+    "existing_code_policy": "Find every file($path, $flags) call whose $flags is not a literal, already-audited combination of FILE_USE_INCLUDE_PATH/FILE_IGNORE_NEW_LINES/FILE_SKIP_EMPTY_LINES/FILE_NO_DEFAULT_CONTEXT/0. On PHP 8.3+, anything else - most notably FILE_APPEND, verified directly to throw ValueError: file(): Argument #2 ($flags) must be a valid flag value where it previously ran and did nothing - is now an uncaught fatal error at that call site. Confirm what was actually intended: a call that passed FILE_APPEND was very likely trying to express something like \"read this as if it had just been appended to,\" which is not something file()'s flags have ever controlled - file() only ever reads a whole file into an array of lines, optionally trimmed/filtered by the other three flags - so the fix is usually to drop the erroneous flag rather than substitute another one. Separately, audit for LOCK_EX (or any other flag constant whose numeric value happens to collide with a valid file() bit): unlike FILE_APPEND, this does not throw on any version - verified directly, file($path, LOCK_EX) silently behaves exactly like file($path, FILE_IGNORE_NEW_LINES) because both evaluate to 2 - so this is worth an explicit audit rather than relying on the new ValueError to surface it. Finally, check whether the same codebase also calls file_put_contents() expecting the same new strictness: verified directly, file_put_contents() still silently accepts a nonsense flags value (an out-of-range bit, or FILE_IGNORE_NEW_LINES, a flag that belongs to file() and not to it) with no diagnostic at all and no behavior change from before 8.3, so this fix is file()-only and existing file_put_contents() call sites need no change on this account.",
+    "guideline": "Build file()'s $flags only from FILE_USE_INCLUDE_PATH, FILE_IGNORE_NEW_LINES, FILE_SKIP_EMPTY_LINES, and FILE_NO_DEFAULT_CONTEXT (or 0). As of PHP 8.3, any other bit - most notably FILE_APPEND, a real constant that belongs to file_put_contents() and not file() - throws ValueError instead of being silently ignored; file_put_contents() itself remains as permissive of an invalid flags value as file() used to be.",
+    "details": "UPGRADING-8.3.0 lists this under Backward Incompatible Changes -> Standard: \"The file() flags error check now catches all invalid flags. Notably FILE_APPEND was previously silently accepted.\" Verified directly on the local PHP 8.4.19 (post-change; UPGRADING's own text is the only source for what \"previously silently accepted\" looked like pre-8.3, since no earlier PHP was available to run here):\n\nValid mask. The three flags file() documents - FILE_USE_INCLUDE_PATH (1), FILE_IGNORE_NEW_LINES (2), FILE_SKIP_EMPTY_LINES (4) - plus FILE_NO_DEFAULT_CONTEXT (16, a generic stream-context flag shared by several file*() functions) all remain individually and jointly accepted: file($path, FILE_USE_INCLUDE_PATH | FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES | FILE_NO_DEFAULT_CONTEXT) (value 23) runs cleanly, and so does file($path, 0) (no flags at all). The two legacy constants FILE_TEXT and FILE_BINARY are also accepted, but only because both are no-op aliases for 0 today - each use of either constant itself raises E_DEPRECATED \"Constant FILE_TEXT is deprecated\" (respectively FILE_BINARY), independent of this rule's change, and contributes no actual bit to the flags value.\n\nThe headline case. file($path, FILE_APPEND) throws ValueError: file(): Argument #2 ($flags) must be a valid flag value, confirmed exactly as UPGRADING implies. FILE_APPEND is a real, currently-defined constant (value 8) - it is file_put_contents()'s append-mode flag, not one of file()'s three - so an agent reaching for it here is making a plausible mistake, not a typo a linter would catch: the name exists, resolves to a real integer, and looks at a glance like it could mean something relevant to reading.\n\nAny invalid bit is caught, not just FILE_APPEND specifically. Verified directly: file($path, 1 << 20) (an arbitrary bit with no meaning to any file*() function) throws the identical ValueError, and so does file($path, FILE_IGNORE_NEW_LINES | (1 << 20)) - a valid flag OR'd with an invalid one - confirming UPGRADING's \"now catches all invalid flags\" is not limited to the FILE_APPEND example it names.\n\nA numeric coincidence that does NOT throw. LOCK_EX - flock()'s exclusive-lock constant, value 2 - is, like FILE_APPEND, a real constant that has nothing to do with file(). But unlike FILE_APPEND, passing it does not throw on any version: verified directly, LOCK_EX === FILE_IGNORE_NEW_LINES evaluates to true (both are 2), so file($path, LOCK_EX) silently produces the exact same output as file($path, FILE_IGNORE_NEW_LINES) - newline-stripped lines - not because file() recognizes LOCK_EX, but purely because the two constants happen to share a bit pattern. This is a sharper trap than FILE_APPEND: there is no diagnostic at all, on 8.2 or 8.3+, and the call appears to succeed while silently doing something the caller never asked for.\n\nSibling functions were checked, not assumed. UPGRADING names only file(); verified directly, file_put_contents($path, $data, 1 << 20) (the same nonsense bit that made file() throw) still succeeds and writes the data with no diagnostic whatsoever, and file_put_contents($path, $data, FILE_IGNORE_NEW_LINES) (a flag that belongs to file(), not to it) does too - confirming the tightened check is specific to file() and was not extended to file_put_contents(). file_get_contents() was checked by signature (via Reflection) rather than by probing a flags value, since it does not take one: its parameters are (string $filename, bool $use_include_path = false, ?resource $context = null, int $offset = 0, ?int $length = null) - only a plain bool controls include-path behavior there, so this change has no surface to apply to on that function at all.\n\nHere introduced_in is set to 8.3 because that is the minor this behavior actually changed in - the field exists so this behavior_change rule can be range-gated on the feature axis, and it is not a claim that PHP 8.3 introduced file() itself, which has existed since PHP's earliest versions.",
+    "examples": [
+        {
+            "before": [
+                "function readAllLines(string $path): array",
+                "{",
+                "    $lines = file($path, FILE_APPEND);",
+                "",
+                "    return $lines === false ? [] : $lines;",
+                "}"
+            ],
+            "after": [
+                "function readAllLines(string $path): array",
+                "{",
+                "    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);",
+                "",
+                "    return $lines === false ? [] : $lines;",
+                "}"
+            ]
+        },
+        {
+            "before": [
+                "final class DotenvLoader",
+                "{",
+                "    /**",
+                "     * @return list<string>",
+                "     */",
+                "    public function loadRawLines(string $path): array",
+                "    {",
+                "        $lines = file($path, FILE_APPEND);",
+                "",
+                "        if ($lines === false) {",
+                "            throw new RuntimeException(\"Unable to read env file: {$path}\");",
+                "        }",
+                "",
+                "        return $lines;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class DotenvLoader",
+                "{",
+                "    /**",
+                "     * @return list<string>",
+                "     */",
+                "    public function loadRawLines(string $path): array",
+                "    {",
+                "        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);",
+                "",
+                "        if ($lines === false) {",
+                "            throw new RuntimeException(\"Unable to read env file: {$path}\");",
+                "        }",
+                "",
+                "        return $lines;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-06"
+        }
+    ],
+    "notes": [
+        "Runtime matrix executed on PHP 8.4.19 (2026-09-06), with set_error_handler() installed: constant values are FILE_USE_INCLUDE_PATH=1, FILE_IGNORE_NEW_LINES=2, FILE_SKIP_EMPTY_LINES=4, FILE_APPEND=8, FILE_NO_DEFAULT_CONTEXT=16. file($path, FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES) => [\"line one\",\"line two\"], no diagnostic. file($path, FILE_USE_INCLUDE_PATH|FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES|FILE_NO_DEFAULT_CONTEXT) (23) => same two lines, no diagnostic. file($path, 0) => [\"line one\\n\",\"line two\\n\"], no diagnostic. file($path, FILE_TEXT) and file($path, FILE_BINARY) each => [\"line one\\n\",\"line two\\n\"] plus [errno=8192] 'Constant FILE_TEXT is deprecated' / 'Constant FILE_BINARY is deprecated' (both constants equal 0 and contribute no bit). file($path, FILE_APPEND) => uncaught ValueError 'file(): Argument #2 ($flags) must be a valid flag value'. file($path, 1<<20) => identical ValueError. file($path, FILE_IGNORE_NEW_LINES | (1<<20)) => identical ValueError. file($path, LOCK_EX) => [\"line one\",\"line two\"] with NO diagnostic and no error at all - confirmed LOCK_EX === FILE_IGNORE_NEW_LINES is true (both 2). file_put_contents($path, 'appended', FILE_APPEND) => 9 (bytes written), no diagnostic (its real, intended flag). file_put_contents($path, 'x', 1<<20) => 1 (byte written), no diagnostic at all - the tightened check was not extended to it. file_put_contents($path, 'x', FILE_IGNORE_NEW_LINES) => 1 (byte written), no diagnostic - a file()-only flag is silently tolerated by file_put_contents() too. (new ReflectionFunction('file_get_contents'))->getParameters() confirms its signature is (string $filename, bool $use_include_path, ?resource $context, int $offset, ?int $length) - no FILE_*-style flags parameter exists on it at all.",
+        "PHPCompatibility 10.0.0-alpha2 was run directly (2026-09-06) via `phpcs --standard=PHPCompatibility --runtime-set testVersion 8.2-8.5 --report=json --parallel=1 --extensions=php --severity=1 --no-cache -q` against a class calling file() with FILE_APPEND and with a valid flags combination, at testVersion 8.2-8.5, and produced zero findings ({\"errors\":0,\"warnings\":0,\"fixable\":0}); verification.phpcompatibility is intentionally empty rather than guessed. This is the structural blindness described in the round's shared contract: PHPCompatibility checks whether a constant or function is available in a version range, not whether a function's runtime flag-validation logic got stricter, so a clean phpcs run gives no signal about this behavior at all.",
+        "Evidence: UPGRADING-8.3.0, \"1. Backward Incompatible Changes\" -> Standard: \"The file() flags error check now catches all invalid flags. Notably FILE_APPEND was previously silently accepted.\" Grepping the PHP 8.4 and 8.5 UPGRADING files for \"file()\" found no re-statement of this behavior (the only 8.5 hit is the unrelated finfo_file()/finfo::file() ValueError change), so it persists unchanged through PHP 8.5."
+    ]
+}

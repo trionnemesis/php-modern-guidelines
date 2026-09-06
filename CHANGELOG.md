@@ -2,6 +2,82 @@
 
 All notable changes will be documented in this file.
 
+## [0.3.8] - 2026-09-06
+
+### Added
+
+- Eight source-backed rules, growing the catalogue from 64 to 72. This is the second round drawn from
+  `UPGRADING`'s **Backward Incompatible Changes** section, and it completes the enumeration issue #18 asked
+  for: all 25 Core/Standard entries that section still held were listed, 16 were probed against the pinned
+  analyzer, and eight were taken.
+  - `core.loose_object_boolean_comparison` (8.5) - the sharpest rule in the round. Measured on 8.4.19,
+    whether `$object == true` is true depends on the *shape* of the right-hand side, not its value: a bare
+    literal, `(true)`, `!false`, `(1 === 1)`, `true && true` and a **class** constant all agree with
+    `(bool) $object`, while a variable, a property, an array element, a function return, a ternary, a
+    `(bool)` cast, and a **global** `const` or `define()` all return `false` regardless. So
+    `if ($enum == $flag)` silently never fires.
+  - `core.printf_empty_precision` (8.5) - `sprintf('%.f', 1.5)` is `'1.500000'` today and `'2'` on 8.5,
+    with no diagnostic on either side. The affected set is wider than the float specifiers: `'%.s'` is
+    `'hello'` today while `'%.0s'` is already `''`, so `%.s` will start truncating strings silently.
+  - `core.attribute_target_validation` (8.5) - `#[\Attribute]` on an abstract class, enum, interface or
+    trait becomes a compile error. Measured, all four declare cleanly today and `getAttributes()` reports
+    one attribute, so the code looks healthy until `newInstance()` throws.
+  - `core.disable_classes_ini` (8.5, `removed`, P0) - the round's one mapped rule. Removing the directive
+    silently drops a hardening setting: nothing errors, the blocked classes simply become available again.
+    Measured, `ini_set()` on it already returns `false` today at access level 4, so the audit target is
+    php.ini and deployment configuration rather than application source.
+  - `core.file_flags_validation` (8.3) - `file()` now rejects every invalid flag. `FILE_APPEND` is the
+    obvious trap; the sharper one is that `LOCK_EX` is bit-for-bit identical to `FILE_IGNORE_NEW_LINES`, so
+    `file($f, LOCK_EX)` raises nothing at all and silently does something else. `file_put_contents()` was
+    not tightened.
+  - `core.trait_static_property_redeclaration` (8.3) - a trait's static property is per-using-class.
+    Measured, adding `use` to a subclass forks state that plain inheritance keeps shared.
+  - `core.proc_get_status_repeated_calls` (8.3) - unusual for this catalogue in documenting a fix rather
+    than a regression, so its advice runs the other way: code with an 8.2 floor must capture the first
+    result, code on 8.3+ need not.
+  - `core.http_build_query_backed_enums` (8.4) - backed enums now contribute their `value`; a pure enum
+    still throws `ValueError`, at the top level and nested alike.
+- One verification fixture, `catalogue_expansion_r7_findings.php`, carrying the **two-range proof** issue
+  #18's Definition of done gained last round: zero findings at `testVersion 8.2-8.4` and exactly two at
+  `8.2-8.5`. That distinction matters here because the sniff's own message names a version, so a fixture
+  that merely fired would not have proven the rule's 8.5 claim.
+
+### Changed
+
+- Mapping coverage **falls** from 36 of 64 rules (56%) to 37 of 72 (51%). Seven of the eight new rules
+  carry no mapping. This is the fourth deliberate breadth-for-depth trade and the deepest.
+- `SNIFF_RULE_MAP` grows from 208 to 209 sniff ids and remains the exact bidirectional inverse of the
+  rule-local `verification.phpcompatibility` lists.
+- `SeedRuleCatalogueTest::REVIEW_DATES` gains `2026-09-06`. Six previous rounds happened to reuse a date
+  already in the list; this is the first time the constant has needed extending.
+- Two counts moved in ways a plain total would not predict, because this round mixes kinds: under a
+  single-target 8.2 policy the seven `behavior_change` rules are `not_in_range` while
+  `core.disable_classes_ini` is `applicable` - its `removed_in` of 8.5 has not been reached at ceiling 8.2 -
+  so the not-in-range count moves 23 to 30 and the default-shown count 41 to 42.
+
+### Measured, and worth recording
+
+- **The analyzer's blindness to this section is now confirmed rather than observed.** `0.3.7` probed 18
+  candidates from `Backward Incompatible Changes` and got one finding; this round probed 16 more and again
+  got exactly one. Two independent samples at the same ratio make it a property the catalogue can plan
+  around: as this section is worked through, coverage will keep falling, and that is the correct outcome.
+- **An enum case has real public properties.** A brief for this round inferred pre-8.4
+  `http_build_query()` behaviour from the claim that it does not; measured, `get_object_vars()`, an
+  `(array)` cast and `ReflectionEnum` all report `name` and `value`. The rule records the measurement and
+  marks the remaining inference as an inference.
+- **A probe written inside an array literal can measure the wrong thing.** While reviewing the comparison
+  rule, the identical expression `$enum == (true ? true : false)` gave `false` as its own statement and
+  `true` as an array-literal value, deterministically. Two separate mistakes with the same wrong output
+  nearly confirmed each other; the fix was to re-measure every form as a standalone statement.
+
+### Not included
+
+- Any new analyzer. M3-C (PHPStan) stays deferred and M3-D (Rector) stays dropped.
+- Any change to the pinned analyzer version.
+- The 17 still-uncovered Core/Standard `Backward Incompatible Changes` entries and the 91 extension-scoped
+  ones.
+- Any framework pack, auto-fix, target-project write, or network rule fetching.
+
 ## [0.3.7] - 2026-09-05
 
 ### Added

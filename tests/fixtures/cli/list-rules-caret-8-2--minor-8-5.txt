@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 64 of 64 shown
+Rules: 72 of 72 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -7,6 +7,8 @@ Rules: 64 of 64 shown
       Prefer array_first() and array_last()
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.attribute_target_validation
+      Applying `#[\Attribute]` to an abstract class, enum, interface, or trait becomes a compile-time error
   [deprecated_in_range]              P2  deprecated           core.chr_ord_byte_range
       `chr()` outside `[0, 255]` and `ord()` on non-single-byte strings are deprecated
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.class_alias_reserved_names
@@ -21,16 +23,22 @@ Rules: 64 of 64 shown
       `#[\Deprecated]` attribute
   [deprecated_in_range]              P2  deprecated           core.directory_functions_implicit_handle
       `readdir()`, `rewinddir()`, and `closedir()` without an explicit handle are deprecated
+  [removed_in_range]                 P0  removed              core.disable_classes_ini
+      The `disable_classes` INI directive was removed
   [deprecated_across_range]          P2  deprecated           core.dynamic_properties
       Creation of dynamic properties is deprecated
   [deprecated_in_range]              P2  deprecated           core.e_strict_constant
       The E_STRICT constant is deprecated
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.exit_as_function
       `exit`/`die` now behave like a function: callable, `strict_types`-aware, and type-coercing
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.file_flags_validation
+      `file()` now validates its `$flags` argument instead of silently tolerating invalid values
   [deprecated_in_range]              P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [deprecated_in_range]              P2  deprecated           core.get_defined_functions_exclude_disabled
       Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.http_build_query_backed_enums
+      `http_build_query()` now correctly handles backed enums
   [deprecated_in_range]              P2  deprecated           core.http_response_header
       The `$http_response_header` predefined variable is deprecated
   [forbidden_above_feature_ceiling]  P3  modern_preference    core.json_validate
@@ -39,6 +47,8 @@ Rules: 64 of 64 shown
       `lcg_value()` is deprecated
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.list_destructuring_non_array
       Destructuring a non-array, non-`NULL` value with `[]` or `list()` now emits a warning
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.loose_object_boolean_comparison
+      Loosely comparing uncomparable objects to booleans no longer depends on literal-vs-variable syntax
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.negative_array_index_append
       Appending to an array right after a negative key now continues from `n + 1`, not `0`
   [forbidden_above_feature_ceiling]  P1  feature              core.nodiscard_attribute
@@ -51,6 +61,10 @@ Rules: 64 of 64 shown
       #[\Override] attribute
   [deprecated_across_range]          P2  deprecated           core.partially_supported_callables
       Partially supported callables are deprecated
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.printf_empty_precision
+      printf-family precision left empty (`%.f`) will mean precision `0`, not "no precision"
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.proc_get_status_repeated_calls
+      `proc_get_status()` now returns the right value on every call, not just the first
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.range_argument_validation
       `range()` now validates its arguments instead of silently tolerating bad ones
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.readonly_indirect_modification_clone
@@ -77,6 +91,8 @@ Rules: 64 of 64 shown
       `++`/`--` on empty, non-numeric, or non-alphanumeric strings
   [applicable]                       P2  behavior_change      core.strtolower_locale_insensitive
       `strtolower()`/`strtoupper()` and related functions are no longer locale-sensitive
+  [forbidden_above_feature_ceiling]  P2  behavior_change      core.trait_static_property_redeclaration
+      Re-using a trait with a static property in a subclass now redeclares separate storage
   [deprecated_in_range]              P2  deprecated           core.trigger_error_e_user_error
       Passing `E_USER_ERROR` to `trigger_error()` is deprecated
   [deprecated_in_range]              P2  deprecated           core.underscore_class_name
