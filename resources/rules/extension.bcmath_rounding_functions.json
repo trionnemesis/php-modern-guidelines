@@ -1,0 +1,77 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.bcmath_rounding_functions",
+    "title": "bcfloor(), bcceil(), bcround() and bcdivmod()",
+    "summary": "PHP 8.4 added bcfloor(), bcceil(), bcround() and bcdivmod() to bcmath, giving arbitrary-precision floor, ceiling, rounding and combined division-with-remainder for the decimal strings bcmath otherwise represents exactly.",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "bcmath",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, use bcfloor()/bcceil() instead of casting a bcmath decimal string to float and calling floor()/ceil() on it, and use bcround() instead of a float-cast round() or manual string-truncation of the decimal representation; use bcdivmod() instead of calling bcdiv() and bcmod() separately when both the quotient and remainder are needed. bcfloor() and bcceil() take only the number itself - there is no precision/scale parameter - so a call site that needs 'round down to N decimal places' rather than 'round down to the nearest whole number' needs bcround() with an explicit RoundingMode, not bcfloor().",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.4, replace a float-cast rounding workaround ((string) floor((float) $bcNumber) and equivalents) with bcfloor()/bcceil()/bcround(): the float cast silently reintroduces the precision loss bcmath exists to avoid, for any decimal string whose significant digits exceed a 64-bit float's roughly 15-17 digit precision. Replace a bcdiv()-then-bcmod() pair with a single bcdivmod() call, but note its quotient is always formatted at scale 0 regardless of the $scale argument - only the remainder honors $scale - so a caller currently relying on bcdiv()'s own $scale-formatted quotient needs to keep using bcdiv() for that value. Confirm any existing hand-rolled rounding's tie-breaking rule (half up, half even/banker's, etc.) before defaulting to bcround()'s implicit mode, which rounds ties away from zero unless an explicit RoundingMode is passed.",
+    "guideline": "Use bcfloor() / bcceil() / bcround() / bcdivmod() for arbitrary-precision floor, ceiling, rounding and combined division-with-remainder on bcmath decimal strings, instead of casting to float (which loses precision) or manually string-slicing the decimal representation.",
+    "details": "bcmath is not loaded on this tool's host (extension_loaded('bcmath') === false, confirmed), so bcfloor(), bcceil(), bcround(), bcdivmod() - and every other bcmath function, including bcadd()/bcdiv()/bcscale() - could not be called here at all; nothing in this rule is a runtime measurement. The two RFCs UPGRADING links (adding_bcround_bcfloor_bcceil_to_bcmath for the first three functions, add_bcdivmod_to_bcmath as a separate RFC for the fourth, exactly as the per-agent brief for this rule stated) live on wiki.php.net, which this tool's network egress policy blocks outright (every request failed at the CONNECT stage with HTTP 403, confirmed via the proxy's own status endpoint reporting a policy-denial CONNECT rejection to wiki.php.net); www.php.net's manual pages are blocked the same way. UPGRADING's own text is limited to one line per function group ('Added bcfloor(), bcceil(), bcround().' / 'Added bcdivmod().'), so the semantic detail below is instead sourced by reading the actual PHP 8.4.0 C implementation at raw.githubusercontent.com/php/php-src/php-8.4.0/ext/bcmath/{bcmath.c,libbcmath/src/floor_or_ceil.c,libbcmath/src/round.c} - a host this tool's network policy does allow - not by executing it. That source shows bcfloor(string $num): string and bcceil(string $num): string take exactly one argument each (ZEND_PARSE_PARAMETERS_START(1, 1) in the shared bcfloor_or_bcceil() helper): there is no precision/scale parameter, and the result is always formatted as a whole number. Both implement genuine mathematical floor/ceiling with correct sign handling, not truncation-toward-zero: floor_or_ceil.c truncates the fractional part outright when the number is positive-and-flooring or negative-and-ceiling (correct as-is: floor(2.3)=2, ceil(-2.3)=-2), and otherwise increments the absolute integer part by one whenever any fractional digit is nonzero (floor(-2.3)=-3, ceil(2.3)=3) - i.e. floor always rounds toward negative infinity and ceil toward positive infinity, exactly like the float floor()/ceil() functions, just without ever going through a float. bcround(string $num, int $precision = 0, ?RoundingMode $mode = null): string takes its tie-breaking rule as a RoundingMode enum instance (confirmed in bcmath.c: Z_PARAM_OBJ_OF_CLASS(mode_object, rounding_mode_ce)) - the same enum PHP's own round() has taken as its third parameter since 8.4, which this host can and does confirm directly since RoundingMode is registered independent of bcmath: enum_exists('RoundingMode') is true here, RoundingMode::cases() lists 8 cases, and round(2.5, 0, RoundingMode::HalfAwayFromZero) executed on this host returns 3.0. bcround()'s C source defaults its internal mode to the same constant (PHP_ROUND_HALF_UP) that round()'s classic default corresponds to, so bcround($num, $precision) with no third argument rounds ties away from zero. $precision may be negative, per a source comment giving the example of 'Rounding 21.123 to 3 digits before the decimal point' - the same negative-precision-means-tens/hundreds/etc. convention round() uses. bcdivmod(string $num1, string $num2, ?int $scale = null): array returns a two-element [quotient, remainder] array; the source formats the quotient at a hardcoded scale of 0 (bc_num2str_ex(quot, 0)) regardless of the $scale argument - only the remainder honors it - and throws DivisionByZeroError, not a warning or a false return, when $num2 is zero, mirroring intdiv()'s throwing behavior. Before 8.4, bcmath has no arbitrary-precision floor, ceiling, rounding or combined-divmod at all, so projects hand-roll it: typically by casting the bc string to float and calling the native floor()/ceil()/round() (which reintroduces the very precision loss bcmath exists to avoid, since a float has only about 15-17 significant decimal digits), or by string-slicing the decimal representation at the desired position by hand (fragile: the code has to locate the decimal point, handle the sign, and carry or borrow across the truncation point itself).",
+    "examples": [
+        {
+            "before": [
+                "$rounded = (string) floor((float) $preciseTotal);"
+            ],
+            "after": [
+                "$rounded = bcfloor($preciseTotal);"
+            ]
+        },
+        {
+            "before": [
+                "final class Allocator",
+                "{",
+                "    public function splitEvenly(string $totalCents, string $shareCount): array",
+                "    {",
+                "        $perShare = bcdiv($totalCents, $shareCount, 0);",
+                "        $remainder = bcmod($totalCents, $shareCount, 0);",
+                "",
+                "        return [$perShare, $remainder];",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class Allocator",
+                "{",
+                "    public function splitEvenly(string $totalCents, string $shareCount): array",
+                "    {",
+                "        return bcdivmod($totalCents, $shareCount, 0);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.bcceilFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.bcdivmodFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.bcfloorFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.bcroundFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "bcmath is not loaded on this host: extension_loaded('bcmath') === false, confirmed directly - so bcfloor(), bcceil(), bcround(), bcdivmod(), and every other bcmath function (bcadd(), bcdiv(), bcscale() included) could not be called at all here. No claim below implies execution of any bcmath function.",
+        "wiki.php.net (both RFCs) and www.php.net (the manual) are blocked outright by this tool's network egress policy - every request failed at the CONNECT stage with HTTP 403, confirmed via the proxy's own status endpoint reporting a policy-denial CONNECT rejection to wiki.php.net:443. raw.githubusercontent.com is allowed, so the semantics above are instead sourced by reading the actual PHP 8.4.0 implementation there: ext/bcmath/bcmath.c (parameter parsing and default rounding mode for all four functions), ext/bcmath/libbcmath/src/floor_or_ceil.c (the floor/ceil sign-handling logic) and ext/bcmath/libbcmath/src/round.c (the negative-$precision handling) - not from the RFC prose, which this tool never read.",
+        "One fact was confirmed by direct execution despite bcmath's absence, since it belongs to Core/Standard rather than bcmath: enum_exists('RoundingMode') is true, RoundingMode::cases() lists 8 cases (HalfAwayFromZero, HalfTowardsZero, HalfEven, HalfOdd, TowardsZero, AwayFromZero, NegativeInfinity, PositiveInfinity), and round(2.5, 0, RoundingMode::HalfAwayFromZero) executed on this host returns 3.0 - the same enum and the same default tie-break bcround()'s C source resolves to when no $mode is given.",
+        "Analyzer probe, 2026-09-07: against a probe file with syntactically valid (never executed) calls to bcfloor(), bcceil(), bcround() and bcdivmod(), all four of PHPCompatibility.FunctionUse.NewFunctions.bcceilFound, .bcdivmodFound, .bcfloorFound and .bcroundFound fire at testVersion 8.2-8.5 and at testVersion 8.3-8.5, and none fire at testVersion 8.4-8.5. phpcs is a static analyzer - it parses the source without executing it - so this is unaffected by bcmath being unloaded on this host.",
+        "Floor-direction proof: 4 findings (one per sniff id) at testVersion 8.3-8.5 (floor one minor below introduced_in), 0 findings at testVersion 8.4-8.5 (floor at introduced_in) - confirms introduced_in: 8.4.",
+        "Evidence: UPGRADING-8.4.0, \"6. New Functions\" -> BCMath: \"Added bcfloor(), bcceil(), bcround().\" / \"Added bcdivmod().\" - two separate RFC links (adding_bcround_bcfloor_bcceil_to_bcmath; add_bcdivmod_to_bcmath), confirming the per-agent brief's note that bcdivmod is a distinct RFC from the other three."
+    ]
+}

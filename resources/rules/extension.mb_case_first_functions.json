@@ -1,0 +1,74 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.mb_case_first_functions",
+    "title": "mb_ucfirst() and mb_lcfirst()",
+    "summary": "PHP 8.4 added mb_ucfirst() and mb_lcfirst(), mbstring's multibyte-safe, Unicode-aware equivalents of ucfirst()/lcfirst() for capitalizing or lowercasing only the first character of a string.",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "mbstring",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, use mb_ucfirst() / mb_lcfirst() - not ucfirst()/lcfirst(), and not a hand-rolled mb_substr()-plus-mb_strtoupper()/mb_strtolower() reassembly - whenever the string being capitalized or lowercased may contain non-ASCII characters. There is no multibyte-aware ucwords(): mbstring exposes no mb_ucwords(), so this rule's advice covers only first-character capitalization, not every word in a string.",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.4, audit existing ucfirst()/lcfirst() call sites that run over user-supplied or otherwise non-ASCII-guaranteed text: on this tool's local PHP 8.4.19, ucfirst() is a silent byte-wise no-op on any string whose first character is not plain ASCII, so these are latent correctness bugs to fix, not merely a style preference. Also replace any existing mb_substr($s, 0, 1) + mb_strtoupper()/mb_strtolower() + mb_substr($s, 1) reassembly with the single new call; re-verify call sites that process the small set of Unicode digraph letters (the Dž/Lj/Nj/Dz family), since mb_ucfirst()/mb_lcfirst() title-case those letters rather than fully upper/lower-casing them, which can differ from what an mb_strtoupper()-based workaround produced for the same input.",
+    "guideline": "Use mb_ucfirst() / mb_lcfirst() to capitalize or lowercase only the first character of a string that may contain multibyte characters, instead of the byte-wise ucfirst()/lcfirst() or a hand-rolled mb_substr()+mb_strtoupper()/mb_strtolower() workaround.",
+    "details": "PHP 8.4 added mb_ucfirst(string $string, ?string $encoding = null): string and mb_lcfirst(string $string, ?string $encoding = null): string to mbstring (RFC mb_ucfirst); both signatures were confirmed directly on this host via ReflectionFunction, including the optional, nullable $encoding parameter that defaults to null (the internal encoding), matching the calling convention of the rest of the mb_ family. They exist because ucfirst()/lcfirst() are byte-wise: measured on this host (PHP 8.4.19, mbstring loaded), ucfirst('ábc') === 'ábc' - an exact, unchanged no-op - while mb_ucfirst('ábc') === 'Ábc'. A full sweep of all 256 byte values through ucfirst() showed it changes only the 26 bytes 0x61-0x7A ('a'-'z') to 0x41-0x5A ('A'-'Z') and leaves every other byte, 0x00-0x60 and 0x7B-0xFF, untouched; this was reproduced identically under every locale name installed in this container (C, C.UTF-8 and POSIX all resolve to the same table - attempts to setlocale(LC_CTYPE, ...) to 'tr_TR.UTF-8', 'de_DE.ISO-8859-1' and similar returned false, since only those three are installed here). A Shift-JIS-encoded hiragana character (lead byte 0x82, produced with mb_convert_encoding()) was likewise unaffected by ucfirst(). So on every locale and every encoding tested on this host, byte-wise ucfirst()/lcfirst() applied to a non-ASCII-leading string is a silent no-op, not the corrupting mojibake this rule went looking for; that stronger failure mode could not be reproduced given this container's limited locale set, and is bounded in principle by the fact that no lead byte of the multibyte encodings tested falls inside the 'a'-'z'/'A'-'Z' range ucfirst() actually touches. Separately, mb_ucfirst() is not simply 'uppercase the first extracted codepoint': measured on the Croatian/Slavic digraph U+01F3 ('ǳ', LATIN SMALL LETTER DZ), mb_ucfirst(\"\\u{01F3}bc\") returns a string whose first codepoint is U+01F2 ('ǲ', the dedicated titlecase Dz), not U+01F1 ('Ǳ', the full uppercase DZ that mb_strtoupper() returns for the same input) - mb_ucfirst() performs genuine Unicode title-casing, which happens to coincide with plain upper-casing for ordinary letters but diverges for this small class of digraph letters. Finally, function_exists('mb_ucwords') is false on this host: mbstring has no multibyte-safe ucwords() equivalent, so this rule's guidance is bounded to first-character capitalization.",
+    "examples": [
+        {
+            "before": [
+                "$label = ucfirst($displayName); // silently does nothing when $displayName starts with a non-ASCII letter"
+            ],
+            "after": [
+                "$label = mb_ucfirst($displayName);"
+            ]
+        },
+        {
+            "before": [
+                "final class DisplayNameFormatter",
+                "{",
+                "    public function capitalizeFirst(string $name): string",
+                "    {",
+                "        $first = mb_strtoupper(mb_substr($name, 0, 1));",
+                "        $rest = mb_substr($name, 1);",
+                "",
+                "        return $first . $rest;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class DisplayNameFormatter",
+                "{",
+                "    public function capitalizeFirst(string $name): string",
+                "    {",
+                "        return mb_ucfirst($name);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.mb_lcfirstFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.mb_ucfirstFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "Measured on this host (PHP 8.4.19, mbstring loaded): ucfirst('ábc') === 'ábc' (an exact, unchanged no-op) while mb_ucfirst('ábc') === 'Ábc'. A full sweep of all 256 byte values showed ucfirst() changes only 0x61-0x7A to 0x41-0x5A and nothing else, reproduced identically under every locale installed in this container (C, C.UTF-8, POSIX - every other setlocale() target tried returned false, not installed here). A Shift-JIS-encoded character (lead byte 0x82) was also left unchanged by ucfirst(). No input was found that turns byte-wise ucfirst() into mojibake rather than a no-op; this host's locale set could not test further.",
+        "Measured mb_ucfirst()/mb_lcfirst() perform Unicode title-casing, not plain upper/lower-casing: mb_ucfirst(\"\\u{01F3}bc\") (the digraph 'ǳ') returns first codepoint U+01F2 ('ǲ', titlecase Dz), while mb_strtoupper() on the same input returns U+01F1 ('Ǳ', full uppercase DZ) - confirmed via mb_ord() on both outputs. ReflectionFunction confirms both new functions accept an optional ?string $encoding = null second parameter. function_exists('mb_ucwords') is false: there is no multibyte-safe ucwords().",
+        "Analyzer probe, 2026-09-07: against a probe file calling mb_ucfirst() and mb_lcfirst(), PHPCompatibility.FunctionUse.NewFunctions.mb_ucfirstFound and PHPCompatibility.FunctionUse.NewFunctions.mb_lcfirstFound both fire at testVersion 8.2-8.5 and at testVersion 8.3-8.5, and neither fires at testVersion 8.4-8.5.",
+        "Floor-direction proof: 2 findings (one per sniff id) at testVersion 8.3-8.5 (floor one minor below introduced_in), 0 findings at testVersion 8.4-8.5 (floor at introduced_in) - confirms introduced_in: 8.4.",
+        "Evidence: UPGRADING-8.4.0, \"6. New Functions\" -> MBString: \"Added mb_ucfirst and mb_lcfirst functions.\" (RFC mb_ucfirst)."
+    ]
+}
