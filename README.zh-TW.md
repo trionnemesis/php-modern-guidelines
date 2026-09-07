@@ -230,7 +230,7 @@ php bin/php-modern-guidelines version
 預期輸出：
 
 ```text
-php-modern-guidelines 0.3.8
+php-modern-guidelines 0.3.9
 ```
 
 解析目標專案 policy、列出適用規則、解釋單一規則，並診斷本工具自身的輸入：

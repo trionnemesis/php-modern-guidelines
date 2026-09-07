@@ -237,7 +237,7 @@ php bin/php-modern-guidelines version
 Expected output:
 
 ```text
-php-modern-guidelines 0.3.8
+php-modern-guidelines 0.3.9
 ```
 
 Resolve a target-project policy, list applicable rules, explain one rule, and diagnose the tool's own inputs:

@@ -2,6 +2,110 @@
 
 All notable changes will be documented in this file.
 
+## [0.3.9] - 2026-09-07
+
+### Added
+
+- Eight source-backed rules, growing the catalogue from 72 to 80. This is the first round drawn from
+  `UPGRADING`'s **New Functions** sections, and it is the mirror image of the three rounds before it.
+  Those documented behaviour PHPCompatibility is structurally blind to; this documents whether a symbol
+  exists in a version range, which is the one question the analyzer was built to answer. All eight rules
+  ship mapped.
+  - `core.fpow` (8.4) - the sharpest rule in the round, and the one whose advice runs opposite to its
+    surface reading. `fpow()` exists because `pow()` deprecated raising 0 to a negative exponent, but it
+    is **not** a drop-in replacement: its parameters are declared `float`, so integer arguments are
+    evaluated in IEEE 754 doubles. Measured, `3**35` is exactly `50031545098999707` and `pow(3, 35)`
+    returns that `int`, while `fpow(3.0, 35.0)` returns `50031545098999704` - wrong by 3, silently, for
+    any integer result above 2^53.
+  - `core.get_error_exception_handler` (8.5) - before 8.5 the only way to read the current handler is to
+    replace it and put it back, `set_error_handler(null)` then `restore_error_handler()`. Measured, that
+    round-trips correctly in isolation, returns `null` rather than the handler's own identity when read
+    from inside the running handler, and desynchronizes PHP's handler stack if anything installs a handler
+    between the two calls - leaving the transient `null` state installed rather than the original.
+  - `extension.mb_trim_functions` (8.4) - `mb_trim()` is not "`trim()` plus Unicode spaces". Measured, it
+    also strips form feed, which `trim()`'s six-byte default excludes; it does not expand `a..z` ranges in
+    `$characters`, so `mb_trim('abc123', 'a..z')` yields `'bc123'` where `trim()` yields `'123'`; and its
+    default set agrees with ICU's own `White_Space` property across every codepoint checked, correctly
+    leaving U+200B and U+FEFF alone.
+  - `extension.mb_case_first_functions` (8.4) - `mb_ucfirst()` performs Unicode **title**-casing, not
+    upper-casing: measured, `ǳ` (U+01F3) becomes `ǲ` (U+01F2), while `mb_strtoupper()` gives `Ǳ` (U+01F1).
+    There is no `mb_ucwords()`, which bounds how far the rule's advice reaches.
+  - `extension.mb_str_pad` (8.3) - `str_pad()` counts bytes, so `str_pad('áb', 5, '-')` yields two pad
+    characters where `mb_str_pad()` yields three. The trap the rule records is that passing the wrong
+    `$encoding` silently reproduces the original byte-counting bug rather than failing.
+  - `extension.grapheme_str_split` (8.4) - measured against `str_split()` and `mb_str_split()` on four
+    inputs. A ZWJ family emoji is 25 bytes, 7 code points and 1 grapheme, so the `before` example is
+    `mb_str_split()` - the mistake made by someone who already knows to avoid `str_split()`.
+  - `extension.bcmath_rounding_functions` (8.4) - `bcfloor()` and `bcceil()` take exactly one argument,
+    unlike `bcround()`, so the obvious argument-by-analogy is wrong. `bcmath` is not loaded on this host
+    and wiki.php.net is unreachable from it, so the semantics were read from the PHP 8.4.0 C source
+    instead; both rule files disclose that substitution rather than implying a measurement.
+  - `extension.curl_multi_get_handles` (8.5) - `curl_multi_add_handle()` and the `CURLMOPT_PUSHFUNCTION`
+    callback append to the same internal list, so handles created by an HTTP/2 server push cannot be
+    enumerated by application-side bookkeeping at all. That is the gap the function closes.
+- One verification fixture, `catalogue_expansion_r8_findings.php`, carrying a **floor-direction proof**.
+
+### Changed
+
+- Mapping coverage **rises** from 37 of 72 rules (51.4%) to 45 of 80 (56.25%) - the first rise since
+  `0.3.5`, ending three consecutive falls, and landing back at exactly the `0.3.7` level. Issue #18
+  predicted this direction on the grounds that a feature round is the only one that raises coverage; the
+  prediction held.
+- `SNIFF_RULE_MAP` grows from 209 to 224 sniff ids and remains the exact bidirectional inverse of the
+  rule-local `verification.phpcompatibility` lists.
+- `category: extension` nearly doubles, 7 rules to 13, and `kind: feature` goes from 15 to 23. Both follow
+  from the section's own shape rather than from a choice - see below.
+- `SeedRuleCatalogueTest::REVIEW_DATES` gains `2026-09-07`; the `checked_at` tally is 16 + 16 + 32 + 8 + 8
+  = 80.
+- **The default single-target view does not grow at all**: 42 of 72 shown becomes 42 of 80, because all
+  eight new rules are `not_in_range` under an 8.2 single-target policy, taking that count from 30 to 38.
+  This is the first round where every added rule is invisible by default, and it is the correct behaviour:
+  a feature rule is gated on the project's floor, so a project pinned to 8.2 should not be told that an
+  8.4 function is available to it.
+
+### Measured, and worth recording
+
+- **The pinned analyzer's New Functions data is wrong in three places, not merely blind.** Every previous
+  structural finding in this project said PHPCompatibility could not see something. These say its data
+  disagrees with php-src.
+  1. `http_get_last_response_header` and `http_clear_last_response_header` are registered singular;
+     `UPGRADING-8.4` names them plural, and only the plural forms exist. Measured over a file containing
+     both spellings, only the non-existent singular forms produce findings. So those two sniff ids can
+     never fire on real code - and a rule for these functions therefore cannot honestly be mapped in this
+     pinned version, which is why one was not added despite being an obvious candidate.
+  2. `openssl_password_hash` and `openssl_password_verify` are claimed as 8.4 additions. They appear in no
+     `UPGRADING` file for 8.1 through 8.5, and `get_extension_funcs('openssl')` returns 64 functions here
+     with none matching `password`.
+  3. `openssl_cipher_key_length` has its `extension` key misspelled `openssal`.
+- **The section is overwhelmingly extension-scoped.** `UPGRADING` 8.2-8.5 carries 101 New Functions bullet
+  entries and the pinned sniff knows 76 functions added in that range. Eleven of those 76 landed in 8.2 and
+  were set aside: PHP 8.1 is end-of-life, so a rule saying "this function needs an 8.2 floor" is near-
+  worthless today. Of the remaining 65, eleven were already named somewhere in the catalogue, leaving
+  **54 open** - of which only **3** are Core/Standard (`fpow`, `get_error_handler`, `get_exception_handler`).
+  Six of this round's eight rules are therefore `extension`-category, and that is a faithful reflection of
+  the section rather than a preference.
+- **`New*` sniffs fire on the testVersion floor, not the ceiling**, which inverts the two-range fixture
+  proof rounds 7 and 8 introduced. With the ceiling held at 8.5, the fixture gives 15 findings at
+  `8.2-8.5`, 14 at `8.3-8.5`, 3 at `8.4-8.5` and 0 at `8.5-8.5` - a ladder that partitions the batch
+  exactly by `introduced_in` (1 at 8.3, 11 at 8.4, 3 at 8.5). A fixture that merely fired would prove none
+  of the eight version claims.
+- **Byte-wise `ucfirst()` cannot corrupt UTF-8.** A brief for this round asked for a mojibake example; a
+  full 256-byte sweep showed `ucfirst()` maps only `0x61-0x7A`, which never overlaps a UTF-8 lead byte, so
+  the failure is always a silent no-op and never corruption. The rule records the disproof.
+- **php.net is unreachable from this environment** (403 at CONNECT for both `wiki.php.net` and
+  `www.php.net`), so RFC prose cannot be cited from measurement here. Where a rule needed semantics this
+  host could not execute, it was read from the php-src C implementation over an allowed host instead, and
+  says so.
+
+### Not included
+
+- Any new analyzer. M3-C (PHPStan) stays deferred and M3-D (Rector) stays dropped.
+- Any change to the pinned analyzer version - including any workaround for the three defects above. They
+  are recorded as measurements, not routed around.
+- The 51 extension-scoped New Functions entries still open, the 17 still-uncovered Core/Standard
+  `Backward Incompatible Changes` entries, and the 4 `Deprecated Functionality` gaps.
+- Any framework pack, auto-fix, target-project write, or network rule fetching.
+
 ## [0.3.8] - 2026-09-06
 
 ### Added
