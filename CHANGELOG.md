@@ -102,7 +102,8 @@ All notable changes will be documented in this file.
 - Any new analyzer. M3-C (PHPStan) stays deferred and M3-D (Rector) stays dropped.
 - Any change to the pinned analyzer version - including any workaround for the three defects above. They
   are recorded as measurements, not routed around.
-- The 51 extension-scoped New Functions entries still open, the 17 still-uncovered Core/Standard
+- The 39 New Functions entries still open after this round - every one extension-scoped, since the three
+  Core/Standard entries the section held are exactly the ones taken. The 17 still-uncovered Core/Standard
   `Backward Incompatible Changes` entries, and the 4 `Deprecated Functionality` gaps.
 - Any framework pack, auto-fix, target-project write, or network rule fetching.
 

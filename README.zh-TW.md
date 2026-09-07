@@ -110,9 +110,11 @@
 > 56.25%）。八條新規則全數以已 mapping 狀態上線，`SNIFF_RULE_MAP` 新增十五個 sniff id——
 > [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) 早已預測這個方向，
 > 這一輪只是證實這項預測成立，而非意外。這一輪的落差幾乎全數侷限在特定 extension：這個段落在
-> Core/Standard 與所有具名 extension 中仍有 54 項尚未涵蓋的條目，其中只有 3 項
+> 本輪之前留下 54 項尚未涵蓋的條目，其中只有 3 項
 > （`fpow()`、`get_error_handler()`、`get_exception_handler()`）屬於 Core/Standard，因此
-> `category: extension` 幾乎翻倍，從七條增加為十三條。一條 feature 規則是根據專案的*下限*而不是
+> `category: extension` 幾乎翻倍，從七條增加為十三條。這八條規則涵蓋了其中 15 項，還剩下
+> **39 項未涵蓋，且全數都需要具名 extension**——因為該段落僅有的 3 項 Core/Standard 條目，
+> 正好就是本輪取走的那三項。一條 feature 規則是根據專案的*下限*而不是
 > 上限來判斷可否適用——這與 catalogue 中每一條 deprecation 規則正好相反——這一輪也在 pinned
 > analyzer 自身的 New Functions 資料中記錄了三項**量測到的缺陷**：這是前所未見的新類別，因為先前
 > 每一項結構性發現談的都是 analyzer *看不到*什麼，而不是它的資料本身就*錯了*。
@@ -433,7 +435,9 @@ ZWJ family emoji 是 25 bytes、7 個 codepoint，量測結果卻正好是 1 個
 `UPGRADING` 8.2–8.5 記錄了 101 項 New Functions 條目；pinned sniff 認得其中 76 個函式；8.3 以上的
 版本中有 11 項早已在 catalogue 某處被記錄，留下 54 項尚未涵蓋——這 54 項之中只有 3 項
 （`fpow()`、`get_error_handler()`、`get_exception_handler()`）屬於 Core/Standard。其餘全部都需要
-具名 extension，這正是這一輪 `category: extension` 幾乎翻倍、從七條增加為十三條的原因。也值得直接
+具名 extension，這正是這一輪 `category: extension` 幾乎翻倍、從七條增加為十三條的原因。這八條規則
+涵蓋了 54 項中的 15 項，因此還剩 39 項未涵蓋，而且這 39 項全部都需要具名 extension——該段落僅有的
+3 項 Core/Standard 條目正好就是本輪取走的那三項。也值得直接
 說明：一條 feature 規則正好與 catalogue 中每一條 deprecation 規則相反——它是依專案的*下限*而非
 上限來判斷是否適用，回答的是「我現在能不能寫這個呼叫」而不是「這個東西是不是已經被 deprecate
 了」，這也改變了 `--php` gating 在這批規則上的讀法——fixture 上的驗證方式也隨之反轉。對

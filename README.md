@@ -116,10 +116,11 @@
 > (thirty-six of sixty-four was also 56.25%). All eight new rules ship mapped and `SNIFF_RULE_MAP` gains
 > fifteen sniff ids — [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18)
 > predicted this direction, and this round confirms the prediction held rather than reporting a surprise.
-> The seam is overwhelmingly extension-scoped: of the 54 New Functions entries this section still leaves
-> open across Core/Standard and every named extension, only 3 (`fpow()`, `get_error_handler()`,
-> `get_exception_handler()`) are Core/Standard, so `category: extension` nearly doubles, seven to
-> thirteen. A feature rule is gated on the project's *floor* rather than its ceiling — the inverse of
+> The seam is overwhelmingly extension-scoped: of the 54 New Functions entries the section left open
+> before this round, only 3 (`fpow()`, `get_error_handler()`, `get_exception_handler()`) were
+> Core/Standard, so `category: extension` nearly doubles, seven to thirteen. The eight rules cover 15 of
+> those 54, leaving **39 open — every one extension-scoped**, because the three Core/Standard entries are
+> exactly the ones taken. A feature rule is gated on the project's *floor* rather than its ceiling — the inverse of
 > every deprecation rule in the catalogue — and this round also records three **measured defects** in the
 > pinned analyzer's own New Functions data: a category never seen before, since every earlier structural
 > finding said the analyzer was *blind*, not *wrong*.
@@ -454,7 +455,8 @@ finding. Measured directly: `UPGRADING` 8.2–8.5 carries 101 New Functions bull
 knows 76 functions across that range; 11 of the 8.3+ ones were already named somewhere in the catalogue,
 leaving 54 open — and only 3 of those 54 (`fpow()`, `get_error_handler()`, `get_exception_handler()`) are
 Core/Standard. Everything else needs a named extension, which is why `category: extension` nearly
-doubles, seven to thirteen, this round. A feature rule is also worth stating plainly as the inverse of
+doubles, seven to thirteen, this round. The eight rules cover 15 of the 54, so 39 remain open, and all 39
+are extension-scoped: the three Core/Standard entries the section held are precisely the ones taken. A feature rule is also worth stating plainly as the inverse of
 every deprecation rule in the catalogue: it is gated on the project's *floor* rather than its ceiling — it
 answers "can I write this call yet?" rather than "has this been deprecated yet?", which changes how
 `--php` gating reads for this batch — and the fixture proof inverts to match. For a `removed`/`deprecated`
