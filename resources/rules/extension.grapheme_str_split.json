@@ -1,0 +1,74 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.grapheme_str_split",
+    "title": "grapheme_str_split()",
+    "summary": "PHP 8.4 added grapheme_str_split(), splitting a string into Unicode grapheme clusters - user-perceived \"characters\" - rather than bytes (str_split()) or codepoints (mb_str_split()).",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "intl",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, use grapheme_str_split() - not str_split() or mb_str_split() - whenever 'split this string into characters' means user-perceived characters: truncating displayed text, counting or indexing 'characters' for a UI, or iterating over what a user would call individual letters/emoji/symbols. Keep using mb_str_split() where the task genuinely needs Unicode codepoints rather than grapheme clusters (for example, normalization-sensitive processing), and str_split() only for byte-oriented/binary-safe chunking.",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.4, audit existing mb_str_split() call sites that process user-supplied text for the purpose of displaying, truncating, reversing or indexing individual 'characters': measured on this host, mb_str_split() splits a single emoji-with-variation-selector, a ZWJ emoji sequence, a regional-indicator flag pair, and a combining-accent sequence into 2 or more separate array elements each, none of which is a complete character on its own for display purposes, while grapheme_str_split() returns exactly one element for all four. Swap those call sites to grapheme_str_split(), but only where 'one visual character' is really the intent - code that specifically wants Unicode codepoints (not grapheme clusters), for example for a normalization- or codepoint-indexing-sensitive algorithm, must keep mb_str_split(), since the array lengths and element boundaries genuinely differ between the two functions and are not interchangeable.",
+    "guideline": "Use grapheme_str_split() to split a string into user-perceived characters (Unicode grapheme clusters), instead of str_split() (bytes) or mb_str_split() (codepoints), whenever the code's actual intent is one visual character per array element.",
+    "details": "PHP 8.4 added grapheme_str_split(string $string, int $length = 1): array|false to intl (RFC grapheme_str_split, 'which allow to support emoji and Variation Selectors' per UPGRADING); confirmed via ReflectionFunction that $length (default 1) is the number of grapheme clusters grouped per returned element, not a byte or codepoint count - measured grapheme_str_split('abcdef', 2) returns 3 elements ('ab', 'cd', 'ef'). Measured on this host (PHP 8.4.19, intl loaded) across four inputs that are each one user-perceived 'character' but multiple bytes and, in three of the four cases, multiple Unicode codepoints: heart emoji plus variation selector (U+2764 U+FE0F, 6 bytes) gives str_split() 6 pieces, each individually invalid UTF-8 (confirmed with mb_check_encoding() on every piece), mb_str_split() 2 pieces (the bare heart codepoint and the variation selector as separate elements), and grapheme_str_split() 1 piece, byte-identical to the original 2-codepoint input; a family ZWJ sequence, man+ZWJ+woman+ZWJ+girl+ZWJ+boy (7 codepoints, 25 bytes), gives str_split() 25 pieces, mb_str_split() 7 separate codepoints (splitting the one visual family emoji into man, woman, girl and boy plus three separate zero-width-joiner elements), and grapheme_str_split() 1 piece; the Japan flag, a regional-indicator letter pair (U+1F1EF U+1F1F5, 8 bytes), gives str_split() 8 pieces, mb_str_split() 2 separate codepoints (the two regional-indicator letters, no longer paired into one flag), and grapheme_str_split() 1 piece; and 'e' plus a combining acute accent, decomposed 'e-with-acute' (U+0065 U+0301, 3 bytes), gives str_split() 3 pieces, mb_str_split() 2 separate codepoints (the bare 'e' and a free-floating combining accent), and grapheme_str_split() 1 piece. In every case grapheme_str_split()'s one returned element is byte-identical to the full original input (confirmed via === on the heart example), while mb_str_split() silently produces an array whose length does not equal the number of 'characters' a user or a truncation/indexing routine would expect - the mistake an agent who already knows to prefer mb_ functions over str_split() will still make, since mb_str_split() looks like the Unicode-aware choice and is exactly that, just at codepoint rather than grapheme-cluster granularity. grapheme_str_split() is not simply 'more lenient': it throws ValueError when $length is 0 or negative (confirmed: 'Argument #2 ($length) must be greater than 0 and less than or equal to 1073741823'), and on malformed input (two bytes that are not valid UTF-8 at all) it did not return false but instead returned two elements, each the Unicode replacement character U+FFFD - the array|false return type's false case was not reproduced by this input; it was not fully characterized here.",
+    "examples": [
+        {
+            "before": [
+                "$firstChar = mb_str_split($text)[0] ?? '';"
+            ],
+            "after": [
+                "$firstChar = grapheme_str_split($text)[0] ?? '';"
+            ]
+        },
+        {
+            "before": [
+                "final class CaptionPreview",
+                "{",
+                "    public function truncate(string $caption, int $maxChars): string",
+                "    {",
+                "        $chars = mb_str_split($caption);",
+                "",
+                "        return implode('', array_slice($chars, 0, $maxChars));",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class CaptionPreview",
+                "{",
+                "    public function truncate(string $caption, int $maxChars): string",
+                "    {",
+                "        $chars = grapheme_str_split($caption);",
+                "",
+                "        return implode('', array_slice($chars, 0, $maxChars));",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.grapheme_str_splitFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "Measured on this host (PHP 8.4.19, intl loaded): grapheme_str_split() returns exactly 1 element, byte-identical to the input, for all four of: heart-emoji+variation-selector (6 bytes), a 4-person ZWJ family sequence (7 codepoints, 25 bytes), a regional-indicator flag pair (8 bytes), and 'e' plus a combining acute accent (3 bytes). Over the same four inputs str_split() returns 6/25/8/3 pieces respectively (each individually invalid UTF-8, confirmed via mb_check_encoding()) and mb_str_split() returns 2/7/2/2 pieces respectively (each a lone, valid-but-incomplete codepoint).",
+        "Measured grapheme_str_split(string $string, int $length = 1): array|false via ReflectionFunction; $length groups multiple graphemes per element (grapheme_str_split('abcdef', 2) === ['ab', 'cd', 'ef'], measured) and throws ValueError when 0 or negative. On invalid UTF-8 (two non-UTF-8 bytes) it returned an array of two U+FFFD replacement characters rather than false; the documented false-returning case was not reproduced.",
+        "Analyzer probe, 2026-09-07: PHPCompatibility.FunctionUse.NewFunctions.grapheme_str_splitFound fires at testVersion 8.2-8.5 and at testVersion 8.3-8.5, and does not fire at testVersion 8.4-8.5, against a probe file calling grapheme_str_split().",
+        "Floor-direction proof: 1 finding at testVersion 8.3-8.5 (floor one minor below introduced_in), 0 findings at testVersion 8.4-8.5 (floor at introduced_in) - confirms introduced_in: 8.4.",
+        "Evidence: UPGRADING-8.4.0, \"6. New Functions\" -> Intl: \"Added grapheme_str_split which allow to support emoji and Variation Selectors.\" (RFC grapheme_str_split)."
+    ]
+}

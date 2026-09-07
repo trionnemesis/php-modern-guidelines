@@ -1,0 +1,77 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.fpow",
+    "title": "fpow()",
+    "summary": "PHP 8.4 added fpow(), an IEEE-754-conforming float power function that returns INF instead of raising pow()'s/**'s new zero-base-negative-exponent deprecation, always returns float, and is not a precision-safe drop-in for pow() on large exact integers.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, use fpow() specifically where the intent is IEEE-754 floating-point exponentiation and a float return type is acceptable - in particular to compute a power whose base can legitimately be zero with a negative exponent, since pow()/** now raise E_DEPRECATED for that case while fpow() returns INF silently. Do not use fpow() as a blanket replacement for every pow()/** call: it always returns float even for integer operands, and its pure floating-point computation can return a different numeric value than pow()'s exact integer arithmetic once the true result needs more than 53 significant bits.",
+    "existing_code_policy": "Search for `pow(` calls and the `**` operator. Once the project's floor reaches 8.4, migrating a call site to fpow() is safe when the site already treats its result as float, or exists specifically to avoid the pow()/** zero-base-negative-exponent deprecation. Do not migrate a plain `pow($int, $int)` call relied on for an exact integer result without checking the magnitude of the possible result first: measured, pow(3, 35) returns the exact int(50031545098999707) while fpow(3.0, 35.0) returns float(50031545098999704), three away from the true value, because that 56-bit integer cannot be represented exactly as a double. Also audit any `===`, strict type check, or int-keyed array/JSON use of the result, since fpow() always returns float where pow()/** may have been returning int.",
+    "guideline": "Use fpow() for IEEE-754-conforming floating-point exponentiation, in particular to replace a pow()/** call on a base that can be zero with a negative exponent - a case pow()/** now raises E_DEPRECATED for while fpow() returns INF silently. Do not use fpow() as a general drop-in for pow()/**: fpow() always returns float, while pow()/** returns int for two int operands with an exactly representable result, and fpow()'s pure floating-point computation can diverge in value, not just in type, from pow()'s exact integer arithmetic once the true result needs more than 53 significant bits.",
+    "details": "PHP 8.4 added fpow() to the Standard extension (RFC raising_zero_to_power_of_negative_number), per UPGRADING-8.4.0 (\"6. New Functions\" -> Standard): \"Added function fpow() following rules of IEEE 754.\" Measured on this host via Reflection, its real signature is `fpow(float $num, float $exponent): float` - both parameters and the return type are declared float, not `int|float`, so integer arguments are coerced to float before fpow() ever computes anything.\n\nThe rule's motivating case, measured directly with a custom error handler installed: fpow(0.0, -1.0) returns float(INF) and raises nothing; pow(0, -1) returns float(INF) and raises `[errno=8192] Power of base 0 and negative exponent is deprecated` (E_DEPRECATED, PHP 8.0+). The same deprecation also fires for `0 ** -1` and for pow(0.0, -1.0) with float arguments, and fpow(0.0, -2.0) also returns INF silently - so the deprecation is about the numeric value of the base and exponent, not about which of pow()/** was used or whether the arguments were declared int or float, and fpow() never raises it for any zero-base/negative-exponent input, matching the IEEE 754 convention that x**y for x = +-0 and negative finite y is +-infinity.\n\nOn ordinary float input the two agree exactly: fpow(2.0, 10.0) and pow(2.0, 10.0) both give float(1024). The first proven divergence is return type: fpow(2, 10) gives float(1024) (fpow always returns float, per its signature) while pow(2, 10) and 2 ** 10 both give int(1024) (pow()/** return int for two int operands whose exact result is representable as int). pow()'s int path also holds exactly up to the point of int overflow: pow(2, 62) is int(4611686018427387904) (exact, fits in a 64-bit signed int), while pow(2, 63) and pow(2, 64) both overflow to float, matching what fpow(2, 62)/fpow(2, 63)/fpow(2, 64) give regardless (all float, since fpow always computes in float).\n\nThe second, more consequential divergence is a genuine precision loss, not just a type change: pow()'s int-only path computes with exact integer arithmetic, while fpow()'s pure-float computation goes through IEEE 754 double precision (53 bits of mantissa) from the start, because its parameters are float-typed. Measured directly: 3 ** 35's true value, verified independently via a native-int repeated-multiplication loop that never left the int type (confirmed with is_int() at every step), is exactly 50031545098999707 - a 56-bit integer, so it cannot be represented exactly as a double. pow(3, 35) returns int(50031545098999707), matching the verified-exact value bit for bit. fpow(3.0, 35.0) returns float(50031545098999704) - three less than the true value - because it is computed as an IEEE 754 double pow() throughout and that double cannot hold the 56-bit exact answer. A mechanical pow()-to-fpow() swap on plain integer operands can therefore silently change the numeric answer, not merely its declared type, once the true result exceeds a double's 53-bit exact-integer range.\n\nWhere the two are not expected to agree by construction - a negative base with a non-integer exponent, which is complex-valued in the reals - measurement shows no divergence: pow(-8, 1/3), fpow(-8.0, 1/3) and pow(-8, 1.0/3.0) all return float(NAN). With a negative base and an integer exponent both agree on magnitude and sign, differing only in the already-described return type (pow(-8, 2) is int(64), fpow(-8.0, 2.0) is float(64); pow(-2, 3) is int(-8), fpow(-2.0, 3.0) is float(-8)). NAN handling likewise agrees in every combination measured: pow(NAN, 0) and fpow(NAN, 0.0) both give float(1) (the IEEE 754 rule that x**0 = 1 even for x = NaN already held for pow(), not only for fpow()); pow(1, NAN) and fpow(1.0, NAN) both give float(1) (1**y = 1 for any y, including NaN); pow(2, NAN) and fpow(2.0, NAN) both give float(NAN) for ordinary NaN propagation. So fpow()'s IEEE-754 framing changes nothing observable for NAN specifically on this host - the two proven differences are the always-float return type and the float-precision loss on large exact integers.",
+    "examples": [
+        {
+            "before": [
+                "$result = pow(0.0, -1.0);"
+            ],
+            "after": [
+                "$result = fpow(0.0, -1.0);"
+            ]
+        },
+        {
+            "before": [
+                "final class InverseSquareLaw",
+                "{",
+                "    public static function fieldStrength(float $sourceStrength, float $distance): float",
+                "    {",
+                "        // $distance can legitimately be 0.0 at the source itself; pow() now raises",
+                "        // E_DEPRECATED for a zero base with this negative exponent.",
+                "        return $sourceStrength * pow($distance, -2.0);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class InverseSquareLaw",
+                "{",
+                "    public static function fieldStrength(float $sourceStrength, float $distance): float",
+                "    {",
+                "        // fpow() follows IEEE 754: a zero base with a negative exponent returns",
+                "        // INF instead of raising a deprecation notice.",
+                "        return $sourceStrength * fpow($distance, -2.0);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.fpowFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "Measured on this host (PHP 8.4.19) with a custom error handler installed: fpow(0.0, -1.0) returns float(INF) and raises nothing; pow(0, -1) returns float(INF) and raises [errno=8192] \"Power of base 0 and negative exponent is deprecated\"; 0 ** -1 and pow(0.0, -1.0) raise the identical deprecation, and fpow(0.0, -2.0) is also silent - the deprecation tracks the numeric value of the operands, not their declared type or which of pow()/** was called.",
+        "Measured on this host via Reflection: fpow()'s real signature is fpow(float $num, float $exponent): float - both parameters and the return type are float, not int|float, so int arguments are coerced to float before any computation happens.",
+        "Measured on this host: fpow(2, 10) returns float(1024) while pow(2, 10) and 2 ** 10 both return int(1024) - the return-type difference. pow(2, 62) is int(4611686018427387904) (exact, no overflow), while pow(2, 63) and pow(2, 64) overflow to float, matching fpow(2, 62)/fpow(2, 63)/fpow(2, 64), which are float regardless.",
+        "Measured on this host: verified independently via a native-int repeated-multiplication loop (confirmed with is_int() at every step, so no float ever entered the computation) that the exact value of 3 ** 35 is 50031545098999707, a 56-bit integer. pow(3, 35) returns int(50031545098999707), matching exactly. fpow(3.0, 35.0) returns float(50031545098999704) - three less than the true value - because fpow()'s float-typed parameters force the computation through IEEE 754 double precision (53-bit mantissa), which cannot represent this 56-bit integer exactly. This is the concrete, measured basis for behavior_change_risk: medium: a mechanical pow()-to-fpow() swap on plain integer literals can silently change the numeric result, not merely its type.",
+        "Measured on this host: for a negative base with a non-integer exponent (mathematically complex-valued), pow(-8, 1/3), fpow(-8.0, 1/3) and pow(-8, 1.0/3.0) all return float(NAN) - no divergence there. For a negative base with an integer exponent, pow(-8, 2)/pow(-2, 3) return int(64)/int(-8) and fpow(-8.0, 2.0)/fpow(-2.0, 3.0) return float(64)/float(-8) - agreeing on magnitude, differing only in the already-documented return type. NAN handling agrees in every case tried: pow(NAN, 0) and fpow(NAN, 0.0) both give float(1); pow(1, NAN) and fpow(1.0, NAN) both give float(1); pow(2, NAN) and fpow(2.0, NAN) both give float(NAN).",
+        "Analyzer probe, reproduced 2026-09-07 with the pinned stack (squizlabs/php_codesniffer:3.13.6 + phpcompatibility/php-compatibility:10.0.0-alpha2) against a one-line probe file calling fpow(): at --runtime-set testVersion 8.2-8.5, PHPCompatibility.FunctionUse.NewFunctions.fpowFound fires once.",
+        "Floor-direction proof: the same probe file gives 1 finding at testVersion 8.3-8.5 and 0 findings at testVersion 8.4-8.5, confirming introduced_in: 8.4.",
+        "Evidence: UPGRADING-8.4.0, \"6. New Functions\" -> Standard: \"Added function fpow() following rules of IEEE 754.\""
+    ]
+}

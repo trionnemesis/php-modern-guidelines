@@ -1,0 +1,107 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.curl_multi_get_handles",
+    "title": "curl_multi_get_handles()",
+    "summary": "PHP 8.5 adds curl_multi_get_handles(), returning every CurlHandle currently attached to a CurlMultiHandle, including handles a CURLMOPT_PUSHFUNCTION callback accepted from an HTTP/2 server push that the application's own bookkeeping never explicitly added.",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "curl",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.5 or above, use curl_multi_get_handles($multiHandle) instead of maintaining a parallel array of the handles passed to curl_multi_add_handle(), whenever the code later needs to know what is currently attached to a curl_multi handle - including cases where CURLMOPT_PUSHFUNCTION is configured, since a manually maintained array cannot include a handle the application never explicitly added.",
+    "existing_code_policy": "Once the project's PHP floor reaches 8.5, replace a hand-maintained 'array of handles I added to this multi handle' with curl_multi_get_handles($multiHandle). Where CURLMOPT_PUSHFUNCTION is configured and its callback can accept a push (returns other than CURL_PUSH_DENY), verify the migration deliberately: curl_multi_get_handles() will now surface those accepted-but-never-explicitly-added handles too, so code that assumed 'my tracked array' and 'everything attached to the multi handle' were the same set may see more handles than before and needs to handle them.",
+    "guideline": "Use curl_multi_get_handles() to enumerate every CurlHandle currently attached to a CurlMultiHandle, instead of a hand-maintained array of handles passed to curl_multi_add_handle(), especially where CURLMOPT_PUSHFUNCTION is in use.",
+    "details": "function_exists('curl_multi_get_handles') is false on this host (PHP 8.4.19) while extension_loaded('curl') is true, confirmed directly - the function itself is 8.5, not merely gated behind a missing extension, so nothing about calling it could be measured here; the claims below are sourced from UPGRADING and, since raw.githubusercontent.com is reachable from this environment (unlike wiki.php.net or www.php.net, both blocked by network policy - confirmed via repeated 403 CONNECT rejections), from reading the actual PHP 8.5.0 implementation at ext/curl/multi.c. UPGRADING states plainly: 'curl_multi_get_handles() allows retrieving all CurlHandles currently attached to a CurlMultiHandle. This includes both handles added using curl_multi_add_handle() and handles accepted by CURLMOPT_PUSHFUNCTION.' Reading multi.c confirms exactly how: curl_multi_add_handle() appends the added CurlHandle to a single internal linked list (mh->easyh); the internal server-push callback that backs CURLMOPT_PUSHFUNCTION independently appends a newly created CurlHandle to that very same list whenever the application's registered push callback accepts the push (returns anything other than CURL_PUSH_DENY); and curl_multi_get_handles() does nothing more than iterate that one list and return every CurlHandle in it, in insertion order, with a proper refcount increment rather than a copy. So before 8.5 there is no general way to ask a CurlMultiHandle what is currently attached to it: an application that only tracks the handles it explicitly passed to curl_multi_add_handle() in its own array has no way to learn about a handle its push callback silently accepted, unless that specific callback invocation was itself written to record the handle somewhere - a step that is easy to omit, especially in a callback that only inspects push headers to decide accept/deny and returns without saving a reference. curl_multi_get_handles() replaces that fragile, callback-site-specific bookkeeping with one call that is always in sync with what libcurl and PHP's own multi-handle wrapper actually consider attached, regardless of whether a handle arrived via curl_multi_add_handle() or a server push.",
+    "examples": [
+        {
+            "before": [
+                "$multiHandle = curl_multi_init();",
+                "$trackedHandles = [];",
+                "",
+                "$easyHandle = curl_init();",
+                "curl_multi_add_handle($multiHandle, $easyHandle);",
+                "$trackedHandles[] = $easyHandle;",
+                "",
+                "$attachedCount = count($trackedHandles);"
+            ],
+            "after": [
+                "$multiHandle = curl_multi_init();",
+                "",
+                "$easyHandle = curl_init();",
+                "curl_multi_add_handle($multiHandle, $easyHandle);",
+                "",
+                "$attachedCount = count(curl_multi_get_handles($multiHandle));"
+            ]
+        },
+        {
+            "before": [
+                "final class MultiHandleRegistry",
+                "{",
+                "    /** @var list<\\CurlHandle> */",
+                "    private array $tracked = [];",
+                "",
+                "    public function __construct(private readonly \\CurlMultiHandle $multi)",
+                "    {",
+                "    }",
+                "",
+                "    public function add(\\CurlHandle $handle): void",
+                "    {",
+                "        curl_multi_add_handle($this->multi, $handle);",
+                "        $this->tracked[] = $handle;",
+                "    }",
+                "",
+                "    /** @return list<\\CurlHandle> */",
+                "    public function attachedHandles(): array",
+                "    {",
+                "        return $this->tracked;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class MultiHandleRegistry",
+                "{",
+                "    public function __construct(private readonly \\CurlMultiHandle $multi)",
+                "    {",
+                "    }",
+                "",
+                "    public function add(\\CurlHandle $handle): void",
+                "    {",
+                "        curl_multi_add_handle($this->multi, $handle);",
+                "    }",
+                "",
+                "    /** @return list<\\CurlHandle> */",
+                "    public function attachedHandles(): array",
+                "    {",
+                "        return curl_multi_get_handles($this->multi);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.curl_multi_get_handlesFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "function_exists('curl_multi_get_handles') === false and extension_loaded('curl') === true, both confirmed directly on this host (PHP 8.4.19) - the function is unavailable because of the PHP version, not a missing extension, confirming this is an 8.5 version gap rather than a missing-extension problem.",
+        "wiki.php.net and www.php.net are blocked by this environment's network egress policy (confirmed via repeated 403 CONNECT rejections at the proxy), so the mechanism described below - which internal list curl_multi_add_handle() and CURLMOPT_PUSHFUNCTION's callback both append to, and that curl_multi_get_handles() only iterates that list - is sourced from reading the actual PHP 8.5.0 C implementation at raw.githubusercontent.com/php/php-src/php-8.5.0/ext/curl/multi.c (a host this environment's policy does allow), not from executing curl_multi_get_handles() itself, which does not exist on this host.",
+        "Exercised on this host (curl loaded, all of these functions exist and were called): curl_multi_init(), curl_init(), curl_setopt() and curl_multi_add_handle() to build the manual-bookkeeping 'before' pattern this rule replaces; no network transfer was performed or needed, since only handle registration - not curl_multi_exec() - is relevant to the point being made. curl_multi_get_handles() itself was never called.",
+        "Analyzer probe, 2026-09-07: PHPCompatibility.FunctionUse.NewFunctions.curl_multi_get_handlesFound fires at testVersion 8.2-8.5 and at testVersion 8.4-8.5, and does not fire at testVersion 8.5-8.5, against a probe file calling curl_multi_get_handles().",
+        "Floor-direction proof: 1 finding at testVersion 8.4-8.5 (floor one minor below introduced_in, since this function is 8.5 rather than 8.4), 0 findings at testVersion 8.5-8.5 (floor at introduced_in) - confirms introduced_in: 8.5.",
+        "Evidence: UPGRADING-8.5.0, \"6. New Functions\" -> Curl: \"curl_multi_get_handles() allows retrieving all CurlHandles currently attached to a CurlMultiHandle. This includes both handles added using curl_multi_add_handle() and handles accepted by CURLMOPT_PUSHFUNCTION.\""
+    ]
+}

@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 72 of 72 shown
+Rules: 80 of 80 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -33,10 +33,14 @@ Rules: 72 of 72 shown
       `exit`/`die` now behave like a function: callable, `strict_types`-aware, and type-coercing
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.file_flags_validation
       `file()` now validates its `$flags` argument instead of silently tolerating invalid values
+  [forbidden_above_feature_ceiling]  P1  feature              core.fpow
+      fpow()
   [deprecated_in_range]              P2  deprecated           core.get_class_without_arguments
       `get_class()`/`get_parent_class()` without arguments is deprecated
   [deprecated_in_range]              P2  deprecated           core.get_defined_functions_exclude_disabled
       Passing an explicit `$exclude_disabled` argument to `get_defined_functions()` is deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              core.get_error_exception_handler
+      get_error_handler() and get_exception_handler()
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.http_build_query_backed_enums
       `http_build_query()` now correctly handles backed enums
   [deprecated_in_range]              P2  deprecated           core.http_response_header
@@ -101,14 +105,26 @@ Rules: 72 of 72 shown
       Casting an unrepresentable float, float-like string, or `NAN` now warns
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              extension.bcmath_rounding_functions
+      bcfloor(), bcceil(), bcround() and bcdivmod()
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              extension.curl_multi_get_handles
+      curl_multi_get_handles()
   [deprecated_in_range]              P2  deprecated           extension.curl_share_close
       curl_share_close() is deprecated
   [deprecated_in_range]              P2  deprecated           extension.finfo_close
       finfo_close() is deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              extension.grapheme_str_split
+      grapheme_str_split()
   [removed_in_range]                 P0  removed              extension.imap_unbundled
       The IMAP extension was unbundled from php-src
+  [forbidden_above_feature_ceiling]  P1  feature              extension.mb_case_first_functions
+      mb_ucfirst() and mb_lcfirst()
+  [forbidden_above_feature_ceiling]  P1  feature              extension.mb_str_pad
+      mb_str_pad()
+  [forbidden_above_feature_ceiling]  P1  feature              extension.mb_trim_functions
+      mb_trim(), mb_ltrim() and mb_rtrim()
   [removed_across_range]             P0  removed              extension.mysqli_driver_reconnect
       `mysqli_driver::$reconnect` and the `mysqli.reconnect` INI directive were removed
   [deprecated_in_range]              P2  deprecated           extension.mysqli_ping_kill_refresh

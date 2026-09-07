@@ -1,0 +1,79 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.mb_trim_functions",
+    "title": "mb_trim(), mb_ltrim() and mb_rtrim()",
+    "summary": "PHP 8.4 added mb_trim(), mb_ltrim() and mb_rtrim(), which strip Unicode whitespace (the White_Space property) instead of trim()'s fixed six-byte ASCII list, encoding-aware rather than byte-oriented.",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "mbstring",
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "On a feature ceiling of 8.4 or above, use mb_trim()/mb_ltrim()/mb_rtrim() to strip whitespace from text that may contain multi-byte characters or non-ASCII whitespace, so the full Unicode White_Space property is recognised instead of trim()'s fixed six ASCII bytes. Always pass the string's real `$encoding` explicitly when it is not `mb_internal_encoding()`'s value - the mb_* functions do not defend against a mismatched encoding, and can reproduce trim()'s own byte-corruption failure mode when given one. Do not port a `trim($str, 'a..z')`-style range charlist mechanically: mb_trim()'s `$characters` argument has no `..`-range expansion and treats such a string as a literal, mostly-useless set of individual characters.",
+    "existing_code_policy": "Search for `trim(`, `ltrim(` and `rtrim(` calls over text that may contain multi-byte characters or non-ASCII whitespace. Once the project's floor reaches 8.4, replace them with the matching mb_* function, auditing two things at each call site: any `..`-range charlist argument (`'a..z'`, `'0..9'`, etc.), which trim() expands but mb_trim() does not (measured: trim('abc123', 'a..z') gives '123'; mb_trim('abc123', 'a..z') gives 'bc123', stripping only the literal characters a, . and z); and whether the bytes being trimmed are actually in `mb_internal_encoding()`'s encoding - if not, pass the real `$encoding` explicitly, since omitting it or getting it wrong can silently corrupt a multi-byte character exactly as trim() already does, rather than fix that corruption.",
+    "guideline": "Use mb_trim()/mb_ltrim()/mb_rtrim() instead of trim()/ltrim()/rtrim() once the floor allows it, so that Unicode whitespace (not just trim()'s fixed six-byte ASCII list) is stripped correctly and a multi-byte character is never split apart by trimming a byte that only coincidentally matches one of trim()'s default bytes.",
+    "details": "PHP 8.4 added mb_trim(), mb_ltrim() and mb_rtrim() to the mbstring extension (RFC mb_trim), per UPGRADING-8.4.0 (\"6. New Functions\" -> MBString): \"Added mb_trim, mb_ltrim and mb_rtrim functions.\" with the note \"this was amended by GH-13820 to fix GH-13815\" - this host (PHP 8.4.19) postdates that amendment, so every measurement below reflects the current, already-amended implementation. Measured, all three exist and behave as a matched set: with `$s = \"\\u{3000}x\\u{3000}\"` (U+3000 IDEOGRAPHIC SPACE on both sides of 'x'), trim($s) leaves both spaces in place (bin2hex unchanged, e3808078e38080), while mb_trim($s) returns 'x' exactly (bin2hex 78). mb_ltrim($s) strips only the leading space (bin2hex 78e38080) and mb_rtrim($s) strips only the trailing one (bin2hex e3808078), confirming the ltrim/rtrim split carries over unchanged.\n\ntrim()'s documented default charlist is exactly six ASCII bytes, confirmed one at a time on this host: space, tab, newline, carriage return, NUL and vertical tab (\\x0B) are each stripped by trim() alone. Form feed (\\x0C) is measurably NOT in that list: trim(\"\\x0Cx\\x0C\") is left completely unchanged. mb_trim() strips all six of trim()'s bytes too, but also strips form feed - measured, mb_trim(\"\\x0Cx\\x0C\") returns 'x' - so mb_trim() is not simply \"trim() plus some Unicode spaces\": it trims at least one byte (form feed) that trim() deliberately leaves alone, in addition to Unicode whitespace trim() cannot see at all.\n\nmb_trim()'s actual default character class was established by cross-checking its measured stripping behavior against ICU's own Unicode database, not assumed: for nine distinct codepoints (U+00A0 NBSP, U+1680 OGHAM SPACE MARK, U+2000 EN QUAD, U+2003 EM SPACE, U+2028 LINE SEPARATOR, U+2029 PARAGRAPH SEPARATOR, U+205F MEDIUM MATHEMATICAL SPACE, U+3000 IDEOGRAPHIC SPACE, U+200B ZERO WIDTH SPACE, and U+FEFF ZERO WIDTH NO-BREAK SPACE/BOM), IntlChar::hasBinaryProperty($codepoint, IntlChar::PROPERTY_WHITE_SPACE) was compared against whether mb_trim() actually stripped that character wrapped around 'x'. The two agreed in every case: mb_trim() stripped exactly the codepoints Unicode marks White_Space = Yes, and left U+200B and U+FEFF untouched - both commonly mistaken for whitespace by name, but both White_Space = No in Unicode, and mb_trim() correctly does not treat them as trimmable by default.\n\nThe optional `$characters` argument is not a character-for-character port of trim()'s. trim()'s charlist supports an `a..z`-style range: trim('abc123', 'a..z') gives '123' (the whole alphabet expanded and stripped). mb_trim() has no such range expansion: mb_trim('abc123', 'a..z') gives 'bc123' - it treats 'a..z' as the literal three-character set {a, ., z}, strips the leading 'a' (in the set), and stops at 'b' (not in the set); nothing is stripped from the right because '3' is not in the set either. Given a literal set instead, mb_trim() behaves sensibly and character-wise: mb_trim('abc123ba', 'ab') gives 'c123' (both 'a' and 'b' stripped from either end), and a single multi-byte character can be given as one trimmable unit - mb_trim(\"\\u{20AC}x\\u{20AC}\", \"\\u{20AC}\") gives 'x'. Supplying `$characters` at all replaces the Unicode-whitespace default rather than extending it, exactly as trim()'s own charlist argument replaces its default: mb_trim(' x ', '_') leaves the plain ASCII spaces completely untouched (bin2hex 207820, unchanged) because the custom set does not include them.\n\nThe strongest divergence is that trim()'s byte-oriented default list can corrupt a multi-byte character rather than merely under-trim it, and this is directly reproducible. mb_convert_encoding('Hi', 'UTF-16LE', 'UTF-8') gives the 4-byte string 48 00 69 00. Its last byte, 0x00, is one of trim()'s six default bytes. trim() on these raw bytes strips that trailing NUL, leaving the 3-byte string 48 00 69 - an odd number of bytes, which is not valid UTF-16LE. mb_check_encoding() on the result confirms false, and decoding it back to UTF-8 gives 'H?' - the second character is destroyed, not merely mis-padded. mb_trim() given the correct `$encoding` ('UTF-16LE') leaves the original 4 bytes completely untouched, correctly recognising 'H' and 'i' as ordinary characters with nothing Unicode-whitespace to strip. But mb_trim() called on the same bytes without telling it the encoding - relying on the mb_internal_encoding() default of 'UTF-8', which does not match these UTF-16LE bytes - reproduces the identical corruption: the same 3-byte, NUL-stripped result. mb_trim()'s encoding-awareness is therefore not automatic protection against this class of corruption; it only holds when `$encoding` correctly matches the string's real encoding.",
+    "examples": [
+        {
+            "before": [
+                "$name = trim($_POST['company_name'] ?? '');"
+            ],
+            "after": [
+                "$name = mb_trim($_POST['company_name'] ?? '');"
+            ]
+        },
+        {
+            "before": [
+                "final class FormFieldValidator",
+                "{",
+                "    public static function isBlank(string $value): bool",
+                "    {",
+                "        return trim($value) === '';",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class FormFieldValidator",
+                "{",
+                "    public static function isBlank(string $value): bool",
+                "    {",
+                "        // trim() only strips six ASCII bytes, so a field containing nothing",
+                "        // but full-width or other Unicode whitespace would fail this check;",
+                "        // mb_trim() recognises the full Unicode White_Space property instead.",
+                "        return mb_trim($value) === '';",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.mb_ltrimFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.mb_rtrimFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.mb_trimFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "This host (PHP 8.4.19) postdates UPGRADING-8.4.0's own note that mb_trim/mb_ltrim/mb_rtrim were \"amended by GH-13820 to fix GH-13815\" before release, so every measurement below reflects the current, already-amended implementation, not the pre-amendment behavior described by that fixed GitHub issue.",
+        "Measured on this host: with $s = \"\\u{3000}x\\u{3000}\" (U+3000 IDEOGRAPHIC SPACE on both sides), trim($s) is unchanged (bin2hex e3808078e38080); mb_trim($s) returns 'x' (bin2hex 78); mb_ltrim($s) strips only the leading space (bin2hex 78e38080); mb_rtrim($s) strips only the trailing one (bin2hex e3808078).",
+        "Measured on this host, one byte at a time: trim() strips space, tab, newline, carriage return, NUL and vertical tab (\\x0B) by default, but leaves form feed (\\x0C) completely untouched - trim(\"\\x0Cx\\x0C\") is unchanged. mb_trim() strips all six of those and also strips form feed (mb_trim(\"\\x0Cx\\x0C\") returns 'x') - it is not simply trim() plus extra Unicode spaces, it also trims at least one byte trim() deliberately does not.",
+        "Measured on this host across nine codepoints (U+00A0, U+1680, U+2000, U+2003, U+2028, U+2029, U+205F, U+3000, U+200B, U+FEFF), cross-checked against IntlChar::hasBinaryProperty($codepoint, IntlChar::PROPERTY_WHITE_SPACE): mb_trim() strips a character if and only if ICU reports Unicode White_Space = Yes for it, agreeing in all nine cases, including correctly leaving U+200B ZERO WIDTH SPACE and U+FEFF ZERO WIDTH NO-BREAK SPACE (BOM) untouched, since both are White_Space = No despite their names. mb_trim()'s default character class is precisely the Unicode White_Space property.",
+        "Measured on this host: trim('abc123', 'a..z') gives '123' (range syntax expands); mb_trim('abc123', 'a..z') gives 'bc123' (no range expansion - 'a..z' is treated as the literal set {a, ., z}). mb_trim('abc123ba', 'ab') gives 'c123' (literal multi-character set works normally); mb_trim(\"\\u{20AC}x\\u{20AC}\", \"\\u{20AC}\") gives 'x' (a full multi-byte character can be one trimmable unit). mb_trim(' x ', '_') leaves plain spaces untouched (bin2hex 207820) - supplying $characters replaces the Unicode-whitespace default rather than extending it, matching trim()'s own charlist semantics.",
+        "Measured on this host: mb_convert_encoding('Hi', 'UTF-16LE', 'UTF-8') gives the 4-byte string 48 00 69 00. trim() on these bytes strips the trailing 0x00 (one of its six default bytes), leaving the invalid 3-byte string 48 00 69 - mb_check_encoding() confirms false, and decoding it back to UTF-8 gives 'H?', destroying the second character. mb_trim() given the correct $encoding ('UTF-16LE') leaves the original 4 bytes untouched. mb_trim() called on the same bytes WITHOUT the correct $encoding (defaulting to mb_internal_encoding() 'UTF-8', which does not match) reproduces the identical corrupted 3-byte result. This is the concrete, measured basis for behavior_change_risk: medium - mb_trim()'s Unicode-awareness only protects against this corruption when $encoding is set correctly; getting it wrong reproduces trim()'s own bug rather than fixing it.",
+        "Analyzer probe, reproduced 2026-09-07 with the pinned stack (squizlabs/php_codesniffer:3.13.6 + phpcompatibility/php-compatibility:10.0.0-alpha2) against a three-line probe file calling mb_trim(), mb_ltrim() and mb_rtrim(): at --runtime-set testVersion 8.2-8.5, PHPCompatibility.FunctionUse.NewFunctions.mb_trimFound, .mb_ltrimFound and .mb_rtrimFound each fire once (3 findings total).",
+        "Floor-direction proof: the same probe file gives 3 findings (all three sniff ids, one each) at testVersion 8.3-8.5 and 0 findings at testVersion 8.4-8.5, confirming introduced_in: 8.4.",
+        "Evidence: UPGRADING-8.4.0, \"6. New Functions\" -> MBString: \"Added mb_trim, mb_ltrim and mb_rtrim functions.\" \"Note: this was amended by GH-13820 to fix GH-13815.\""
+    ]
+}

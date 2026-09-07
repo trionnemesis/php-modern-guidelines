@@ -1,0 +1,74 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.mb_str_pad",
+    "title": "mb_str_pad()",
+    "summary": "PHP 8.3 added mb_str_pad(), the character-counting, encoding-aware mbstring equivalent of str_pad(), whose $length is measured in characters instead of raw bytes.",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.3",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "mbstring",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.3 or above, use mb_str_pad() instead of str_pad() for any text that may contain multi-byte characters, so `$length` counts characters in the given (or internal) encoding instead of raw bytes; keep str_pad() where byte counting is the actual intent, such as building a fixed-width binary record. When calling mb_str_pad() on text whose encoding is not mb_internal_encoding(), pass `$encoding` explicitly - omitting or mis-stating it can silently reproduce str_pad()'s own byte-counting misalignment.",
+    "existing_code_policy": "Search for `str_pad(` calls whose input can contain non-ASCII text. Once the project's floor reaches 8.3, replace them with `mb_str_pad()`, carrying `$pad_string` and `$pad_type` over unchanged - the STR_PAD_* constants and the left/right/both placement rules, including which side gets the extra pad character under STR_PAD_BOTH, are identical between the two functions and only the counting unit changes. Decide `$encoding` deliberately rather than leaving it to default: pass the string's real encoding explicitly if it differs from `mb_internal_encoding()`, since supplying the wrong encoding does not fail loudly - it just makes mb_str_pad() count using that encoding's character-width rules against bytes that are not actually in it, which can silently reproduce the exact byte-counting bug the migration was meant to fix.",
+    "guideline": "Use mb_str_pad() rather than str_pad() when the input may contain multi-byte characters, so the target `$length` is measured in characters (in the specified or internal encoding) rather than raw bytes.",
+    "details": "PHP 8.3 added mb_str_pad() to the mbstring extension (RFC mb_str_pad), per UPGRADING-8.3.0 (\"6. New Functions\" -> MBString): \"Added mb_str_pad(), which is the mbstring equivalent of str_pad().\" Measured on this host (mbstring loaded): str_pad('áb', 5, '-') gives 'áb--' - str_pad()'s `$length` counts bytes (strlen('áb') is 3, since á is a 2-byte UTF-8 character; mb_strlen('áb') is 2), so a nominally 5-wide field only receives 2 pad characters and the visible result is 4 characters wide, not 5. mb_str_pad('áb', 5, '-') gives 'áb---' (mb_strlen of the result is exactly 5, strlen is 6 bytes) - `$length` is character count in the given (or internal) encoding, confirmed independently with a 3-byte character: mb_str_pad(\"\\u{20AC}\", 4, '-') gives '€---' with mb_strlen 4 and strlen (bytes) 6.\n\nThe STR_PAD_* mode constants and the rest of str_pad()'s placement rules carry over unchanged, just counted in characters: mb_str_pad('áb', 5, '-', STR_PAD_LEFT) gives '---áb' (three pad characters on the left, versus str_pad's byte-based '--áb'). With STR_PAD_BOTH and an odd number of pad characters needed, the extra one goes to the right for both functions identically - measured str_pad('ab', 5, '-', STR_PAD_BOTH) gives '-ab--' and mb_str_pad('áb', 5, '-', STR_PAD_BOTH) gives '-áb--' (left gets 1, right gets 2, in both cases) - so this specific placement convention is not a divergence.\n\nOmitting `$encoding` uses mb_internal_encoding() (measured 'UTF-8' on this host by default). Passing the wrong `$encoding` is not a safe no-op: measured, mb_str_pad('áb', 5, '-', STR_PAD_RIGHT, 'ISO-8859-1') gives 'áb--' - identical to plain byte-based str_pad() - because telling mb_str_pad() the bytes are ISO-8859-1 (single-byte) makes it count 'á''s two UTF-8 bytes as two separate single-byte characters, silently reproducing the exact misalignment bug mb_str_pad() exists to fix. A multi-character pad string is repeated and truncated character-wise rather than byte-wise once truncation is needed: str_pad('ab', 7, 'xy') and mb_str_pad('ab', 7, 'xy') agree on pure ASCII ('abxyxyx', truncating the repeating 'xy' pattern mid-character), but on multi-byte input mb_str_pad('áb', 7, 'xy') gives 'ábxyxyx' (7 characters, 8 bytes) while str_pad('áb', 7, 'xy') gives the visually short 'ábxyxy' (7 bytes, only 6 characters, because 'á' consumed 2 of the 7 byte slots). A multi-byte pad string itself is also handled correctly by character: mb_str_pad('ab', 6, \"\\u{2014}\") (em dash, 3 bytes) gives 'ab' followed by four em dashes, i.e. 6 characters / 14 bytes.\n\nNeither function ever truncates: str_pad('abcdef', 3, '-') and mb_str_pad('abcdef', 3, '-') both return 'abcdef' unchanged, and mb_str_pad('áb', 2, '-') (already 2 characters) returns 'áb' unchanged just as str_pad('áb', 2, '-') (already 3 bytes, over its 2-byte target) does - both functions only ever add padding, never remove content, regardless of which unit decided \"already long enough.\" Reflection confirms the real signature: mb_str_pad(string $string, int $length, string $pad_string = ' ', int $pad_type = 1, ?string $encoding = null) - pad_type defaults to STR_PAD_RIGHT and encoding defaults to null, resolved to mb_internal_encoding() at call time.",
+    "examples": [
+        {
+            "before": [
+                "$row = str_pad('José', 10) . '|';"
+            ],
+            "after": [
+                "$row = mb_str_pad('José', 10) . '|';"
+            ]
+        },
+        {
+            "before": [
+                "final class ReportColumnFormatter",
+                "{",
+                "    public function nameColumn(string $name, int $width): string",
+                "    {",
+                "        return str_pad($name, $width);",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ReportColumnFormatter",
+                "{",
+                "    public function nameColumn(string $name, int $width): string",
+                "    {",
+                "        // mb_str_pad() counts characters, so an accented name still lines up",
+                "        // with plain-ASCII names in the same fixed-width column.",
+                "        return mb_str_pad($name, $width);",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.mb_str_padFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.3.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "Measured on this host (mbstring loaded): str_pad('áb', 5, '-') gives 'áb--' (strlen('áb') is 3 bytes, mb_strlen is 2 characters, so only 2 byte-slots remain for padding); mb_str_pad('áb', 5, '-') gives 'áb---' (mb_strlen of the result is exactly 5, strlen is 6 bytes). Confirmed independently with a 3-byte character: mb_str_pad(\"\\u{20AC}\", 4, '-') gives '€---' with mb_strlen 4.",
+        "Measured on this host: mb_internal_encoding() defaults to 'UTF-8'. mb_str_pad('áb', 5, '-', STR_PAD_LEFT) gives '---áb' versus str_pad('áb', 5, '-', STR_PAD_LEFT) giving '--áb'. With STR_PAD_BOTH, str_pad('ab', 5, '-', STR_PAD_BOTH) gives '-ab--' and mb_str_pad('áb', 5, '-', STR_PAD_BOTH) gives '-áb--' - the extra pad character goes to the right in both, so this placement convention is not a divergence.",
+        "Measured on this host: mb_str_pad('áb', 5, '-', STR_PAD_RIGHT, 'ISO-8859-1') gives 'áb--' - identical to byte-based str_pad('áb', 5, '-') - because declaring the wrong (single-byte) encoding makes mb_str_pad() count 'á''s two UTF-8 bytes as two separate characters. This is the concrete basis for behavior_change_risk: low - the risk is conditional on a byte-oriented use case or a mismatched $encoding argument, not present on ordinary text with a correctly resolved encoding.",
+        "Measured on this host: str_pad('ab', 7, 'xy') and mb_str_pad('ab', 7, 'xy') agree on ASCII ('abxyxyx'); mb_str_pad('áb', 7, 'xy') gives 'ábxyxyx' (7 characters, 8 bytes) while str_pad('áb', 7, 'xy') gives the visually short 'ábxyxy' (7 bytes, 6 characters). mb_str_pad('ab', 6, \"\\u{2014}\") (a 3-byte pad character) gives 'ab' plus four em dashes, confirming the pad string itself is also counted by character. Neither function truncates: str_pad('abcdef', 3, '-') and mb_str_pad('abcdef', 3, '-') both return 'abcdef' unchanged.",
+        "Analyzer probe, reproduced 2026-09-07 with the pinned stack (squizlabs/php_codesniffer:3.13.6 + phpcompatibility/php-compatibility:10.0.0-alpha2) against a one-line probe file calling mb_str_pad(): at --runtime-set testVersion 8.2-8.5, PHPCompatibility.FunctionUse.NewFunctions.mb_str_padFound fires once.",
+        "Floor-direction proof: the same probe file gives 1 finding at testVersion 8.2-8.5 and 0 findings at testVersion 8.3-8.5, confirming introduced_in: 8.3.",
+        "Evidence: UPGRADING-8.3.0, \"6. New Functions\" -> MBString: \"Added mb_str_pad(), which is the mbstring equivalent of str_pad().\""
+    ]
+}
