@@ -1,22 +1,22 @@
 # Agent instructions
 
-## v0.3.8 release and verification adapter boundary
+## v0.3.9 release and verification adapter boundary
 
-The published release is `0.3.8`. Implemented there: the `version`, `resolve`, `list-rules`,
+The published release is `0.3.9`. Implemented there: the `version`, `resolve`, `list-rules`,
 `explain`, `doctor` and `verify` commands, the Composer Semver policy resolver, the two-axis
-applicability engine, the 72-rule seed catalogue in `resources/rules/`, a CI-built PHAR attached to each
+applicability engine, the 80-rule seed catalogue in `resources/rules/`, a CI-built PHAR attached to each
 release, the agent-distribution surfaces in `skills/`, and the explicit `verify` boundary with its one
 real adapter.
 
 `verify`'s production registry recognizes only `phpcompatibility`: a real PHPCompatibility
 implementation that runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility
 standard as an isolated child process, reports advisory evidence, and never installs, writes under, or
-mutates the target project. Its committed sniff-to-rule mapping covers 37 of the 72 catalogue rules
-(falling from 36 of 64, since seven of the eight rules added this round ship unmapped — the second round
-drawn from `UPGRADING`'s Backward Incompatible Changes section, where PHPCompatibility is structurally
-blind to a function that still exists but now behaves differently), including the whole
-`extension.imap_unbundled` surface; every other finding is preserved unmapped rather than discarded. A
-PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from
+mutates the target project. Its committed sniff-to-rule mapping covers 45 of the 80 catalogue rules
+(rising from 37 of 72, since all eight rules added this round ship mapped — the first round drawn from
+`UPGRADING`'s New Functions sections rather than a deprecation or behavior-change section, which asks
+exactly the question PHPCompatibility was built to answer instead of one it is structurally blind to),
+including the whole `extension.imap_unbundled` surface; every other finding is preserved unmapped rather
+than discarded. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from
 `0.3.0` on value-gate evidence — see issue #9 and its linked follow-ups — so do not add either, or any
 framework pack, auto-fix, network rule fetching, or agent marketplace/plugin manifest, unless the active
 task explicitly advances that later milestone. Rule-catalogue expansion — growing source-backed rules and

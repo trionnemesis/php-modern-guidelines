@@ -11,7 +11,7 @@
 
 🌐 **[GitHub Pages 專案總覽](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **English version: [README.md](README.md)** ・ [快速開始](#快速開始) ・ [目前能力](#目前能力) ・ [Agent distribution](#agent-distribution) ・ [Policy 流程](#policy-流程) ・ [信任邊界](#信任邊界) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**已發布：Rule-catalogue expansion · v0.3.8。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
+**已發布：Rule-catalogue expansion · v0.3.9。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
 
 > **Verification：** `v0.3.0` 導入了明確、opt-in 的 `verify <adapter> --executable=<path-or-name>` surface。其 production `phpcompatibility` adapter 是真實的 PHPCompatibility 實作：它會以 isolated child process 執行 caller 選定、已安裝好的 PHP_CodeSniffer 與 PHPCompatibility standard，回報 advisory evidence——絕非自動修復。PHPStan deprecation adapter（M3-C）已被延後，Rector dry-run adapter（M3-D）則未納入此 release line；原因見 [Changelog](CHANGELOG.md)。
 
@@ -99,6 +99,23 @@
 > Core/Standard Backward Incompatible Changes 條目，這一輪之前 catalogue 涵蓋 11 項，現在涵蓋
 > 19 項，因為這八條新規則涵蓋了八個條目——這次一條規則對應一個條目，不像上一輪一條規則同時涵蓋
 > 兩項——還有 17 項尚未涵蓋。72 條規則中現在有 35 條完全沒有 mapping。
+>
+> **v0.3.9 rule-catalogue expansion：** 新增八條 source-backed 規則（72 → 80），這是**第一輪**改從
+> `UPGRADING` 的 **New Functions** 段落取材，而不是 `v0.3.6` 到 `v0.3.8` 一路取材的 Deprecated
+> Functionality 或 Backward Incompatible Changes 段落——那兩個段落問的是「這個 symbol 是否還存在」
+> 或「這個 symbol 是否已經悄悄改變行為」，正是 PHPCompatibility 在結構上偵測不到的問題；New
+> Functions 問的正是這個 analyzer 原本就是為了回答而生的問題。Mapping coverage 自 `v0.3.5` 以來
+> **首次上升**，終結了連續三輪的下降（`v0.3.6`、`v0.3.7`、`v0.3.8`）：從 72 條中的 37 條（51.4%）
+> 上升為 80 條中的 45 條（56.25%），剛好回到 `v0.3.7` 當時的水準（64 條中的 36 條同樣是
+> 56.25%）。八條新規則全數以已 mapping 狀態上線，`SNIFF_RULE_MAP` 新增十五個 sniff id——
+> [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) 早已預測這個方向，
+> 這一輪只是證實這項預測成立，而非意外。這一輪的落差幾乎全數侷限在特定 extension：這個段落在
+> Core/Standard 與所有具名 extension 中仍有 54 項尚未涵蓋的條目，其中只有 3 項
+> （`fpow()`、`get_error_handler()`、`get_exception_handler()`）屬於 Core/Standard，因此
+> `category: extension` 幾乎翻倍，從七條增加為十三條。一條 feature 規則是根據專案的*下限*而不是
+> 上限來判斷可否適用——這與 catalogue 中每一條 deprecation 規則正好相反——這一輪也在 pinned
+> analyzer 自身的 New Functions 資料中記錄了三項**量測到的缺陷**：這是前所未見的新類別，因為先前
+> 每一項結構性發現談的都是 analyzer *看不到*什麼，而不是它的資料本身就*錯了*。
 
 ## Why
 
@@ -119,7 +136,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 |---|---|---|
 | Policy resolver | 解析 `require.php`、`conflict.php`、`config.platform.php`、`composer.lock` platform override 與 `--php` | 只讀取目標專案輸入，不執行目標專案 |
 | Two-axis policy | 分離 `feature_ceiling` / `lifecycle_ceiling`，輸出 `coverage`、`confidence`、`warnings` | 已知 PHP coverage 為 8.2–8.5 |
-| Rule registry | schema validation、deterministic ordering、72 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
+| Rule registry | schema validation、deterministic ordering、80 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
 | Repository verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
@@ -228,7 +245,7 @@ php bin/php-modern-guidelines doctor --project-root=/path/to/app
 
 ### 使用 PHPCompatibility 進行 verify
 
-Source checkout 與正式發布的 `v0.3.8` PHAR 都具備 `verify` command。Explicit command shape 為：
+Source checkout 與正式發布的 `v0.3.9` PHAR 都具備 `verify` command。Explicit command shape 為：
 
 ```bash
 php bin/php-modern-guidelines verify phpcompatibility \
@@ -250,7 +267,7 @@ analyzer 精確表達（例如存在 coverage gap 或 allowed minor 不連續）
 以取得可執行的 plan。執行完成會回傳 exit `0`（無 finding）或 exit `6`（一筆以上 advisory
 finding）；analyzer 執行中途失敗則是 exit `8`。
 
-每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 72 條規則中有 37 條——包含整個
+每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 80 條規則中有 45 條——包含整個
 `extension.imap_unbundled` 範圍——具備已提交、經過審查的 sniff id 對 rule id mapping；其餘 finding
 則保留為 `mapping_status: unmapped`，不會被捨棄。同一組 mapping 也以排序後的
 `verification.phpcompatibility` list 儲存在 rule files，並以測試保證它與 adapter map 互為精確反向。
@@ -384,6 +401,66 @@ unmapped 狀態上線，每一項都如實記錄自己「零 finding」的測量
 條目中，這一輪之前 catalogue 涵蓋 11 項。現在涵蓋 19 項，因為這八條新規則涵蓋了 36 項條目中的
 8 項——這次是一條規則對應一個條目，不像 `v0.3.7` 一條規則同時涵蓋兩項——還有 17 項尚未涵蓋。
 72 條規則中現在有 35 條完全沒有 mapping。
+
+`v0.3.9` 是**第一輪**改從 `UPGRADING` 的 **New Functions** 段落取材，而不是 Deprecated Functionality
+（`v0.3.2`–`v0.3.6`）或 Backward Incompatible Changes（`v0.3.7`、`v0.3.8`）——那兩者問的都是「這個
+symbol 是否還存在於某個版本範圍內」或「是否已經悄悄改變行為」，正是 PHPCompatibility 在結構上偵測
+不到的問題；New Functions 問的正是這個 analyzer 原本就是為了回答而生的問題——這個 symbol 是否存在
+——因此這一輪的方向早在
+[issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) 中就已預測，而不是這次
+才意外發現，測量結果證實了這項預測成立。這一輪取用八項候選：`core.get_error_exception_handler`
+（8.5，`get_error_handler()`/`get_exception_handler()` 可以讀取目前安裝的 error/exception handler，
+不再需要 8.5 之前那種「先替換再還原」的 workaround，而該 workaround 的時間窗確實可能被 signal
+handler 弄亂）、`core.fpow`（8.4，一個遵循 IEEE 754 的 `pow()`，但**不是**直接替換：
+`fpow(3.0, 35.0)` 量測得到 `50031545098999704`，而 `pow(3, 35)` 的精確值是
+`50031545098999707`）、`extension.mb_str_pad`（8.3，mbstring 版本、以字元計數的 `str_pad()`，若
+`$encoding` 給錯，會靜默退化回位元組計數）、`extension.mb_trim_functions`（8.4，會去除 Unicode
+空白加上 form feed——並非單純「`trim()` 加上 Unicode 空白」——`$characters` 也沒有 `a..z` 這種
+range 展開）、`extension.mb_case_first_functions`（8.4，`mb_ucfirst()` 執行的是真正的 Unicode
+title-casing，U+01F3 → U+01F2，而不是 `mb_strtoupper()` 對同一輸入給出的 U+01F1
+upper-casing）、`extension.bcmath_rounding_functions`（8.4，
+`bcfloor()`/`bcceil()`/`bcround()`/`bcdivmod()`；前兩者只接受一個引數，與 `bcround()` 不同）、
+`extension.grapheme_str_split`（8.4，依 grapheme cluster 而非 byte 或 codepoint 切割字串——一個
+ZWJ family emoji 是 25 bytes、7 個 codepoint，量測結果卻正好是 1 個 grapheme），以及
+`extension.curl_multi_get_handles`（8.5，列舉目前掛在某個 multi handle 上的每一個 handle，包含
+`CURLMOPT_PUSHFUNCTION` callback 接受、但應用端自己的 bookkeeping 從未明確加入的 handle）。八條
+全數以已 mapping 狀態上線，`SNIFF_RULE_MAP` 新增十五個 sniff id（209 → 224）。Mapping coverage
+**上升**——這是自 `v0.3.5` 以來首次上升，終結了連續三輪的下降（`v0.3.6`、`v0.3.7`、
+`v0.3.8`）——從 72 條中的 37 條（51.4%）上升為 80 條中的 45 條（56.25%），剛好回到 `v0.3.7` 當時的
+水準（64 條中的 36 條同樣是 56.25%）。
+
+這一輪處理的落差幾乎全數侷限在特定 extension，這也是這一輪最主要的結構性發現。直接測量：
+`UPGRADING` 8.2–8.5 記錄了 101 項 New Functions 條目；pinned sniff 認得其中 76 個函式；8.3 以上的
+版本中有 11 項早已在 catalogue 某處被記錄，留下 54 項尚未涵蓋——這 54 項之中只有 3 項
+（`fpow()`、`get_error_handler()`、`get_exception_handler()`）屬於 Core/Standard。其餘全部都需要
+具名 extension，這正是這一輪 `category: extension` 幾乎翻倍、從七條增加為十三條的原因。也值得直接
+說明：一條 feature 規則正好與 catalogue 中每一條 deprecation 規則相反——它是依專案的*下限*而非
+上限來判斷是否適用，回答的是「我現在能不能寫這個呼叫」而不是「這個東西是不是已經被 deprecate
+了」，這也改變了 `--php` gating 在這批規則上的讀法——fixture 上的驗證方式也隨之反轉。對
+`removed`/`deprecated` 這類 sniff 而言，把 ceiling 提高才會讓 finding 出現；`New*` 這類 sniff
+則是在 floor 上觸發。把 ceiling 固定在 8.5、對這十五個已 mapping 的呼叫測量：`8.2-8.5` 有 15 筆
+finding，`8.3-8.5` 有 14 筆，`8.4-8.5` 有 3 筆，`8.5-8.5` 則是 0 筆——這個階梯恰好依照
+`introduced_in` 把整批呼叫分開（8.3 有 1 個 sniff id、8.4 有 11 個、8.5 有 3 個）。
+
+這一輪還在 pinned analyzer 自身的 New Functions 資料中測得三項缺陷——這是本專案先前從未記錄過的
+新類別，因為先前每一項結構性發現談的都是 analyzer *看不到*什麼，從來不是它的資料本身就與 php-src
+矛盾。第一項：sniff 註冊的是單數的
+`http_clear_last_response_header`/`http_get_last_response_header` 作為 8.4 新增函式，但
+`UPGRADING-8.4` 本文與直接執行 `function_exists()` 都一致指出真正的名稱是複數
+（`http_get_last_response_headers()`/`http_clear_last_response_headers()`）；這組單數 sniff id 只會
+對呼叫一個不存在函式的程式碼觸發，對真正的函式反而保持沉默，因此沒有任何規則對它們做
+mapping——這也是為什麼 `core.http_get_last_response_headers` 明明是個明顯的 New Functions 候選，
+卻不在這一輪批次裡（catalogue 其實已經在
+`core.http_response_header`——這兩個函式的 deprecation 對應規則——的內文中記載了它們在 8.4 的
+可用性）。第二項：sniff 宣稱 `openssl_password_hash()`/`openssl_password_verify()` 是 8.4 新增函式，
+但 8.1 到 8.5 的所有 `UPGRADING` 檔案都完全沒有提到它們，`openssl` 已載入的情況下
+`function_exists()` 測得的結果也是 `false`。第三項：sniff 把 `openssl_cipher_key_length()` 的
+extension 歸屬打錯成 `openssal`。第一項缺陷對本專案的意義特別直接：`SNIFF_RULE_MAP` 必須是每條
+規則 `verification.phpcompatibility` list 的精確雙向反向，因此如果直接從 sniff 原始碼照抄那個
+id，會靜默產生一筆永遠不會觸發的 mapping——這次之所以能發現，是因為這一輪的紀律要求每個 id 都必須
+先透過在探測檔案上實際執行 analyzer 來重新驗證，而不是直接從 sniff 自己的表格照抄。80 條規則中
+現在仍有 35 條完全沒有 mapping——這個絕對數字與這一輪之前完全相同，因為這八條新規則全數以已
+mapping 狀態上線。
 
 假設目標專案宣告 `require.php: ^8.2`，`resolve` 的代表性輸出如下：
 
@@ -550,7 +627,8 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **改以 php-src 重新測量 issue #18** | `v0.3.6` | ✅ 完成：改從 php-src `UPGRADING` 出發枚舉 issue #18 候選規則，而非探測 analyzer，找到 PHP 8.2–8.5 中 13 項尚未涵蓋的 Core/Standard deprecation（3 項可 mapping），推翻了 `v0.3.5`「Tier A 已完全清空」的說法；這一輪上線 8 條規則、涵蓋 13 項條目中的 9 項（48 → 56 條），使 mapping coverage 從 48 條中的 32 條（67%）**下降**為 56 條中的 35 條（62%） | 不新增 adapter infrastructure；13 項缺口中仍有 4 項未處理，全數 unmappable，56 條規則中有 21 條沒有 mapping |
 | **改從 php-src 的 Backward Incompatible Changes 段落取材** | `v0.3.7` | ✅ 完成：第一輪改從 `UPGRADING` 的 Backward Incompatible Changes 段落取材，而非 Deprecated Functionality——談的是行為悄悄改變，而不是被標記為 deprecated 的 API；探測 18 項候選規則對照 analyzer 只產生恰好 1 筆 finding，因此 8 條新規則中有 7 條（56 → 64 條）以 unmapped 狀態上線，使 mapping coverage 從 56 條中的 35 條（62.5%）**下降**為 64 條中的 36 條（56%），是三次刻意 breadth-for-depth 取捨（與 `v0.3.4`、`v0.3.6` 並列）中降幅最深的一次；直接對照 php-src 測量，PHP 8.2–8.5 中 36 項 Core/Standard Backward Incompatible Changes 條目，catalogue coverage 從 2 項提高為 11 項，因為這八條規則涵蓋了 36 項條目中的 9 項 | 不新增 adapter infrastructure；36 項 Backward Incompatible Changes 條目中仍有 25 項、以及 `v0.3.6` 留下的 4 項 Deprecated Functionality 缺口尚未涵蓋，64 條規則中有 28 條沒有 mapping |
 | **改從 php-src 的 Backward Incompatible Changes 段落取材，第二輪** | `v0.3.8` | ✅ 完成：第二輪改從 `UPGRADING` 的 Backward Incompatible Changes 段落取材；再探測 16 項候選規則對照 analyzer，又只產生恰好 1 筆 finding，確認了 `v0.3.7` 最初觀察到的模式，而不是取樣誤差，因此 8 條新規則中有 7 條（64 → 72 條）以 unmapped 狀態上線，使 mapping coverage 從 64 條中的 36 條（56%）**下降**為 72 條中的 37 條（51%），是四次刻意 breadth-for-depth 取捨（與 `v0.3.4`、`v0.3.6`、`v0.3.7` 並列）中降幅最深的一次；直接對照 php-src 測量，PHP 8.2–8.5 中 36 項 Core/Standard Backward Incompatible Changes 條目，catalogue coverage 從 11 項提高為 19 項，因為這八條規則涵蓋了 36 項條目中的 8 項，一條規則對應一個條目 | 不新增 adapter infrastructure；36 項 Backward Incompatible Changes 條目中仍有 17 項、以及 `v0.3.6` 留下的 4 項 Deprecated Functionality 缺口尚未涵蓋，72 條規則中有 35 條沒有 mapping |
-| **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前仍只涵蓋 72 條規則中的 37 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含 `v0.3.6` 重新測量留下、尚餘 4 項未處理的 Deprecated Functionality php-src 缺口，以及這一輪找到、尚餘 17 項未處理的 Backward Incompatible Changes Core/Standard 條目——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
+| **改從 php-src 的 New Functions 段落取材** | `v0.3.9` | ✅ 完成：第一輪改從 `UPGRADING` 的 New Functions 段落取材，而非 Deprecated Functionality 或 Backward Incompatible Changes——這個段落問的正是 PHPCompatibility 原本就是為了回答而生的問題，而不是它結構上偵測不到的問題，因此 8 條新規則（72 → 80）全數以已 mapping 狀態上線，mapping coverage 自 `v0.3.5` 以來**首次上升**，從 72 條中的 37 條（51.4%）上升為 80 條中的 45 條（56.25%），終結連續三輪下降並回到 `v0.3.7` 當時的水準；`SNIFF_RULE_MAP` 新增 15 個 sniff id（209 → 224）；直接對照 php-src 測量，PHP 8.2–8.5 的 101 項 New Functions 條目中 pinned sniff 認得 76 項，其中 8.3 以上有 11 項早已納入 catalogue，尚餘 54 項中只有 3 項屬於 Core/Standard，因此 `category: extension` 幾乎翻倍，從 7 條增加為 13 條；同時在 pinned analyzer 自身資料中測得三項缺陷（一個函式名稱寫錯、兩個不存在的函式、一個 extension 歸屬打錯字）——這是首度把 analyzer 稱為*錯了*而不只是*看不到* | 不新增 adapter infrastructure；80 條規則中有 35 條沒有 mapping，包含早期輪次留下的 4 項 Deprecated Functionality 缺口與 17 項 Backward Incompatible Changes Core/Standard 條目，以及這一輪找到、尚餘 51 項未處理、全數侷限在特定 extension 的 New Functions 條目 |
+| **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前仍只涵蓋 80 條規則中的 45 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含尚餘 4 項未處理的 Deprecated Functionality php-src 缺口、17 項未處理的 Backward Incompatible Changes Core/Standard 條目，以及這一輪找到、尚餘 51 項未處理、侷限在特定 extension 的 New Functions 條目——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
@@ -558,7 +636,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | Path | 用途 |
 |---|---|
 | `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
-| `resources/rules/` | 72 個 source-backed seed rule JSON，一條 rule 一個檔案 |
+| `resources/rules/` | 80 個 source-backed seed rule JSON，一條 rule 一個檔案 |
 | `schemas/` | Versioned rule、policy 與 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |

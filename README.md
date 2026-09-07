@@ -11,7 +11,7 @@
 
 🌐 **[GitHub Pages overview](https://trionnemesis.github.io/php-modern-guidelines/)** ・ **繁體中文說明請見 [README.zh-TW.md](README.zh-TW.md)** ・ [Quick start](#quick-start) ・ [Current capabilities](#current-capabilities) ・ [Agent distribution](#agent-distribution) ・ [Policy flow](#policy-flow) ・ [Trust boundary](#trust-boundary) ・ [Roadmap](#roadmap) ・ [Changelog](CHANGELOG.md)
 
-**Released: Rule-catalogue expansion · v0.3.8.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
+**Released: Rule-catalogue expansion · v0.3.9.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
 
 > **Verification:** `v0.3.0` introduced the explicit, opt-in `verify <adapter> --executable=<path-or-name>` surface. Its production `phpcompatibility` adapter is a real PHPCompatibility implementation: it runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and reports advisory evidence — never an automatic fix. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from this release line; see [Changelog](CHANGELOG.md) for why.
 
@@ -105,6 +105,24 @@
 > now covers 19, because the eight new rules cover eight entries — one each, unlike last round's one rule
 > covering two — leaving 17 uncovered. Thirty-five of the catalogue's seventy-two rules now carry no
 > mapping at all.
+>
+> **v0.3.9 rule-catalogue expansion:** eight more source-backed rules (72 → 80), and the **first** round
+> drawn from `UPGRADING`'s **New Functions** sections rather than the Deprecated Functionality or Backward
+> Incompatible Changes sections `v0.3.6` through `v0.3.8` worked — those ask whether a symbol still exists
+> or now behaves differently, exactly where PHPCompatibility is structurally blind; New Functions asks
+> exactly the question the analyzer was built to answer. Mapping coverage **rises** for the first time
+> since `v0.3.5`, ending three consecutive falls (`v0.3.6`, `v0.3.7`, `v0.3.8`): from thirty-seven of
+> seventy-two rules (51.4%) to forty-five of eighty (56.25%), landing back at exactly the `v0.3.7` level
+> (thirty-six of sixty-four was also 56.25%). All eight new rules ship mapped and `SNIFF_RULE_MAP` gains
+> fifteen sniff ids — [issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18)
+> predicted this direction, and this round confirms the prediction held rather than reporting a surprise.
+> The seam is overwhelmingly extension-scoped: of the 54 New Functions entries this section still leaves
+> open across Core/Standard and every named extension, only 3 (`fpow()`, `get_error_handler()`,
+> `get_exception_handler()`) are Core/Standard, so `category: extension` nearly doubles, seven to
+> thirteen. A feature rule is gated on the project's *floor* rather than its ceiling — the inverse of
+> every deprecation rule in the catalogue — and this round also records three **measured defects** in the
+> pinned analyzer's own New Functions data: a category never seen before, since every earlier structural
+> finding said the analyzer was *blind*, not *wrong*.
 
 ## Why
 
@@ -125,7 +143,7 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 |---|---|---|
 | Policy resolver | Resolves `require.php`, `conflict.php`, `config.platform.php`, Composer lock platform overrides, and `--php` | Reads target-project inputs without executing the target project |
 | Two-axis policy | Separates `feature_ceiling` and `lifecycle_ceiling`; outputs `coverage`, `confidence`, and `warnings` | Known PHP coverage is 8.2–8.5 |
-| Rule registry | Schema validation, deterministic ordering, and 72 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
+| Rule registry | Schema validation, deterministic ordering, and 80 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
 | Agent query surface | `resolve`, `list-rules`, and `explain` with human and JSON output | `resolve --json` must satisfy `policy.schema.json` |
 | CLI foundation | `version` and a consistent exit-code contract | Never writes to the target repository |
 | Repository verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, and PHP 8.2–8.5 CI | Verifies this repository; it does not scan the target project |
@@ -234,7 +252,7 @@ php bin/php-modern-guidelines doctor --project-root=/path/to/app
 
 ### Verifying with PHPCompatibility
 
-Both the source checkout and the published `v0.3.8` PHAR expose the `verify` command. The explicit
+Both the source checkout and the published `v0.3.9` PHAR expose the `verify` command. The explicit
 shape is:
 
 ```bash
@@ -259,7 +277,7 @@ a non-contiguous allowed set) is refused with exit `9` rather than approximated;
 a project. Completed runs exit `0` with no findings or `6` with one or more advisory findings; an
 analyzer that fails mid-run exits `8`.
 
-Every finding keeps the analyzer's own sniff identifier verbatim. Thirty-seven of this project's seventy-two
+Every finding keeps the analyzer's own sniff identifier verbatim. Forty-five of this project's eighty
 rules — including the whole `extension.imap_unbundled` surface — have a committed, reviewed mapping from
 sniff id to rule id; every other finding is preserved with `mapping_status: unmapped` rather than discarded.
 The same mappings are stored as sorted `verification.phpcompatibility` lists on the rule files and tested
@@ -404,6 +422,67 @@ analyzer: of the 36 Core/Standard Backward Incompatible Changes entries recorded
 catalogue covered 11 before this round. It now covers 19, because the eight new rules cover eight of the
 36 entries — one rule per entry this time, unlike `v0.3.7` where one rule carried two — leaving 17 of the
 36 entries uncovered. Thirty-five of the catalogue's seventy-two rules now carry no mapping at all.
+
+`v0.3.9` is the **first** round drawn from `UPGRADING`'s **New Functions** sections rather than Deprecated
+Functionality (`v0.3.2`–`v0.3.6`) or Backward Incompatible Changes (`v0.3.7`, `v0.3.8`): both of those ask
+whether a symbol still exists in a version range or now behaves differently, exactly the question
+PHPCompatibility is structurally blind to; New Functions asks exactly the question the analyzer was built
+to answer — does this symbol exist here — so this round's direction was predicted in
+[issue #18](https://github.com/trionnemesis/php-modern-guidelines/issues/18) rather than discovered by
+surprise, and the measurement confirms the prediction held. This round takes eight candidates:
+`core.get_error_exception_handler` (8.5, `get_error_handler()`/`get_exception_handler()` read the
+installed error/exception handler without the pre-8.5 replace-then-restore workaround, whose window a
+signal handler can genuinely desynchronize), `core.fpow` (8.4, an IEEE-754 `pow()` that is **not** a
+drop-in: `fpow(3.0, 35.0)` measures `50031545098999704` against `pow(3, 35)`'s exact `50031545098999707`),
+`extension.mb_str_pad` (8.3, mbstring's character-counting `str_pad()`, whose `$length` silently reverts
+to byte-counting if `$encoding` is wrong), `extension.mb_trim_functions` (8.4, strips Unicode whitespace
+plus form feed — not simply "`trim()` plus Unicode spaces" — with no `a..z` range expansion in
+`$characters`), `extension.mb_case_first_functions` (8.4, `mb_ucfirst()` performs genuine Unicode
+title-casing, U+01F3 → U+01F2, not the U+01F1 upper-casing `mb_strtoupper()` gives the same input),
+`extension.bcmath_rounding_functions` (8.4, `bcfloor()`/`bcceil()`/`bcround()`/`bcdivmod()`; the first two
+take exactly one argument, unlike `bcround()`), `extension.grapheme_str_split` (8.4, splits by grapheme
+cluster rather than byte or codepoint — a ZWJ family emoji is 25 bytes, 7 codepoints, and measures as
+exactly 1 grapheme), and `extension.curl_multi_get_handles` (8.5, enumerates every handle attached to a
+multi handle, including ones a `CURLMOPT_PUSHFUNCTION` callback accepted that application-side bookkeeping
+never explicitly added). All eight ship mapped, and `SNIFF_RULE_MAP` gains fifteen sniff ids (209 → 224).
+Mapping coverage **rises** — the first rise since `v0.3.5`, ending three consecutive falls (`v0.3.6`,
+`v0.3.7`, `v0.3.8`) — from thirty-seven of seventy-two rules (51.4%) to forty-five of eighty (56.25%),
+landing back at exactly the `v0.3.7` level (thirty-six of sixty-four was also 56.25%).
+
+The seam this round works is overwhelmingly extension-scoped, and that is the round's main structural
+finding. Measured directly: `UPGRADING` 8.2–8.5 carries 101 New Functions bullet entries; the pinned sniff
+knows 76 functions across that range; 11 of the 8.3+ ones were already named somewhere in the catalogue,
+leaving 54 open — and only 3 of those 54 (`fpow()`, `get_error_handler()`, `get_exception_handler()`) are
+Core/Standard. Everything else needs a named extension, which is why `category: extension` nearly
+doubles, seven to thirteen, this round. A feature rule is also worth stating plainly as the inverse of
+every deprecation rule in the catalogue: it is gated on the project's *floor* rather than its ceiling — it
+answers "can I write this call yet?" rather than "has this been deprecated yet?", which changes how
+`--php` gating reads for this batch — and the fixture proof inverts to match. For a `removed`/`deprecated`
+sniff, raising the ceiling makes a finding appear; a `New*` sniff fires on the floor instead. Measured on
+the fifteen mapped calls with the ceiling fixed at 8.5: 15 findings at `8.2-8.5`, 14 at `8.3-8.5`, 3 at
+`8.4-8.5`, and 0 at `8.5-8.5` — a ladder that partitions the batch exactly by `introduced_in` (1 sniff id
+at 8.3, 11 at 8.4, 3 at 8.5).
+
+This round also measured three defects in the pinned analyzer's own New Functions data — a category this
+project has not recorded before, since every earlier structural finding said the analyzer was *blind* to
+something, never that its data disagreed with php-src. First, the sniff registers
+`http_clear_last_response_header`/`http_get_last_response_header` (singular) as 8.4 additions, but
+`UPGRADING-8.4`'s own text and a direct `function_exists()` check agree the real names are plural
+(`http_get_last_response_headers()`/`http_clear_last_response_headers()`); the singular sniff ids fire on
+code that calls a function that does not exist and stay silent on the real one, so no rule maps them —
+which is why `core.http_get_last_response_headers` is not in this batch despite being an obvious New
+Functions candidate (the catalogue already documents the functions' 8.4 availability in prose, inside
+`core.http_response_header`, their deprecation counterpart). Second, the sniff claims
+`openssl_password_hash()`/`openssl_password_verify()` as an 8.4 addition that no `UPGRADING` file for 8.1
+through 8.5 mentions and that `function_exists()` measures `false` for, with `openssl` loaded. Third, the
+sniff typo's `openssl_cipher_key_length()`'s extension attribution as `openssal`. The first defect matters
+to this project specifically: `SNIFF_RULE_MAP` is kept an exact bidirectional inverse of each rule's
+`verification.phpcompatibility` list, so transcribing that sniff id from the sniff source would have
+produced a mapping that could never fire, silently — and it was caught only because this round's
+discipline requires reproducing every id by running the analyzer over a probe file before writing it into
+a rule, rather than transcribing it from the sniff's own table. Thirty-five of the catalogue's eighty
+rules still carry no mapping at all — the same absolute count as before this round, since every one of the
+eight new rules shipped mapped.
 
 For a target project declaring `require.php: ^8.2`, representative `resolve` output is:
 
@@ -570,7 +649,8 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | **Re-measuring issue #18 from php-src** | `v0.3.6` | ✅ Complete: enumerating issue #18 candidates from php-src `UPGRADING` first, rather than by probing the analyzer, found 13 uncovered Core/Standard deprecations in 8.2–8.5 (3 mappable) and disproved `v0.3.5`'s "Tier A exhausted" claim; this round ships 8 rules covering 9 of the 13 entries (48 → 56 rules), so mapping coverage **falls** from 32 of 48 rules (67%) to 35 of 56 (62%) | No new adapter infrastructure; 4 of the 13 newly-found gaps remain open, all unmappable, and 21 of 56 rules carry no mapping |
 | **Backward Incompatible Changes from php-src** | `v0.3.7` | ✅ Complete: the first round drawn from `UPGRADING`'s Backward Incompatible Changes section instead of Deprecated Functionality — behavior that silently changed rather than an API marked deprecated; probing 18 candidates against the analyzer produced exactly 1 finding, so 7 of the 8 new rules (56 → 64) ship unmapped and mapping coverage **falls** from 35 of 56 rules (62.5%) to 36 of 64 (56%), the steepest of the three deliberate breadth-for-depth trades (with `v0.3.4` and `v0.3.6`); measured directly against php-src, catalogue coverage of the 36 Core/Standard Backward Incompatible Changes entries in 8.2–8.5 rises from 2 to 11, because the eight rules cover 9 of the 36 entries | No new adapter infrastructure; 25 of the 36 Backward Incompatible Changes entries and the 4 Deprecated Functionality gaps `v0.3.6` left open remain uncovered, and 28 of 64 rules carry no mapping |
 | **Second Backward Incompatible Changes round** | `v0.3.8` | ✅ Complete: the second round drawn from `UPGRADING`'s Backward Incompatible Changes section; probing 16 more candidates against the analyzer again produced exactly 1 finding, confirming the pattern `v0.3.7` first observed rather than sampling noise, so 7 of the 8 new rules (64 → 72) ship unmapped and mapping coverage **falls** from 36 of 64 rules (56%) to 37 of 72 (51%), the fourth deliberate breadth-for-depth trade (with `v0.3.4`, `v0.3.6`, `v0.3.7`) and the deepest yet; measured directly against php-src, catalogue coverage of the 36 Core/Standard Backward Incompatible Changes entries in 8.2–8.5 rises from 11 to 19, because the eight rules cover 8 of those entries, one each | No new adapter infrastructure; 17 of the 36 Backward Incompatible Changes entries and the 4 Deprecated Functionality gaps `v0.3.6` left open remain uncovered, and 35 of 72 rules carry no mapping |
-| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage still covers only 37 of 72 rules, so growing further source-backed PHP rules and their proven mappings — including the 4 Deprecated Functionality gaps `v0.3.6`'s re-measurement left open and the 17 still-uncovered Backward Incompatible Changes Core/Standard entries this round's probe found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
+| **New Functions from php-src** | `v0.3.9` | ✅ Complete: the first round drawn from `UPGRADING`'s New Functions sections rather than Deprecated Functionality or Backward Incompatible Changes — a section PHPCompatibility was built to answer rather than one it is structurally blind to, so all 8 new rules (72 → 80) ship mapped and mapping coverage **rises** for the first time since `v0.3.5`, from 37 of 72 rules (51.4%) to 45 of 80 (56.25%), ending three consecutive falls and landing back at the `v0.3.7` level; `SNIFF_RULE_MAP` gains 15 sniff ids (209 → 224); measured directly against php-src, of the 101 New Functions bullet entries in 8.2–8.5 the pinned sniff knows 76, 11 of the 8.3+ ones were already named in the catalogue, and only 3 of the 54 still open are Core/Standard, so `category: extension` nearly doubles, 7 to 13; also records three measured defects in the pinned analyzer's own data (a wrong function name, two nonexistent functions, one typo'd extension attribution) — the first findings calling the analyzer *wrong* rather than merely *blind* | No new adapter infrastructure; 35 of 80 rules carry no mapping, including the 4 Deprecated Functionality gaps and 17 Backward Incompatible Changes Core/Standard entries earlier rounds left open, plus 51 of the 54 open New Functions entries this round found — all extension-scoped and untouched |
+| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage still covers only 45 of 80 rules, so growing further source-backed PHP rules and their proven mappings — including the 4 Deprecated Functionality gaps, the 17 Backward Incompatible Changes Core/Standard entries, and the 51 still-open, extension-scoped New Functions entries this round's probe found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
 ## Repository structure
@@ -578,7 +658,7 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | Path | Purpose |
 |---|---|
 | `src/` | Symfony Console application, Composer/PHP policy resolver, rule registry/query engine, and explicit verification boundary |
-| `resources/rules/` | 72 source-backed seed-rule JSON files, one rule per file |
+| `resources/rules/` | 80 source-backed seed-rule JSON files, one rule per file |
 | `schemas/` | Versioned rule, policy, and verification contracts |
 | `docs/adr/` | Binding architecture decisions and trust boundaries |
 | `tests/` | CLI, schema, and static-page verification |
