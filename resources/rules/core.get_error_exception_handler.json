@@ -1,0 +1,89 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.get_error_exception_handler",
+    "title": "get_error_handler() and get_exception_handler()",
+    "summary": "PHP 8.5 added get_error_handler() and get_exception_handler(), which read the currently installed user-defined error/exception handler without the pre-8.5 replace-then-restore workaround.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.5",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "On a feature ceiling of 8.5 or above, use get_error_handler()/get_exception_handler() to read the currently installed handler; stop using the pre-8.5 read-via-replace workaround (`set_error_handler(null)` immediately followed by `restore_error_handler()`, and the analogous `set_exception_handler(null)`/`restore_exception_handler()` pair) once the floor allows the getters, since the workaround mutates global handler-stack state for the width of two calls where the getters mutate nothing.",
+    "existing_code_policy": "Below a floor of 8.5, the only way to inspect the current handler remains the replace-then-restore workaround; a project below 8.5 cannot adopt the getters and must keep it. Once the project's floor reaches 8.5, replace every call site that exists purely to read the handler with the matching getter. Do not migrate a call site that relies on the workaround's side effect for something other than reading (for example, briefly disabling the handler on purpose) - only sites whose entire purpose is inspection are a safe like-for-like swap, and none should try to introspect their own identity from inside a running handler, since the workaround (and, unverifiably on this host, possibly the getters too) can behave surprisingly there.",
+    "guideline": "Use get_error_handler() and get_exception_handler() to inspect the currently installed handler once the floor allows it; stop using the pre-8.5 set-then-restore workaround (`set_error_handler(null)` immediately followed by `restore_error_handler()`, and the analogous pair for the exception handler).",
+    "details": "PHP 8.5 adds two Core functions that read the currently installed handler without touching it: get_error_handler() returns the current user-defined error handler exactly as it was passed to set_error_handler(), or null if none is installed; get_exception_handler() does the same for the handler installed via set_exception_handler(). Both come from the same RFC (get-error-exception-handler) and are pure reads with no side effect, per UPGRADING-8.5.0 (\"6. New Functions\" -> Core): \"get_error_handler() allows retrieving the current user-defined error handler function.\" / \"get_exception_handler() allows retrieving the current user-defined exception handler function.\" Neither function exists on PHP 8.4 or earlier: measured on this evaluation host (PHP 8.4.19), function_exists('get_error_handler') and function_exists('get_exception_handler') both return false, so neither claim in this paragraph was executed here - both are sourced from UPGRADING and the linked RFC (https://wiki.php.net/rfc/get-error-exception-handler), not from running the functions.\n\nWhat this host can measure is the pre-8.5 workaround the getters replace: `$current = set_error_handler(null); restore_error_handler();` (and the exception-handler analog with set_exception_handler()/restore_exception_handler()). In the ordinary case this genuinely round-trips: measured here, installing a handler, reading it back with the workaround, and comparing the two with === gives true, and a trigger_error() call made immediately afterward is still caught by the original handler - confirming it is really reinstalled, not merely returned. But the workaround is not a pure read, and this host lets two concrete divergences be measured rather than assumed. First, reading from inside the running handler: calling the same set_error_handler(null)/restore_error_handler() sequence from within the currently executing error handler returns NULL, not the handler's own identity, even though the same handler is confirmed still installed the moment it returns - a caller that wants to introspect \"am I the active handler?\" from inside the handler itself gets a false negative. Second, the workaround is not atomic: between its set_error_handler(null) call and its restore_error_handler() call, the real handler is genuinely absent from its usual stack position for the width of one statement. Using pcntl_async_signals(true), pcntl_signal() and posix_kill() (all loaded on this host) to install a second handler from a SIGALRM handler during exactly that window - standing in for any other code that touches the handler stack in the same window, such as a nested error, a Fiber switch, or a third-party library call - demonstrably desynchronizes PHP's internal handler stack: the workaround's own restore_error_handler() call ends up popping the interferer's push instead of its own, and the handler left active afterward is the transient null state, not the one the code believed it had just restored, with no warning of the loss. get_error_handler()/get_exception_handler() have no such window: a read performs no push and no pop, so there is nothing for anything else to interleave with.",
+    "examples": [
+        {
+            "before": [
+                "$hadHandler = set_error_handler(null) !== null;",
+                "restore_error_handler();"
+            ],
+            "after": [
+                "$hadHandler = get_error_handler() !== null;"
+            ]
+        },
+        {
+            "before": [
+                "final class ErrorHandlerBootstrap",
+                "{",
+                "    public static function installIfMissing(callable $handler): bool",
+                "    {",
+                "        $current = set_error_handler(null);",
+                "        restore_error_handler();",
+                "",
+                "        if ($current !== null) {",
+                "            return false;",
+                "        }",
+                "",
+                "        set_error_handler($handler);",
+                "",
+                "        return true;",
+                "    }",
+                "}"
+            ],
+            "after": [
+                "final class ErrorHandlerBootstrap",
+                "{",
+                "    public static function installIfMissing(callable $handler): bool",
+                "    {",
+                "        if (get_error_handler() !== null) {",
+                "            return false;",
+                "        }",
+                "",
+                "        set_error_handler($handler);",
+                "",
+                "        return true;",
+                "    }",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.FunctionUse.NewFunctions.get_error_handlerFound",
+            "PHPCompatibility.FunctionUse.NewFunctions.get_exception_handlerFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.5.0/UPGRADING",
+            "checked_at": "2026-09-07"
+        }
+    ],
+    "notes": [
+        "get_error_handler() and get_exception_handler() do not exist on this evaluation host (PHP 8.4.19): function_exists('get_error_handler') and function_exists('get_exception_handler') both measured false. Every claim about the two functions themselves (that they are pure reads, their return value) is sourced from UPGRADING-8.5.0 and the linked RFC, not from executing them; PHP 8.5 is not installed here and no sentence in this rule implies they were called.",
+        "Measured on this host: installing a closure as the error handler, then reading it back via $current = set_error_handler(null); restore_error_handler();, gives $current === $installedHandler as true, and a trigger_error() call made immediately afterward is still caught by that same handler (observed via a custom errno-printing handler) - the ordinary round trip is correct and the handler is genuinely reinstalled, not merely reported.",
+        "Measured on this host: calling the identical set_error_handler(null); restore_error_handler(); sequence from inside the currently executing handler returns NULL instead of the handler's own identity, even though a probe immediately after the handler returns confirms the same handler is still installed. The workaround therefore answers 'no handler' at exactly the moment code running inside a handler might most want to introspect its own registration.",
+        "Measured on this host with pcntl_async_signals(true), pcntl_signal() and posix_kill(): installing originalHandler, then calling set_error_handler(null) (capturing 'originalHandler', confirmed via ===), then delivering a SIGALRM whose handler calls set_error_handler('interloperHandler') before the matching restore_error_handler() runs, desynchronizes the handler stack - restore_error_handler() pops the interloper's push instead of the workaround's own, and a subsequent read shows the active handler is NULL (the transient state the workaround itself pushed), not 'originalHandler'. This is the concrete, measured basis for behavior_change_risk: low - get_error_handler()/get_exception_handler() perform no push and no pop, so they have no such window to desynchronize.",
+        "Analyzer probe, reproduced 2026-09-07 with the pinned stack (squizlabs/php_codesniffer:3.13.6 + phpcompatibility/php-compatibility:10.0.0-alpha2) against a two-line probe file calling get_error_handler() and get_exception_handler(): at --runtime-set testVersion 8.2-8.5, both PHPCompatibility.FunctionUse.NewFunctions.get_error_handlerFound and PHPCompatibility.FunctionUse.NewFunctions.get_exception_handlerFound fire (2 findings, 1 each). This is a static token scan, not an execution of the two functions, so it does not conflict with the fact that they cannot be run on this host.",
+        "Floor-direction proof: the same probe file gives 2 findings (both sniff ids, one each) at testVersion 8.4-8.5 and 0 findings at testVersion 8.5-8.5, confirming introduced_in: 8.5.",
+        "Evidence: UPGRADING-8.5.0, \"6. New Functions\" -> Core: \"get_error_handler() allows retrieving the current user-defined error handler function.\" / \"get_exception_handler() allows retrieving the current user-defined exception handler function.\""
+    ]
+}
