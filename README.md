@@ -663,7 +663,7 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | Path | Purpose |
 |---|---|
 | `src/` | Symfony Console application, Composer/PHP policy resolver, rule registry/query engine, and explicit verification boundary |
-| `resources/rules/` | 80 source-backed seed-rule JSON files, one rule per file |
+| `resources/rules/` | 81 source-backed seed-rule JSON files, one rule per file |
 | `schemas/` | Versioned rule, policy, and verification contracts |
 | `docs/adr/` | Binding architecture decisions and trust boundaries |
 | `tests/` | CLI, schema, and static-page verification |
