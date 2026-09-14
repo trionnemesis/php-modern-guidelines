@@ -19,6 +19,7 @@ jobs:
         with:
           php-version: '8.4'
           coverage: none
+          extensions: bcmath, dom, mbstring, xml, xmlwriter, simplexml
       - run: composer install --no-interaction --no-progress --prefer-dist --no-plugins --no-scripts
       - name: Prepare the existing CI-pinned analyzer outside the package
         shell: bash
@@ -30,11 +31,39 @@ jobs:
           composer init --no-interaction --quiet --name=throwaway/verification-analyzers
           composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer require --no-interaction --no-progress --prefer-dist squizlabs/php_codesniffer:3.13.6 phpcompatibility/php-compatibility:10.0.0-alpha2
+      - name: Measure candidate class findings and runtime behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/probes"
+          cat > "$RUNNER_TEMP/probes/classes.php" <<'PHP'
+          <?php
+          new \BcMath\Number('1.20');
+          \Dom\HTMLDocument::createFromString('<p>Example</p>');
+          \Dom\XMLDocument::createFromString('<root/>');
+          PHP
+          for floor in 8.2 8.3 8.4 8.5; do
+            status=0
+            "$RUNNER_TEMP/php-modern-guidelines-analyzers/vendor/bin/phpcs" --standard=PHPCompatibility --runtime-set testVersion "$floor-8.5" --report=json "$RUNNER_TEMP/probes/classes.php" > "$RUNNER_TEMP/probes/$floor.json" || status=$?
+            if [[ "$status" -gt 2 ]]; then exit "$status"; fi
+            echo "=== $floor-8.5 (exit $status) ==="
+            cat "$RUNNER_TEMP/probes/$floor.json"
+          done
+          php <<'PHP' | tee "$RUNNER_TEMP/probes/runtime.json"
+          <?php
+          declare(strict_types=1);
+          $original = new BcMath\Number('1.20');
+          $sum = $original->add('0.035', 3);
+          try { new BcMath\Number(0.1); $float = 'accepted'; } catch (TypeError $e) { $float = get_class($e); }
+          $html = Dom\HTMLDocument::createFromString('<!doctype html><html><head><title>Example</title></head><body><p>Example</p></body></html>');
+          $xml = Dom\XMLDocument::createFromString('<root/>');
+          echo json_encode(['php' => PHP_VERSION, 'number_original' => ['value' => $original->value, 'scale' => $original->scale], 'number_sum' => ['value' => $sum->value, 'scale' => $sum->scale], 'procedural_sum' => bcadd('1.20', '0.035', 3), 'float_constructor_in_strict_mode' => $float, 'html_class' => get_class($html), 'xml_class' => get_class($xml)], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), "\n";
+          PHP
       - name: Archive source and development dependencies without Git credentials
         shell: bash
         run: |
           set -euo pipefail
-          tar --exclude='./.git' --exclude='./.github/workflows/implementation-workspace.yml' -czf "$RUNNER_TEMP/implementation-workspace.tar.gz" . -C "$RUNNER_TEMP" php-modern-guidelines-analyzers
+          tar --exclude='./.git' --exclude='./.github/workflows/implementation-workspace.yml' -czf "$RUNNER_TEMP/implementation-workspace.tar.gz" . -C "$RUNNER_TEMP" php-modern-guidelines-analyzers probes
       - uses: actions/upload-artifact@v4
         with:
           name: implementation-workspace
