@@ -1,0 +1,42 @@
+name: Temporary implementation workspace
+
+on:
+  push:
+    branches: [feat/issue-18-new-class-slice]
+    paths: [.github/workflows/implementation-workspace.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  workspace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer install --no-interaction --no-progress --prefer-dist --no-plugins --no-scripts
+      - name: Prepare the existing CI-pinned analyzer outside the package
+        shell: bash
+        run: |
+          set -euo pipefail
+          analyzer_dir="$RUNNER_TEMP/php-modern-guidelines-analyzers"
+          mkdir -p "$analyzer_dir"
+          cd "$analyzer_dir"
+          composer init --no-interaction --quiet --name=throwaway/verification-analyzers
+          composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer require --no-interaction --no-progress --prefer-dist squizlabs/php_codesniffer:3.13.6 phpcompatibility/php-compatibility:10.0.0-alpha2
+      - name: Archive source and development dependencies without Git credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude='./.git' --exclude='./.github/workflows/implementation-workspace.yml' -czf "$RUNNER_TEMP/implementation-workspace.tar.gz" . -C "$RUNNER_TEMP" php-modern-guidelines-analyzers
+      - uses: actions/upload-artifact@v4
+        with:
+          name: implementation-workspace
+          path: ${{ runner.temp }}/implementation-workspace.tar.gz
+          retention-days: 1
