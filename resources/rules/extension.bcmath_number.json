@@ -45,6 +45,6 @@
         "Procedural BCMath functions remain supported; this feature rule does not mark them deprecated and does not require an automatic rewrite to BcMath\\Number.",
         "Pinned analyzer probe from issue #19 (PHP_CodeSniffer 3.13.6 + PHPCompatibility 10.0.0-alpha2): PHPCompatibility.Classes.NewClasses.bcmath_numberFound produced 1 / 1 / 0 / 0 findings with the ceiling held at 8.5 and floors set to 8.2 / 8.3 / 8.4 / 8.5, establishing introduced_in: 8.4.",
         "Runtime evidence from issue #19 on PHP 8.4.25: new BcMath\\Number('1.20')->add('0.035', 3) produced value 1.235 at scale 3, the original remained 1.20 at scale 2, and procedural bcadd() produced the same decimal string; a float constructor argument raised TypeError under strict types.",
-        "The same issue #19 probe produced no PHPCompatibility findings for static Dom\\HTMLDocument::createFromString or Dom\\XMLDocument::createFromString calls. This rule therefore adds no DOM mapping and makes no claim of exhaustive DOM coverage."
+        "The same issue #19 probe produced no PHPCompatibility findings for static Dom\\HTMLDocument::createFromString or Dom\\XMLDocument::createFromString calls. This rule therefore adds no DOM mapping and makes no claim of exhaustive DOM class coverage."
     ]
 }
