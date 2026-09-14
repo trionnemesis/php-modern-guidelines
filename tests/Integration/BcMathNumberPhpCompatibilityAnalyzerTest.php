@@ -89,7 +89,18 @@ final class BcMathNumberPhpCompatibilityAnalyzerTest extends TestCase
         );
         self::assertSame('', $tester->getErrorOutput());
 
-        /** @var array<string, mixed> $report */
+        /**
+         * @var array{
+         *     summary: array{finding_count: int},
+         *     invocations: list<array{purpose: string, policy_minors: list<string>}>,
+         *     findings: list<array{
+         *         external_rule_id: string,
+         *         mapping_status: string,
+         *         mapped_rule_ids: list<string>,
+         *     }>,
+         *     rule_contexts: list<array{id: string}>,
+         * } $report
+         */
         $report = json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame($expectedFindingCount, $report['summary']['finding_count']);
 
