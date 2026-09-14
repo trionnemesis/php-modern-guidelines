@@ -11,10 +11,11 @@ real adapter.
 `verify`'s production registry recognizes only `phpcompatibility`: a real PHPCompatibility
 implementation that runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility
 standard as an isolated child process, reports advisory evidence, and never installs, writes under, or
-mutates the target project. Its committed sniff-to-rule mapping covers 45 of the 80 catalogue rules
-(rising from 37 of 72, since all eight rules added this round ship mapped — the first round drawn from
+mutates the target project. In published `v0.3.9`, its committed sniff-to-rule mapping covered 45 of the 80 catalogue rules
+(rising from 37 of 72, since all eight rules added that round ship mapped — the first round drawn from
 `UPGRADING`'s New Functions sections rather than a deprecation or behavior-change section, which asks
-exactly the question PHPCompatibility was built to answer instead of one it is structurally blind to),
+exactly the question PHPCompatibility was built to answer instead of one it is structurally blind to).
+Current source after issue #19 carries 81 rules, 46 mapped rules and 225 committed sniff ids;
 including the whole `extension.imap_unbundled` surface; every other finding is preserved unmapped rather
 than discarded. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from
 `0.3.0` on value-gate evidence — see issue #9 and its linked follow-ups — so do not add either, or any

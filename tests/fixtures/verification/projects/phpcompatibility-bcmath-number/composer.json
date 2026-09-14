@@ -1,0 +1,6 @@
+{
+    "name": "fixture/phpcompatibility-bcmath-number",
+    "require": {
+        "php": "^8.2"
+    }
+}

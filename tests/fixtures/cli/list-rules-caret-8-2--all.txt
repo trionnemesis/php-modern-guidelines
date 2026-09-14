@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 80 of 80 shown
+Rules: 81 of 81 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -105,6 +105,8 @@ Rules: 80 of 80 shown
       Casting an unrepresentable float, float-like string, or `NAN` now warns
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
+  [forbidden_above_feature_ceiling]  P1  feature              extension.bcmath_number
+      BcMath\Number
   [forbidden_above_feature_ceiling]  P1  feature              extension.bcmath_rounding_functions
       bcfloor(), bcceil(), bcround() and bcdivmod()
   [deprecated_in_range]              P2  deprecated           extension.curl_close

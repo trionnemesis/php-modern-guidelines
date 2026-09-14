@@ -17,6 +17,7 @@ final class PhpCompatibilityMappingTest extends TestCase
     {
         self::assertSame([
             'PHPCompatibility.Classes.ForbiddenClassNameUnderscore.Deprecated' => ['core.underscore_class_name'],
+        'PHPCompatibility.Classes.NewClasses.bcmath_numberFound' => ['extension.bcmath_number'],
             'PHPCompatibility.Classes.NewReadonlyClasses.AnonClass' => ['language.readonly_anonymous_classes'],
             'PHPCompatibility.Classes.NewStaticAvizProperties.Found' => ['language.static_asymmetric_visibility'],
             'PHPCompatibility.Classes.NewTypedConstants.Found' => ['language.typed_class_constants'],

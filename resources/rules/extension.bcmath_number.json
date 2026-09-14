@@ -1,0 +1,50 @@
+{
+    "schema_version": "1.1.0",
+    "id": "extension.bcmath_number",
+    "title": "BcMath\\Number",
+    "summary": "PHP 8.4 added the immutable BcMath\\Number value object for arbitrary-precision decimal arithmetic, with object-returning arithmetic methods and operator support alongside the existing procedural BCMath APIs.",
+    "category": "extension",
+    "kind": "feature",
+    "priority": "P1",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": "bcmath",
+    "package_constraints": {},
+    "behavior_change_risk": "low",
+    "new_code_policy": "When the project feature ceiling is PHP 8.4 or newer, BcMath\\Number is available as an immutable object-oriented representation for arbitrary-precision decimal values. Keep decimal inputs as strings and pass scale explicitly when the result scale matters. The procedural bc* APIs remain valid and are not deprecated, so choosing BcMath\\Number is an API-design decision rather than a required migration.",
+    "existing_code_policy": "Do not mechanically rewrite working procedural BCMath code. Once the project floor reaches PHP 8.4, consider BcMath\\Number where immutable value-object semantics improve the surrounding design, while preserving decimal-string input boundaries and explicit scale decisions. In strict-types code, do not replace a decimal string with a float constructor argument: the measured PHP 8.4 runtime rejects that argument with TypeError.",
+    "guideline": "Use BcMath\\Number on PHP 8.4+ when immutable object-oriented arbitrary-precision decimal values fit the design; preserve decimal strings and explicit scale, and keep procedural BCMath code when it is already the clearer interface.",
+    "details": "PHP 8.4 UPGRADING section 7 (BCMath) adds the immutable BcMath\\Number class, whose arithmetic methods return objects and which supports arithmetic operators. This is a feature rule, so applicability is governed by the project feature floor: the class must not be emitted for a project that still supports PHP 8.2 or 8.3. The issue #19 runtime probe on PHP 8.4.25 measured new BcMath\\Number('1.20')->add('0.035', 3) as a new object with decimal value 1.235 and scale 3 while the original remains 1.20 with scale 2; procedural bcadd() produced the same decimal string. The same probe measured a float constructor argument under strict types raising TypeError. None of this deprecates or invalidates the procedural BCMath API.",
+    "examples": [
+        {
+            "before": [
+                "$amount = new \\BcMath\\Number(1.20);"
+            ],
+            "after": [
+                "$amount = new \\BcMath\\Number('1.20');",
+                "$total = $amount->add('0.035', 3);"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [
+            "PHPCompatibility.Classes.NewClasses.bcmath_numberFound"
+        ],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-14"
+        }
+    ],
+    "notes": [
+        "Procedural BCMath functions remain supported; this feature rule does not mark them deprecated and does not require an automatic rewrite to BcMath\\Number.",
+        "Pinned analyzer probe from issue #19 (PHP_CodeSniffer 3.13.6 + PHPCompatibility 10.0.0-alpha2): PHPCompatibility.Classes.NewClasses.bcmath_numberFound produced 1 / 1 / 0 / 0 findings with the ceiling held at 8.5 and floors set to 8.2 / 8.3 / 8.4 / 8.5, establishing introduced_in: 8.4.",
+        "Runtime evidence from issue #19 on PHP 8.4.25: new BcMath\\Number('1.20')->add('0.035', 3) produced value 1.235 at scale 3, the original remained 1.20 at scale 2, and procedural bcadd() produced the same decimal string; a float constructor argument raised TypeError under strict types.",
+        "The same issue #19 probe produced no PHPCompatibility findings for static Dom\\HTMLDocument::createFromString or Dom\\XMLDocument::createFromString calls. This rule therefore adds no DOM mapping and makes no claim of exhaustive DOM coverage."
+    ]
+}
