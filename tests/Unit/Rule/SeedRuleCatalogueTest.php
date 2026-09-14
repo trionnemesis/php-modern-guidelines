@@ -17,17 +17,17 @@ use PHPUnit\Framework\TestCase;
  * Every shipped seed rule under resources/rules/: schema-valid (already proven by loading it at all),
  * id == basename, id-prefix == category, source URL shape, checked_at, kind/lifecycle consistency,
  * package_constraints rendered as {} / \stdClass, byte-identity with its canonical re-encoding, and
- * the round-trip claim. Plus the exactly-80-files count and the two rule-16 (WORK-ORDER.md §6.3)
+ * the round-trip claim. Plus the exactly-81-files count and the two rule-16 (WORK-ORDER.md §6.3)
  * assertions.
  */
 final class SeedRuleCatalogueTest extends TestCase
 {
-    private const EXPECTED_COUNT = 80;
+    private const EXPECTED_COUNT = 81;
 
     /** Pinned review dates carried by the catalogue's sources[0].checked_at (WORK-ORDER.md §6.3). */
-    private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07'];
+    private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07', '2026-09-14'];
 
-    public function testExactlyEightyRuleFilesAreShipped(): void
+    public function testExactlyEightyOneRuleFilesAreShipped(): void
     {
         $registry = $this->loader()->loadDirectory(PackagePaths::rulesDirectory());
 
@@ -175,6 +175,7 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.underscore_class_name',
             'core.unrepresentable_numeric_casts',
             'core.utf8_encode_decode',
+            'extension.bcmath_number',
             'extension.bcmath_rounding_functions',
             'extension.curl_close',
             'extension.curl_multi_get_handles',

@@ -1,6 +1,8 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 13 of 80 shown
+Rules: 14 of 81 shown
 
+  [forbidden_above_feature_ceiling]  P1  feature              extension.bcmath_number
+      BcMath\Number
   [forbidden_above_feature_ceiling]  P1  feature              extension.bcmath_rounding_functions
       bcfloor(), bcceil(), bcround() and bcdivmod()
   [deprecated_in_range]              P2  deprecated           extension.curl_close
