@@ -643,7 +643,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | Path | 用途 |
 |---|---|
 | `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
-| `resources/rules/` | 80 個 source-backed seed rule JSON，一條 rule 一個檔案 |
+| `resources/rules/` | 81 個 source-backed seed rule JSON，一條 rule 一個檔案 |
 | `schemas/` | Versioned rule、policy 與 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |
