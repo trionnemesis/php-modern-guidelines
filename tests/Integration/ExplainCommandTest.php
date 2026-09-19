@@ -139,17 +139,15 @@ final class ExplainCommandTest extends TestCase
 
         $classCode = str_replace(
             'final class HttpFetcher',
-            'final class HttpFetcherRegression',
+            'return new class',
             implode("\n", $examples[1]['after']),
         );
-        eval($classCode);
-
-        $className = 'HttpFetcherRegression';
-        if (!class_exists($className)) {
-            self::fail('Evaluated HTTP example class was not defined.');
+        $fetcher = eval($classCode . ';');
+        if (!is_object($fetcher)) {
+            throw new \LogicException('Evaluated HTTP example did not return an object.');
         }
-        $reflection = new \ReflectionClass($className);
-        $fetcher = $reflection->newInstance();
+
+        $reflection = new \ReflectionObject($fetcher);
         $headers = $reflection->getProperty('lastHeaders');
         $lastStatusCode = $reflection->getMethod('lastStatusCode');
 
