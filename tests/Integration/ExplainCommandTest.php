@@ -99,6 +99,110 @@ final class ExplainCommandTest extends TestCase
         self::assertSame(JsonPrinter::encode($rule->toArray()), JsonPrinter::encode($roundTripped->toArray()));
     }
 
+    public function testHttpResponseHeaderExamplesAreRangeSafeAndUseTheFinalStatusLine(): void
+    {
+        $fixtureRealPath = $this->realFixture('caret-8-2');
+
+        $tester = $this->tester();
+        $exitCode = $tester->run(
+            ['command' => 'explain', 'rule-id' => 'core.http_response_header', '--project-root' => $fixtureRealPath, '--json' => true],
+            ['capture_stderr_separately' => true, 'decorated' => false],
+        );
+
+        self::assertSame(ExitCode::SUCCESS, $exitCode);
+        self::assertSame('', $tester->getErrorOutput());
+
+        $decoded = json_decode($tester->getDisplay(), true);
+        self::assertIsArray($decoded);
+        self::assertIsArray($decoded['rule']);
+
+        /** @var array<string, mixed> $ruleData */
+        $ruleData = $decoded['rule'];
+        self::assertIsArray($ruleData['examples']);
+
+        /** @var list<array{before: list<string>, after: list<string>}> $examples */
+        $examples = $ruleData['examples'];
+        self::assertCount(2, $examples);
+
+        foreach ($examples as $example) {
+            $after = implode("\n", $example['after']);
+
+            self::assertStringContainsString("function_exists('http_get_last_response_headers')", $after);
+            self::assertStringContainsString('($http_response_header ?? null)', $after);
+            self::assertStringNotContainsString('http_get_last_response_headers()[0]', $after);
+            self::assertStringNotContainsString('$this->lastHeaders[0]', $after);
+        }
+
+        $firstAfter = implode("\n", $examples[0]['after']);
+        self::assertStringContainsString('foreach ($headers ?? [] as $headerLine)', $firstAfter);
+        self::assertStringContainsString('$statusLine = $headerLine;', $firstAfter);
+
+        $classCode = str_replace(
+            'final class HttpFetcher',
+            'final class HttpFetcherRegression',
+            implode("\n", $examples[1]['after']),
+        );
+        eval($classCode);
+
+        $reflection = new \ReflectionClass(\HttpFetcherRegression::class);
+        $fetcher = $reflection->newInstance();
+        $headers = $reflection->getProperty('lastHeaders');
+        $lastStatusCode = $reflection->getMethod('lastStatusCode');
+
+        /** @var array<string, array{0: ?array, 1: ?int}> $cases */
+        $cases = [
+            'single 200' => [
+                ['HTTP/1.1 200 OK', 'Content-Type: text/plain'],
+                200,
+            ],
+            'two redirects then 200' => [
+                [
+                    'HTTP/1.1 302 Found',
+                    'Location: /two',
+                    'HTTP/1.1 302 Found',
+                    'Location: /final',
+                    'HTTP/1.1 200 OK',
+                ],
+                200,
+            ],
+            'redirect then 404' => [
+                [
+                    'HTTP/1.1 302 Found',
+                    'Location: /missing',
+                    'HTTP/1.1 404 Not Found',
+                ],
+                404,
+            ],
+            'null headers' => [null, null],
+            'empty headers' => [[], null],
+            'no valid status line' => [['Content-Type: text/plain', 'X-Status: 200'], null],
+        ];
+
+        foreach ($cases as $label => [$capturedHeaders, $expectedStatus]) {
+            $headers->setValue($fetcher, $capturedHeaders);
+            self::assertSame(
+                $expectedStatus,
+                $lastStatusCode->invoke($fetcher),
+                $label,
+            );
+        }
+
+        $humanTester = $this->tester();
+        $humanExitCode = $humanTester->run(
+            ['command' => 'explain', 'rule-id' => 'core.http_response_header', '--project-root' => $fixtureRealPath],
+            ['capture_stderr_separately' => true, 'decorated' => false],
+        );
+
+        self::assertSame(ExitCode::SUCCESS, $humanExitCode);
+        self::assertSame('', $humanTester->getErrorOutput());
+        self::assertStringContainsString(
+            "function_exists('http_get_last_response_headers')",
+            $humanTester->getDisplay(),
+        );
+        self::assertStringNotContainsString('http_get_last_response_headers()[0]', $humanTester->getDisplay());
+        self::assertStringNotContainsString('$this->lastHeaders[0]', $humanTester->getDisplay());
+    }
+
     private function tester(): ApplicationTester
     {
         $application = ApplicationFactory::create();
