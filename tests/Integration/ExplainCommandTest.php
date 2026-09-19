@@ -145,7 +145,9 @@ final class ExplainCommandTest extends TestCase
         eval($classCode);
 
         $className = 'HttpFetcherRegression';
-        self::assertTrue(class_exists($className));
+        if (!class_exists($className)) {
+            self::fail('Evaluated HTTP example class was not defined.');
+        }
         $reflection = new \ReflectionClass($className);
         $fetcher = $reflection->newInstance();
         $headers = $reflection->getProperty('lastHeaders');
