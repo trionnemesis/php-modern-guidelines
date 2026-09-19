@@ -144,12 +144,14 @@ final class ExplainCommandTest extends TestCase
         );
         eval($classCode);
 
-        $reflection = new \ReflectionClass(\HttpFetcherRegression::class);
+        $className = 'HttpFetcherRegression';
+        self::assertTrue(class_exists($className));
+        $reflection = new \ReflectionClass($className);
         $fetcher = $reflection->newInstance();
         $headers = $reflection->getProperty('lastHeaders');
         $lastStatusCode = $reflection->getMethod('lastStatusCode');
 
-        /** @var array<string, array{0: ?array, 1: ?int}> $cases */
+        /** @var array<string, array{0: ?array<int, string>, 1: ?int}> $cases */
         $cases = [
             'single 200' => [
                 ['HTTP/1.1 200 OK', 'Content-Type: text/plain'],
