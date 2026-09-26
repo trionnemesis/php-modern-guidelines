@@ -15,7 +15,10 @@ mutates the target project. In published `v0.3.9`, its committed sniff-to-rule m
 (rising from 37 of 72, since all eight rules added that round ship mapped — the first round drawn from
 `UPGRADING`'s New Functions sections rather than a deprecation or behavior-change section, which asks
 exactly the question PHPCompatibility was built to answer instead of one it is structurally blind to).
-Current source after issue #19 carries 81 rules, 46 mapped rules and 225 committed sniff ids. The mapped
+Current source after issue #19 and the issue #18 HTTP helper slice carries 82 rules, 46 mapped rules
+and 225 committed sniff ids. `core.http_last_response_headers` is a guidance-only PHP 8.4 feature rule;
+`core.http_response_header` retains its separate PHP 8.5 deprecation contract. Coverage changes from
+46/81 to 46/82 because no mapping is added or removed by the helper slice. The mapped
 set still includes the whole `extension.imap_unbundled` surface; every other finding is preserved unmapped
 rather than discarded. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from
 `0.3.0` on value-gate evidence — see issue #9 and its linked follow-ups — so do not add either, or any

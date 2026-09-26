@@ -17,17 +17,17 @@ use PHPUnit\Framework\TestCase;
  * Every shipped seed rule under resources/rules/: schema-valid (already proven by loading it at all),
  * id == basename, id-prefix == category, source URL shape, checked_at, kind/lifecycle consistency,
  * package_constraints rendered as {} / \stdClass, byte-identity with its canonical re-encoding, and
- * the round-trip claim. Plus the exactly-81-files count and the two rule-16 (WORK-ORDER.md §6.3)
+ * the round-trip claim. Plus the exactly-82-files count and the two rule-16 (WORK-ORDER.md §6.3)
  * assertions.
  */
 final class SeedRuleCatalogueTest extends TestCase
 {
-    private const EXPECTED_COUNT = 81;
+    private const EXPECTED_COUNT = 82;
 
     /** Pinned review dates carried by the catalogue's sources[0].checked_at (WORK-ORDER.md §6.3). */
-    private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07', '2026-09-14'];
+    private const REVIEW_DATES = ['2026-08-30', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07', '2026-09-14', '2026-09-26'];
 
-    public function testExactlyEightyOneRuleFilesAreShipped(): void
+    public function testExactlyEightyTwoRuleFilesAreShipped(): void
     {
         $registry = $this->loader()->loadDirectory(PackagePaths::rulesDirectory());
 
@@ -144,6 +144,7 @@ final class SeedRuleCatalogueTest extends TestCase
             'core.get_defined_functions_exclude_disabled',
             'core.get_error_exception_handler',
             'core.http_build_query_backed_enums',
+            'core.http_last_response_headers',
             'core.http_response_header',
             'core.json_validate',
             'core.lcg_value',

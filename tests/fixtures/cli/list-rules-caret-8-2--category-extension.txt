@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 14 of 81 shown
+Rules: 14 of 82 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              extension.bcmath_number
       BcMath\Number

@@ -1,0 +1,54 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.http_last_response_headers",
+    "title": "HTTP last-response-header helpers",
+    "summary": "PHP 8.4 adds http_get_last_response_headers() and http_clear_last_response_headers() for the HTTP stream wrapper.",
+    "category": "core",
+    "kind": "feature",
+    "priority": "P2",
+    "introduced_in": "8.4",
+    "deprecated_in": null,
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Call these helpers unconditionally only when the PHP feature ceiling is at least 8.4. Capture headers immediately after the HTTP stream-wrapper request; retain the captured array before clearing shared state.",
+    "existing_code_policy": "Keep the capability-checked, same-request-scope fallback in core.http_response_header while supporting PHP 8.2 or 8.3. Raising the floor to 8.4 permits the helpers, but does not make moving header reads across requests safe.",
+    "guideline": "On PHP 8.4 or later, retrieve the HTTP stream wrapper's last response headers with http_get_last_response_headers() and clear stored headers explicitly with http_clear_last_response_headers().",
+    "details": "The PHP 8.4.0 UPGRADING New Functions / Standard section introduces both helpers. http_get_last_response_headers(): ?array returns the stored raw response-header lines, or null when none are stored; http_clear_last_response_headers(): void clears that state. These helpers concern the HTTP stream wrapper, not cURL. The state is not local to the function that made the request: capture it immediately before another request can replace it. The example requires a PHP 8.4 floor, assumes $url is an HTTP URL, and owns the request/capture/clear sequence. It clears before the request and again in finally; clearing also affects other code reading the shared last-response state. The captured array remains available after clearing. No status-line parsing is performed here. The separate core.http_response_header rule retains the old variable's PHP 8.5 deprecation contract.",
+    "examples": [
+        {
+            "before": [
+                "$body = file_get_contents($url);",
+                "$headers = $http_response_header ?? null;"
+            ],
+            "after": [
+                "// Requires PHP 8.4+; this code owns the last-response-header state.",
+                "http_clear_last_response_headers();",
+                "try {",
+                "    $body = file_get_contents($url);",
+                "    $headers = http_get_last_response_headers();",
+                "} finally {",
+                "    http_clear_last_response_headers();",
+                "}"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-26"
+        }
+    ],
+    "notes": [
+        "Qualification on main 97be19e: list-rules --php=8.4 --kind=feature --all --json has no HTTP helper feature rule; explain core.http_response_header retains kind=deprecated, introduced_in=null and deprecated_in=8.5. The new rule exposes API availability without inferring a feature contract from deprecation prose.",
+        "Guidance only: verification.phpcompatibility intentionally remains empty. Issue #18 records a historical singular/plural-name defect in the pinned analyzer; this slice does not claim a new analyzer probe, add a mapping, or change its pin. Zero findings would not prove compatibility.",
+        "PHP manual cross-check on 2026-09-26: https://www.php.net/manual/en/function.http-get-last-response-headers.php and https://www.php.net/manual/en/function.http-clear-last-response-headers.php document PHP 8.4.0 availability, the nullable array returned by get, and the clearing behavior."
+    ]
+}

@@ -120,7 +120,7 @@
 > 每一項結構性發現談的都是 analyzer *看不到*什麼，而不是它的資料本身就*錯了*。
 
 
-> **目前 source checkout（v0.3.9 之後、尚未發布）：** issue #19 僅新增一條有來源依據的 `extension.bcmath_number` PHP 8.4 feature rule，以及其已量測的 PHPCompatibility mapping。因此目前 source checkout 為 **81 條規則、46 條具 mapping、225 個已提交 sniff ID**。已發布的 `v0.3.9` 仍是上方所述的 80 條規則 / 45 條具 mapping / 224 個 sniff ID；這段說明不代表新的 release 或 tag。
+> **目前 source checkout（v0.3.9 之後、尚未發布）：** issue #19 已新增 `extension.bcmath_number` 與其已量測的 PHPCompatibility mapping。issue #18 的 HTTP helper 切片新增一條 guidance-only PHP 8.4 feature rule：`core.http_last_response_headers`，讓 get／clear 的可用版本與舊變數的棄用分開查詢。目前 source 為 **82 條規則、46 條具 mapping、225 個已提交 sniff ID**；mapping coverage 從 46/81 變為 46/82，原因是新規則沒有 mapping，並非移除既有證據。已發布的 `v0.3.9` 維持 80 條規則／45 條具 mapping／224 個 sniff ID；這不是新的 release 或 tag 宣告。
 
 ## Why
 
@@ -141,7 +141,7 @@ AI coding agent 很容易依照目前執行環境生成「最新 PHP 寫法」�
 |---|---|---|
 | Policy resolver | 解析 `require.php`、`conflict.php`、`config.platform.php`、`composer.lock` platform override 與 `--php` | 只讀取目標專案輸入，不執行目標專案 |
 | Two-axis policy | 分離 `feature_ceiling` / `lifecycle_ceiling`，輸出 `coverage`、`confidence`、`warnings` | 已知 PHP coverage 為 8.2–8.5 |
-| Rule registry | schema validation、deterministic ordering、81 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
+| Rule registry | schema validation、deterministic ordering、82 條 source-backed PHP 8.2–8.5 規則 | 目前只涵蓋 PHP language / Core / bundled extension |
 | Agent query surface | `resolve`、`list-rules`、`explain`，支援 human / JSON output | `resolve --json` 必須符合 `policy.schema.json` |
 | CLI foundation | `version` 與一致的 exit-code contract | 不寫入目標 repository |
 | Repository verification | PHPUnit、PHPStan level max、PHP-CS-Fixer、PHP 8.2–8.5 CI | 驗證本 repository，不等於掃描目標專案 |
@@ -272,7 +272,7 @@ analyzer 精確表達（例如存在 coverage gap 或 allowed minor 不連續）
 以取得可執行的 plan。執行完成會回傳 exit `0`（無 finding）或 exit `6`（一筆以上 advisory
 finding）；analyzer 執行中途失敗則是 exit `8`。
 
-每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 81 條規則中有 46 條——包含整個
+每筆 finding 都會保留 analyzer 自己的 sniff identifier 原文。本專案 82 條規則中有 46 條——包含整個
 `extension.imap_unbundled` 範圍——具備已提交、經過審查的 sniff id 對 rule id mapping；其餘 finding
 則保留為 `mapping_status: unmapped`，不會被捨棄。同一組 mapping 也以排序後的
 `verification.phpcompatibility` list 儲存在 rule files，並以測試保證它與 adapter map 互為精確反向。
@@ -635,7 +635,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | **改從 php-src 的 Backward Incompatible Changes 段落取材** | `v0.3.7` | ✅ 完成：第一輪改從 `UPGRADING` 的 Backward Incompatible Changes 段落取材，而非 Deprecated Functionality——談的是行為悄悄改變，而不是被標記為 deprecated 的 API；探測 18 項候選規則對照 analyzer 只產生恰好 1 筆 finding，因此 8 條新規則中有 7 條（56 → 64 條）以 unmapped 狀態上線，使 mapping coverage 從 56 條中的 35 條（62.5%）**下降**為 64 條中的 36 條（56%），是三次刻意 breadth-for-depth 取捨（與 `v0.3.4`、`v0.3.6` 並列）中降幅最深的一次；直接對照 php-src 測量，PHP 8.2–8.5 中 36 項 Core/Standard Backward Incompatible Changes 條目，catalogue coverage 從 2 項提高為 11 項，因為這八條規則涵蓋了 36 項條目中的 9 項 | 不新增 adapter infrastructure；36 項 Backward Incompatible Changes 條目中仍有 25 項、以及 `v0.3.6` 留下的 4 項 Deprecated Functionality 缺口尚未涵蓋，64 條規則中有 28 條沒有 mapping |
 | **改從 php-src 的 Backward Incompatible Changes 段落取材，第二輪** | `v0.3.8` | ✅ 完成：第二輪改從 `UPGRADING` 的 Backward Incompatible Changes 段落取材；再探測 16 項候選規則對照 analyzer，又只產生恰好 1 筆 finding，確認了 `v0.3.7` 最初觀察到的模式，而不是取樣誤差，因此 8 條新規則中有 7 條（64 → 72 條）以 unmapped 狀態上線，使 mapping coverage 從 64 條中的 36 條（56%）**下降**為 72 條中的 37 條（51%），是四次刻意 breadth-for-depth 取捨（與 `v0.3.4`、`v0.3.6`、`v0.3.7` 並列）中降幅最深的一次；直接對照 php-src 測量，PHP 8.2–8.5 中 36 項 Core/Standard Backward Incompatible Changes 條目，catalogue coverage 從 11 項提高為 19 項，因為這八條規則涵蓋了 36 項條目中的 8 項，一條規則對應一個條目 | 不新增 adapter infrastructure；36 項 Backward Incompatible Changes 條目中仍有 17 項、以及 `v0.3.6` 留下的 4 項 Deprecated Functionality 缺口尚未涵蓋，72 條規則中有 35 條沒有 mapping |
 | **改從 php-src 的 New Functions 段落取材** | `v0.3.9` | ✅ 完成：第一輪改從 `UPGRADING` 的 New Functions 段落取材，而非 Deprecated Functionality 或 Backward Incompatible Changes——這個段落問的正是 PHPCompatibility 原本就是為了回答而生的問題，而不是它結構上偵測不到的問題，因此 8 條新規則（72 → 80）全數以已 mapping 狀態上線，mapping coverage 自 `v0.3.5` 以來**首次上升**，從 72 條中的 37 條（51.4%）上升為 80 條中的 45 條（56.25%），終結連續三輪下降並回到 `v0.3.7` 當時的水準；`SNIFF_RULE_MAP` 新增 15 個 sniff id（209 → 224）；直接對照 php-src 測量，PHP 8.2–8.5 的 101 項 New Functions 條目中 pinned sniff 認得 76 項，其中 8.3 以上有 11 項早已納入 catalogue，尚餘 54 項中只有 3 項屬於 Core/Standard，因此 `category: extension` 幾乎翻倍，從 7 條增加為 13 條；同時在 pinned analyzer 自身資料中測得三項缺陷（一個函式名稱寫錯、兩個不存在的函式、一個 extension 歸屬打錯字）——這是首度把 analyzer 稱為*錯了*而不只是*看不到* | 不新增 adapter infrastructure；80 條規則中有 35 條沒有 mapping，包含早期輪次留下的 4 項 Deprecated Functionality 缺口與 17 項 Backward Incompatible Changes Core/Standard 條目，以及這一輪找到、尚餘 51 項未處理、全數侷限在特定 extension 的 New Functions 條目 |
-| **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前涵蓋 81 條規則中的 46 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含尚餘 4 項未處理的 Deprecated Functionality php-src 缺口、17 項未處理的 Backward Incompatible Changes Core/Standard 條目，以及這一輪找到、尚餘 51 項未處理、侷限在特定 extension 的 New Functions 條目——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
+| **Next：further catalogue and mapping growth** | — | 規劃：mapping coverage 目前涵蓋 82 條規則中的 46 條，因此持續擴充 source-backed PHP rule 與其已驗證 mapping——包含尚餘 4 項未處理的 Deprecated Functionality php-src 缺口、17 項未處理的 Backward Incompatible Changes Core/Standard 條目，以及這一輪找到、尚餘 51 項未處理、侷限在特定 extension 的 New Functions 條目——仍排在已延後的 M3-C PHPStan adapter 與已捨棄的 M3-D Rector adapter 之前 | 僅屬於 catalogue 與 mapping 工作，不引入新的 adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | 規劃：獨立 framework-specific guidance，優先從可單獨 review 的 pack 開始 | 不污染 PHP Core rule set |
 
 ## Repository 結構
@@ -643,7 +643,7 @@ PHP language、Core 與 bundled-extension 的 lifecycle facts 必須有 authorit
 | Path | 用途 |
 |---|---|
 | `src/` | Symfony Console application、Composer/PHP policy resolver、rule registry/query engine 與 explicit verification boundary |
-| `resources/rules/` | 81 個 source-backed seed rule JSON，一條 rule 一個檔案 |
+| `resources/rules/` | 82 個 source-backed seed rule JSON，一條 rule 一個檔案 |
 | `schemas/` | Versioned rule、policy 與 verification contracts |
 | `docs/adr/` | Binding architecture decisions 與 trust boundaries |
 | `tests/` | CLI、schema、static-page verification |
