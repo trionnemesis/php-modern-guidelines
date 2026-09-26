@@ -2,6 +2,19 @@
 
 All notable changes will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `core.http_last_response_headers`: a guidance-only PHP 8.4 feature contract for
+  `http_get_last_response_headers()` and `http_clear_last_response_headers()` (Refs #18).
+  The existing `core.http_response_header` PHP 8.5 deprecation rule is unchanged.
+- Policy-matrix and CLI regression coverage, plus execution of the delivered capture/clear example
+  against a controlled loopback HTTP fixture on PHP 8.4+.
+- Source catalogue grows from 81 to 82 rules; 46 mapped rules and 225 sniff IDs remain unchanged.
+  Coverage changes from 46/81 to 46/82 because the new rule has no proven mapping.
+  Published v0.3.9 remains 80 rules / 45 mapped rules / 224 sniff IDs.
+
 ## [0.3.9] - 2026-09-07
 
 ### Added

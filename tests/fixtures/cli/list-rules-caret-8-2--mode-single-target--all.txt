@@ -1,5 +1,5 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 81 of 81 shown
+Rules: 82 of 82 shown
 
   [not_in_range]                     P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -43,6 +43,8 @@ Rules: 81 of 81 shown
       get_error_handler() and get_exception_handler()
   [not_in_range]                     P2  behavior_change      core.http_build_query_backed_enums
       `http_build_query()` now correctly handles backed enums
+  [not_in_range]                     P2  feature              core.http_last_response_headers
+      HTTP last-response-header helpers
   [applicable]                       P2  deprecated           core.http_response_header
       The `$http_response_header` predefined variable is deprecated
   [not_in_range]                     P3  modern_preference    core.json_validate

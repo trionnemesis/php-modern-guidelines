@@ -126,7 +126,7 @@
 > finding said the analyzer was *blind*, not *wrong*.
 
 
-> **Current source checkout (unreleased after v0.3.9):** issue #19 adds exactly one source-backed `extension.bcmath_number` PHP 8.4 feature rule and its measured PHPCompatibility mapping. The source checkout therefore contains **81 rules, 46 mapped rules and 225 committed sniff IDs**. The published `v0.3.9` release remains the 80-rule / 45-mapped-rule / 224-sniff release described above; this is not a release or tag claim.
+> **Current source checkout (unreleased after v0.3.9):** issue #19 added `extension.bcmath_number` and its measured PHPCompatibility mapping. The issue #18 HTTP helper slice adds one guidance-only PHP 8.4 feature rule, `core.http_last_response_headers`, covering get/clear independently of the old variable's deprecation. Source now contains **82 rules, 46 mapped rules and 225 committed sniff IDs**; mapping coverage changes from 46/81 to 46/82 because the new rule has no mapping, not because evidence was removed. The published `v0.3.9` remains 80 rules / 45 mapped rules / 224 sniff IDs; this is not a release or tag claim.
 
 ## Why
 
@@ -147,7 +147,7 @@ For example, `require.php: ^8.2` currently resolves to `feature_ceiling: 8.2` an
 |---|---|---|
 | Policy resolver | Resolves `require.php`, `conflict.php`, `config.platform.php`, Composer lock platform overrides, and `--php` | Reads target-project inputs without executing the target project |
 | Two-axis policy | Separates `feature_ceiling` and `lifecycle_ceiling`; outputs `coverage`, `confidence`, and `warnings` | Known PHP coverage is 8.2–8.5 |
-| Rule registry | Schema validation, deterministic ordering, and 81 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
+| Rule registry | Schema validation, deterministic ordering, and 82 source-backed PHP 8.2–8.5 rules | Currently covers PHP language, Core, and bundled extensions only |
 | Agent query surface | `resolve`, `list-rules`, and `explain` with human and JSON output | `resolve --json` must satisfy `policy.schema.json` |
 | CLI foundation | `version` and a consistent exit-code contract | Never writes to the target repository |
 | Repository verification | PHPUnit, PHPStan level max, PHP-CS-Fixer, and PHP 8.2–8.5 CI | Verifies this repository; it does not scan the target project |
@@ -281,7 +281,7 @@ a non-contiguous allowed set) is refused with exit `9` rather than approximated;
 a project. Completed runs exit `0` with no findings or `6` with one or more advisory findings; an
 analyzer that fails mid-run exits `8`.
 
-Every finding keeps the analyzer's own sniff identifier verbatim. Forty-six of this project's eighty-one
+Every finding keeps the analyzer's own sniff identifier verbatim. Forty-six of this project's eighty-two
 rules — including the whole `extension.imap_unbundled` surface — have a committed, reviewed mapping from
 sniff id to rule id; every other finding is preserved with `mapping_status: unmapped` rather than discarded.
 The same mappings are stored as sorted `verification.phpcompatibility` lists on the rule files and tested
@@ -655,7 +655,7 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | **Backward Incompatible Changes from php-src** | `v0.3.7` | ✅ Complete: the first round drawn from `UPGRADING`'s Backward Incompatible Changes section instead of Deprecated Functionality — behavior that silently changed rather than an API marked deprecated; probing 18 candidates against the analyzer produced exactly 1 finding, so 7 of the 8 new rules (56 → 64) ship unmapped and mapping coverage **falls** from 35 of 56 rules (62.5%) to 36 of 64 (56%), the steepest of the three deliberate breadth-for-depth trades (with `v0.3.4` and `v0.3.6`); measured directly against php-src, catalogue coverage of the 36 Core/Standard Backward Incompatible Changes entries in 8.2–8.5 rises from 2 to 11, because the eight rules cover 9 of the 36 entries | No new adapter infrastructure; 25 of the 36 Backward Incompatible Changes entries and the 4 Deprecated Functionality gaps `v0.3.6` left open remain uncovered, and 28 of 64 rules carry no mapping |
 | **Second Backward Incompatible Changes round** | `v0.3.8` | ✅ Complete: the second round drawn from `UPGRADING`'s Backward Incompatible Changes section; probing 16 more candidates against the analyzer again produced exactly 1 finding, confirming the pattern `v0.3.7` first observed rather than sampling noise, so 7 of the 8 new rules (64 → 72) ship unmapped and mapping coverage **falls** from 36 of 64 rules (56%) to 37 of 72 (51%), the fourth deliberate breadth-for-depth trade (with `v0.3.4`, `v0.3.6`, `v0.3.7`) and the deepest yet; measured directly against php-src, catalogue coverage of the 36 Core/Standard Backward Incompatible Changes entries in 8.2–8.5 rises from 11 to 19, because the eight rules cover 8 of those entries, one each | No new adapter infrastructure; 17 of the 36 Backward Incompatible Changes entries and the 4 Deprecated Functionality gaps `v0.3.6` left open remain uncovered, and 35 of 72 rules carry no mapping |
 | **New Functions from php-src** | `v0.3.9` | ✅ Complete: the first round drawn from `UPGRADING`'s New Functions sections rather than Deprecated Functionality or Backward Incompatible Changes — a section PHPCompatibility was built to answer rather than one it is structurally blind to, so all 8 new rules (72 → 80) ship mapped and mapping coverage **rises** for the first time since `v0.3.5`, from 37 of 72 rules (51.4%) to 45 of 80 (56.25%), ending three consecutive falls and landing back at the `v0.3.7` level; `SNIFF_RULE_MAP` gains 15 sniff ids (209 → 224); measured directly against php-src, of the 101 New Functions bullet entries in 8.2–8.5 the pinned sniff knows 76, 11 of the 8.3+ ones were already named in the catalogue, and only 3 of the 54 still open are Core/Standard, so `category: extension` nearly doubles, 7 to 13; also records three measured defects in the pinned analyzer's own data (a wrong function name, two nonexistent functions, one typo'd extension attribution) — the first findings calling the analyzer *wrong* rather than merely *blind* | No new adapter infrastructure; 35 of 80 rules carry no mapping, including the 4 Deprecated Functionality gaps and 17 Backward Incompatible Changes Core/Standard entries earlier rounds left open, plus 51 of the 54 open New Functions entries this round found — all extension-scoped and untouched |
-| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage currently covers 46 of 81 rules, so growing further source-backed PHP rules and their proven mappings — including the 4 Deprecated Functionality gaps, the 17 Backward Incompatible Changes Core/Standard entries, and the 51 still-open, extension-scoped New Functions entries this round's probe found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
+| **Next: further catalogue and mapping growth** | — | Planned: mapping coverage currently covers 46 of 82 rules, so growing further source-backed PHP rules and their proven mappings — including the 4 Deprecated Functionality gaps, the 17 Backward Incompatible Changes Core/Standard entries, and the 51 still-open, extension-scoped New Functions entries this round's probe found — stays ahead of the deferred M3-C PHPStan adapter and the dropped M3-D Rector adapter | Catalogue and mapping work only; introduces no new adapter infrastructure |
 | **M4 Framework packs** | `v0.4.x` | Planned: separately reviewable framework-specific guidance | Must not contaminate the PHP Core rule set |
 
 ## Repository structure
@@ -663,7 +663,7 @@ Every rule also stores its review date. If a fact cannot be established, the rul
 | Path | Purpose |
 |---|---|
 | `src/` | Symfony Console application, Composer/PHP policy resolver, rule registry/query engine, and explicit verification boundary |
-| `resources/rules/` | 81 source-backed seed-rule JSON files, one rule per file |
+| `resources/rules/` | 82 source-backed seed-rule JSON files, one rule per file |
 | `schemas/` | Versioned rule, policy, and verification contracts |
 | `docs/adr/` | Binding architecture decisions and trust boundaries |
 | `tests/` | CLI, schema, and static-page verification |
