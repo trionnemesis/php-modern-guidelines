@@ -84,6 +84,9 @@ final class HttpLastResponseHeadersTest extends TestCase
         if (PHP_VERSION_ID < 80400) {
             self::markTestSkipped('The delivered example explicitly requires PHP 8.4+.');
         }
+        if (!function_exists('http_get_last_response_headers') || !function_exists('http_clear_last_response_headers')) {
+            self::fail('PHP 8.4+ must provide both HTTP response-header helpers.');
+        }
         $rule = $this->rule($this->json(['command' => 'explain', 'rule-id' => self::ID, '--php' => '8.4']));
         self::assertCount(1, $rule->examples);
         self::assertNotNull($rule->examples[0]->after);
@@ -104,7 +107,9 @@ final class HttpLastResponseHeadersTest extends TestCase
 
             // Seed an earlier response, then execute the actual shipped example, not a copied helper.
             self::assertSame('fixture-body', file_get_contents($url));
-            self::assertContains('X-Request: 0', http_get_last_response_headers() ?? []);
+            $seedHeaders = http_get_last_response_headers();
+            self::assertIsArray($seedHeaders);
+            self::assertContains('X-Request: 0', $seedHeaders);
             $capture = static function (string $url, string $code): mixed {
                 return eval($code . "\nreturn [\$body, \$headers];");
             };
