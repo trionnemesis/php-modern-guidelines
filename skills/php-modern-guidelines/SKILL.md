@@ -84,7 +84,7 @@ Then filter the rule catalogue to what you are about to write:
 ```console
 $ php bin/php-modern-guidelines list-rules --project-root=/path/to/app --kind=deprecated
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 34 of 82 shown
+Rules: 35 of 83 shown
 
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -134,6 +134,8 @@ Rules: 34 of 82 shown
       Using `_` as a class name is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
+  [deprecated_in_range]              P2  deprecated           core.zero_negative_power
+      Zero raised to a negative power is deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_share_close
@@ -172,8 +174,8 @@ Doctor: warn
   [ok]      project.php_declarations declared PHP values read, no input warnings
   [warn]    policy.resolution        range-safe: feature 8.2, lifecycle 8.5, coverage coverage_gap (known 8.2-8.5, open upper bound), 1 warning(s)
   [ok]      schemas.available        rule.schema.json ok, policy.schema.json ok
-  [ok]      rules.directory          bundled rules directory, 82 rule file(s)
-  [ok]      rules.load               82 rule(s) loaded
+  [ok]      rules.directory          bundled rules directory, 83 rule file(s)
+  [ok]      rules.load               83 rule(s) loaded
 
 Details
   cli.build
@@ -215,9 +217,9 @@ Details
     policy_schema           ok
   rules.directory
     source                  bundled
-    file_count              82
+    file_count              83
   rules.load
-    loaded                  82
+    loaded                  83
     error                   -
 ```
 
