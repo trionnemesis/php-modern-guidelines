@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 34 of 82 shown
+Rules: 35 of 83 shown
 
   [deprecated_in_range]              P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -49,6 +49,8 @@ Rules: 34 of 82 shown
       Using `_` as a class name is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
+  [deprecated_in_range]              P2  deprecated           core.zero_negative_power
+      Zero raised to a negative power is deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_close
       curl_close() is deprecated
   [deprecated_in_range]              P2  deprecated           extension.curl_share_close

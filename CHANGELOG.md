@@ -6,6 +6,11 @@ All notable changes will be documented in this file.
 
 ### Added
 
+- `core.zero_negative_power`: guidance-only PHP 8.4 deprecation rule for `pow()` and `**`
+  when the base is zero and exponent negative (Refs #18), with policy-matrix and delivered-example
+  regression tests. Source grows from 82 to 83 rules; mapping coverage changes from 46/82 to 46/83.
+  The 46 mapped rules and 225 sniff IDs remain unchanged.
+
 - `core.http_last_response_headers`: a guidance-only PHP 8.4 feature contract for
   `http_get_last_response_headers()` and `http_clear_last_response_headers()` (Refs #18).
   The existing `core.http_response_header` PHP 8.5 deprecation rule is unchanged.

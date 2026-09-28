@@ -1,5 +1,5 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 42 of 82 shown
+Rules: 43 of 83 shown
 
   [applicable]                       P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -57,6 +57,8 @@ Rules: 42 of 82 shown
       Using `_` as a class name is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
+  [applicable]                       P2  deprecated           core.zero_negative_power
+      Zero raised to a negative power is deprecated
   [applicable]                       P2  deprecated           extension.curl_close
       curl_close() is deprecated
   [applicable]                       P2  deprecated           extension.curl_share_close

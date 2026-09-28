@@ -1,0 +1,58 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.zero_negative_power",
+    "title": "Zero raised to a negative power is deprecated",
+    "summary": "PHP 8.4 deprecates pow() and ** when the base is zero and the exponent is negative. Validate that input, or use fpow() on PHP 8.4+ when floating-point infinity is intentional.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Decide whether zero with a negative exponent is valid input. If not, reject it before pow() or **; this explicit domain check works across PHP 8.2–8.5 and preserves integer arithmetic for other inputs. If IEEE-754 floating-point behavior is intended, use fpow() only when the supported PHP floor is at least 8.4.",
+    "existing_code_policy": "Audit pow() calls and ** expressions whose base can become zero while the exponent is negative. PHP 8.4 raises E_DEPRECATED for that case. Rejecting the input changes the application contract from an infinite result to an exception, so do it only when that domain decision is intended. Do not mechanically replace all exponentiation with fpow(): it requires PHP 8.4, always returns float, and can lose precision compared with integer exponentiation. See core.fpow for that separate feature contract.",
+    "guideline": "Guard zero-base, negative-exponent inputs before pow() or ** when they are invalid for the application. For intentional IEEE-754 infinity, use fpow() with a PHP 8.4+ floor; it is not an integer-preserving drop-in replacement.",
+    "details": "PHP 8.4.0 UPGRADING, Deprecated Functionality → Core, records the deprecation of raising zero to a negative power. Both pow() and ** are affected; the numeric operand values trigger the notice, including float zero. This is a lifecycle rule: introduced_in remains null and deprecated_in is 8.4. The replacement function has a separate feature rule, core.fpow, introduced in 8.4.\n\nThe first example deliberately rejects the invalid domain with DomainException while keeping pow() and its integer result on valid inputs; this is an explicit behavior choice, not a behavior-preserving automatic fix. The second example is for a PHP 8.4+ application that intentionally accepts floating-point infinity. A project with a lower floor must not call fpow() unconditionally. No removal version is asserted within this catalogue's PHP 8.2–8.5 coverage.",
+    "examples": [
+        {
+            "before": [
+                "$result = pow($base, $exponent);"
+            ],
+            "after": [
+                "// PHP 8.2+: choose this policy only when this input is invalid for the application.",
+                "if ($base == 0 && $exponent < 0) {",
+                "    throw new \\DomainException('Zero cannot be raised to a negative power.');",
+                "}",
+                "$result = pow($base, $exponent);"
+            ]
+        },
+        {
+            "before": [
+                "$result = $base ** $exponent;"
+            ],
+            "after": [
+                "// Requires PHP 8.4+: choose this only for intentional floating-point semantics.",
+                "$result = fpow($base, $exponent);"
+            ]
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-09-28"
+        }
+    ],
+    "notes": [
+        "Guidance-only: no PHPCompatibility sniff mapping is committed for this value-dependent deprecation. The issue #18 historical zero-findings probe is not a new measurement or a completeness guarantee.",
+        "Runtime probe on PHP 8.4.23: pow(0, -1) and a variable-based zero ** negative-one expression each return float(INF) with E_DEPRECATED; fpow(0, -1) returns float(INF) without that notice."
+    ]
+}
