@@ -16,7 +16,7 @@ use Symfony\Component\Console\Application;
 
 final class ApplicationFactory
 {
-    public const VERSION = '0.3.9';
+    public const VERSION = '0.3.10';
 
     public static function create(): Application
     {
