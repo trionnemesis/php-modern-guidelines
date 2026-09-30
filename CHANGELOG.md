@@ -2,23 +2,63 @@
 
 All notable changes will be documented in this file.
 
-## [Unreleased]
+## [0.3.10] - 2026-09-30
+
+This release packages the four pull requests merged after `0.3.9`: one catalogue rule from issue #19,
+and from issue #18 one correction to a shipped rule plus two guidance-only rules. It is not a full
+expansion round, and it does not change the analyzer, the pinned versions or any command.
 
 ### Added
 
-- `core.zero_negative_power`: guidance-only PHP 8.4 deprecation rule for `pow()` and `**`
-  when the base is zero and exponent negative (Refs #18), with policy-matrix and delivered-example
-  regression tests. Source grows from 82 to 83 rules; mapping coverage changes from 46/82 to 46/83.
-  The 46 mapped rules and 225 sniff IDs remain unchanged.
+- `extension.bcmath_number` (8.4, `feature`, bcmath; issue #19) - the immutable `BcMath\Number` class.
+  Procedural `bc*` functions are not deprecated, so the rule frames adoption as a design choice rather than
+  a migration, and records that a float constructor argument raises `TypeError` under strict types. It is
+  the release's one **mapped** rule: `PHPCompatibility.Classes.NewClasses.bcmath_numberFound`, proven with
+  the ceiling held at 8.5 and floors 8.2 / 8.3 / 8.4 / 8.5 giving 1 / 1 / 0 / 0 findings, which pins
+  `introduced_in: 8.4`.
+- `core.http_last_response_headers` (8.4, `feature`, guidance-only; Refs #18) - a feature contract for
+  `http_get_last_response_headers()` and `http_clear_last_response_headers()`, so a project's PHP floor
+  can be checked without parsing the long `core.http_response_header` deprecation prose. That rule's id,
+  kind and `deprecated_in: 8.5` are unchanged. It ships unmapped: issue #18 records a historical
+  singular/plural-name defect in the pinned analyzer's data for these functions, and this release
+  re-measures nothing.
+- `core.zero_negative_power` (8.4, `deprecated`, guidance-only; Refs #18) - raising zero to a negative power
+  via `pow()` or `**`; runtime-probed on PHP 8.4.23 as `E_DEPRECATED` with `float(INF)`. `core.fpow`
+  keeps its separate feature contract. It ships unmapped: the issue #18 historical probe found no sniff
+  for this value-dependent deprecation, and this release does not repeat that measurement.
+- Policy-matrix and CLI regression tests for the new rules, including execution of the delivered
+  capture/clear example against a controlled loopback HTTP fixture on PHP 8.4+.
 
-- `core.http_last_response_headers`: a guidance-only PHP 8.4 feature contract for
-  `http_get_last_response_headers()` and `http_clear_last_response_headers()` (Refs #18).
-  The existing `core.http_response_header` PHP 8.5 deprecation rule is unchanged.
-- Policy-matrix and CLI regression coverage, plus execution of the delivered capture/clear example
-  against a controlled loopback HTTP fixture on PHP 8.4+.
-- Source catalogue grows from 81 to 82 rules; 46 mapped rules and 225 sniff IDs remain unchanged.
-  Coverage changes from 46/81 to 46/82 because the new rule has no proven mapping.
-  Published v0.3.9 remains 80 rules / 45 mapped rules / 224 sniff IDs.
+### Fixed
+
+- `core.http_response_header` (Refs #18) - the published `0.3.9` rule contradicted itself in two ways,
+  and both are corrected:
+  - The guidance said to use the last HTTP status line after a redirect chain, but both `after` examples
+    still read index `0`, which is the *first* response's status line.
+  - The short guidance and both `after` examples called `http_get_last_response_headers()`
+    unconditionally, although it needs PHP 8.4. They now guard with
+    `function_exists('http_get_last_response_headers')` and fall back to `($http_response_header ?? null)`
+    in the same scope that issued the request, and state that a range reaching 8.5 is a temporary
+    deprecation trade-off.
+  A regression test now evaluates the examples delivered through `explain --json` (single 200,
+  redirect then 200, redirect then 404, `null`, empty array, no status line), not a separate copy.
+
+### Changed
+
+- The catalogue grows from 80 to 83 rules. Mapping coverage goes from 45 of 80 (56.25%) to 46 of 83
+  (55.4%) - it **falls** slightly, because one of the three new rules is mapped and two are not. Coverage
+  is a dial, not a score; every surface that reports it states the direction it moved.
+- `SNIFF_RULE_MAP` grows from 224 to 225 sniff ids (the one `bcmath_number` id) and remains the exact
+  bidirectional inverse of the rule-local `verification.phpcompatibility` lists.
+- `ApplicationFactory::VERSION` is `0.3.10`, so `version` and the release PHAR report it.
+
+### Not included
+
+- Any new analyzer. M3-C (PHPStan) stays deferred and M3-D (Rector) stays dropped.
+- Any change to the pinned analyzer version, and any mapping for the HTTP helper functions.
+- Any new `UPGRADING` round. Issue #18 stays open as the candidate register; the next seam it ranks
+  first is `New Classes and Interfaces`.
+- Any framework pack, auto-fix, target-project write, or network rule fetching.
 
 ## [0.3.9] - 2026-09-07
 
