@@ -72,7 +72,9 @@ final class UnserializeUppercaseSTest extends TestCase
             self::assertInstanceOf(\Closure::class, $encodeString);
             foreach (['a', '', "\0", 'é', '"', '\\', '\\61'] as $value) {
                 $notices = [];
-                self::assertSame($value, unserialize($encodeString($value), ['allowed_classes' => false]));
+                $payload = $encodeString($value);
+                self::assertIsString($payload);
+                self::assertSame($value, unserialize($payload, ['allowed_classes' => false]));
                 self::assertSame([], $notices);
             }
             // A length-correct lowercase rewrite still changes the value of an escaped S payload.
