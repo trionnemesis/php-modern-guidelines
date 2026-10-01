@@ -63,11 +63,16 @@ final class UnserializeUppercaseSTest extends TestCase
             return true;
         });
         try {
-            self::assertSame('a', $this->execute($before, 'a'));
+            self::assertSame('a', $this->execute($before));
             self::assertSame(PHP_VERSION_ID >= 80400 ? [E_DEPRECATED] : [], $notices);
+            $notices = [];
+            self::assertSame('a', $this->execute($after));
+            self::assertSame([], $notices);
+            $encodeString = eval($after . "\nreturn \$encodeString;");
+            self::assertInstanceOf(\Closure::class, $encodeString);
             foreach (['a', '', "\0", 'é', '"', '\\', '\\61'] as $value) {
                 $notices = [];
-                self::assertSame($value, $this->execute($after, $value));
+                self::assertSame($value, unserialize($encodeString($value), ['allowed_classes' => false]));
                 self::assertSame([], $notices);
             }
             // A length-correct lowercase rewrite still changes the value of an escaped S payload.
@@ -82,7 +87,7 @@ final class UnserializeUppercaseSTest extends TestCase
         }
     }
 
-    private function execute(string $code, string $value): mixed
+    private function execute(string $code): mixed
     {
         return eval($code . "\nreturn \$result;");
     }

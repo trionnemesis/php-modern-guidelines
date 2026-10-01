@@ -25,7 +25,8 @@
             ],
             "after": [
                 "// PHP 8.2+: fix the producer using its original string value.",
-                "$payload = serialize($value);",
+                "$encodeString = static fn (string $value): string => serialize($value);",
+                "$payload = $encodeString('a');",
                 "$result = unserialize($payload, ['allowed_classes' => false]);"
             ]
         },
