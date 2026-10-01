@@ -1,5 +1,5 @@
 PHP policy: range-safe, feature ceiling 8.2, lifecycle ceiling 8.5 (allowed 8.2, 8.3, 8.4, 8.5)
-Rules: 83 of 83 shown
+Rules: 84 of 84 shown
 
   [forbidden_above_feature_ceiling]  P1  feature              core.array_find_functions
       array_find(), array_find_key(), array_any() and array_all()
@@ -105,6 +105,8 @@ Rules: 83 of 83 shown
       Using `_` as a class name is deprecated
   [forbidden_above_feature_ceiling]  P2  behavior_change      core.unrepresentable_numeric_casts
       Casting an unrepresentable float, float-like string, or `NAN` now warns
+  [deprecated_in_range]              P2  deprecated           core.unserialize_uppercase_s
+      Unserializing the uppercase S string tag is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
   [deprecated_in_range]              P2  deprecated           core.zero_negative_power

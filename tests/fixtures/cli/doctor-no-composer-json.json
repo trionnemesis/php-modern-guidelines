@@ -85,18 +85,18 @@
         {
             "id": "rules.directory",
             "status": "ok",
-            "summary": "bundled rules directory, 83 rule file(s)",
+            "summary": "bundled rules directory, 84 rule file(s)",
             "details": {
                 "source": "bundled",
-                "file_count": "83"
+                "file_count": "84"
             }
         },
         {
             "id": "rules.load",
             "status": "ok",
-            "summary": "83 rule(s) loaded",
+            "summary": "84 rule(s) loaded",
             "details": {
-                "loaded": "83",
+                "loaded": "84",
                 "error": null
             }
         }

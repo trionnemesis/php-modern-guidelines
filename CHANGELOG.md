@@ -2,6 +2,15 @@
 
 All notable changes will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `core.unserialize_uppercase_s` (PHP 8.4, deprecated, guidance-only; Refs #18): source-backed lifecycle
+  guidance and producer examples. Legacy hexadecimal escapes prevent a mechanical S-to-s replacement.
+  Source checkout now has 84 rules, 46 mapped rules and 225 sniff IDs (46/84 = 54.8%); v0.3.10 stays
+  at 83/46/225. No analyzer mapping, pin, dependency or command changes.
+
 ## [0.3.10] - 2026-09-30
 
 This release packages the four pull requests merged after `0.3.9`: one catalogue rule from issue #19,

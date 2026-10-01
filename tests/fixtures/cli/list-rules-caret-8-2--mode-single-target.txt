@@ -1,5 +1,5 @@
 PHP policy: single-target, feature ceiling 8.2, lifecycle ceiling 8.2 (allowed 8.2)
-Rules: 43 of 83 shown
+Rules: 44 of 84 shown
 
   [applicable]                       P2  deprecated           core.assert_options
       assert_options() and its ASSERT_* constants are deprecated
@@ -55,6 +55,8 @@ Rules: 43 of 83 shown
       Passing `E_USER_ERROR` to `trigger_error()` is deprecated
   [applicable]                       P2  deprecated           core.underscore_class_name
       Using `_` as a class name is deprecated
+  [applicable]                       P2  deprecated           core.unserialize_uppercase_s
+      Unserializing the uppercase S string tag is deprecated
   [deprecated_across_range]          P2  deprecated           core.utf8_encode_decode
       `utf8_encode()` and `utf8_decode()` are deprecated
   [applicable]                       P2  deprecated           core.zero_negative_power

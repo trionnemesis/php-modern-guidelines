@@ -1,0 +1,52 @@
+{
+    "schema_version": "1.1.0",
+    "id": "core.unserialize_uppercase_s",
+    "title": "Unserializing the uppercase S string tag is deprecated",
+    "summary": "PHP 8.4 deprecates the uppercase S string tag in serialized data. Generate new payloads with serialize(); replacing S with s in legacy payloads can change escaped string values.",
+    "category": "core",
+    "kind": "deprecated",
+    "priority": "P2",
+    "introduced_in": null,
+    "deprecated_in": "8.4",
+    "removed_in": null,
+    "extension": null,
+    "package_constraints": {},
+    "behavior_change_risk": "medium",
+    "new_code_policy": "Use serialize() to generate PHP serialization payloads rather than hand-building uppercase S string tags. For a string value, serialize() emits the lowercase s format with the correct byte length. This works across PHP 8.2–8.5.",
+    "existing_code_policy": "Audit custom serialization producers and stored payloads for uppercase S string tags. Change producers to serialize() using the original decoded value. For existing data, plan a controlled migration using the original format-aware reader and reserialize the decoded value; do not replace tag letters in raw payloads. Decoding legacy S payloads itself emits E_DEPRECATED on PHP 8.4+. This rule supplies no generic converter and no permission to unserialize untrusted data.",
+    "guideline": "Generate serialized strings with serialize(). Do not mechanically replace uppercase S with lowercase s: S decodes hexadecimal escapes, while s preserves their literal bytes.",
+    "details": "PHP 8.4.0 UPGRADING, Deprecated Functionality → Standard, records that unserializing strings with the uppercase S tag is deprecated. This lifecycle rule keeps introduced_in null and deprecated_in 8.4; it does not deprecate unserialize() itself or the lowercase s format. No removal version is asserted within PHP 8.2–8.5.\n\nThe fixed PHP 8.4.0 source test ext/standard/tests/serialize/unserialize_uppercase_s.phpt demonstrates both literal and hexadecimal-escaped S strings. Runtime probing on PHP 8.4.23 confirms S:1:\"\\61\"; yields \"a\", whereas s:3:\"\\61\"; yields three literal bytes. Merely changing S to s without adjusting the length can instead create an invalid payload. The example fixes the producer using the original string value, not by rewriting existing serialized bytes. serialize() counts bytes, including NUL and multibyte strings. The allowed_classes=false option in this string-only example does not make arbitrary untrusted unserialize() input safe.",
+    "examples": [
+        {
+            "before": [
+                "// A custom producer encoded the known string value \"a\" as a hexadecimal escape.",
+                "$payload = 'S:1:\"\\61\";';",
+                "$result = unserialize($payload, ['allowed_classes' => false]);"
+            ],
+            "after": [
+                "// PHP 8.2+: fix the producer using its original string value.",
+                "$payload = serialize($value);",
+                "$result = unserialize($payload, ['allowed_classes' => false]);"
+            ]
+        },
+        {
+            "no_automatic_replacement": true
+        }
+    ],
+    "verification": {
+        "phpcompatibility": [],
+        "phpstan": null,
+        "rector": null
+    },
+    "sources": [
+        {
+            "type": "php_source_upgrading",
+            "url": "https://raw.githubusercontent.com/php/php-src/php-8.4.0/UPGRADING",
+            "checked_at": "2026-10-01"
+        }
+    ],
+    "notes": [
+        "Guidance-only: no PHPCompatibility sniff mapping is committed. The issue #18 historical probe is not a new measurement or a completeness guarantee.",
+        "Runtime probe on PHP 8.4.23: literal and hexadecimal-escaped uppercase S payloads return the decoded string with E_DEPRECATED; serialize() string round-trips preserve ASCII, NUL, UTF-8, quote and backslash bytes without that notice."
+    ]
+}
