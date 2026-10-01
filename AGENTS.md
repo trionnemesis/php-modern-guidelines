@@ -4,7 +4,7 @@
 
 The published release is `0.3.10`. Implemented there: the `version`, `resolve`, `list-rules`,
 `explain`, `doctor` and `verify` commands, the Composer Semver policy resolver, the two-axis
-applicability engine, the 83-rule seed catalogue in `resources/rules/`, a CI-built PHAR attached to each
+applicability engine, the seed catalogue in `resources/rules/`, a CI-built PHAR attached to each
 release, the agent-distribution surfaces in `skills/`, and the explicit `verify` boundary with its one
 real adapter.
 
@@ -35,6 +35,10 @@ behavior changed in" so the rule can be gated on the feature axis; say so in the
 lifecycle fact needs an official PHP source URL
 (`https://raw.githubusercontent.com/php/php-src/php-X.Y.0/UPGRADING`) and a `checked_at` date; mark
 uncertainty instead of guessing.
+
+Source checkout adds `core.unserialize_uppercase_s` (PHP 8.4 deprecation, guidance-only):
+84 rules / 46 mapped rules / 225 sniff ids (54.8%). Published `v0.3.10` stays at 83 / 46 / 225.
+Do not mechanically replace S tags with s in legacy serialized data: escaped strings have different semantics.
 
 ## Agent distribution surfaces
 
