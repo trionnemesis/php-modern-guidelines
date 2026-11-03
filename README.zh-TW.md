@@ -13,6 +13,13 @@
 
 **已發布：Rule-catalogue expansion · v0.3.10。** Modern PHP Guidelines 是一個獨立、read-only、version-aware 的 PHP policy 與 rule-query CLI。它使用 Composer Semver 解析目標專案宣告的 PHP 相容範圍，將「可以使用多新的語法/API」與「需要注意多新的 deprecation/removal」拆成兩條獨立軸線，再讓 AI agent 透過 `resolve`、`list-rules`、`explain`、`doctor` 查詢有來源依據的 PHP 規則。現在也提供 Claude Agent Skill、Codex 相容的 `AGENTS.md` snippet、CI 建置、checksum 驗證的 PHAR release asset，以及由真實 PHPCompatibility adapter 驅動、policy-aware 的明確 `verify` surface。
 
+> **Runtime 安全責任：** PHP 8.2+ 與 `composer.json` 的 `>=8.2` 宣告語言／API 相容性，
+> 不保證 CVE 已修補。CLI／PHAR 維運者須維護宿主 PHP Runtime；PHAR 不內含 PHP 解譯器。
+> `doctor` 檢查中繼資料與安裝狀態，`verify` 提供 PHPCompatibility 相容性建議；
+> 兩者皆不執行 Runtime CVE 掃描，也不修補 PHP。PHP2Shell 官方來源、各分支修補基準、
+> CVE-2026-115560 獨立追蹤與驗證限制，請見
+> [SECURITY.md](SECURITY.md#php-compatibility-and-runtime-security)。
+
 > **Verification：** `v0.3.0` 導入了明確、opt-in 的 `verify <adapter> --executable=<path-or-name>` surface。其 production `phpcompatibility` adapter 是真實的 PHPCompatibility 實作：它會以 isolated child process 執行 caller 選定、已安裝好的 PHP_CodeSniffer 與 PHPCompatibility standard，回報 advisory evidence——絕非自動修復。PHPStan deprecation adapter（M3-C）已被延後，Rector dry-run adapter（M3-D）則未納入此 release line；原因見 [Changelog](CHANGELOG.md)。
 
 > **v0.3.1 hardening：** rule schema `1.1.0` 已將 PHPCompatibility mapping 改為排序 list；

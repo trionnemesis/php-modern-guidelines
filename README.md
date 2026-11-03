@@ -13,6 +13,13 @@
 
 **Released: Rule-catalogue expansion · v0.3.10.** Modern PHP Guidelines is a standalone, read-only, version-aware PHP policy and rule-query CLI. It uses Composer Semver to resolve a target project's declared PHP compatibility range, separates “how new a syntax or API may be” from “how new a deprecation or removal must be considered,” and lets AI agents query source-backed PHP rules through `resolve`, `list-rules`, `explain`, and `doctor`. It now also ships as a Claude Agent Skill, a Codex-compatible `AGENTS.md` snippet, a CI-built, checksum-verified PHAR release asset, and an explicit, policy-aware `verify` surface backed by a real PHPCompatibility adapter.
 
+> **Runtime security:** PHP 8.2+ and `composer.json`'s `>=8.2` declare language/API compatibility,
+> not a CVE patch guarantee. CLI/PHAR operators must maintain the host PHP runtime; the PHAR does not
+> bundle an interpreter. `doctor` checks metadata/installation and `verify` provides advisory
+> PHPCompatibility evidence; neither performs runtime CVE scanning or patches PHP. Read
+> [SECURITY.md](SECURITY.md#php-compatibility-and-runtime-security) for the official PHP2Shell sources,
+> branch-specific fixed floors, separate CVE-2026-115560 tracking, and verification limits.
+
 > **Verification:** `v0.3.0` introduced the explicit, opt-in `verify <adapter> --executable=<path-or-name>` surface. Its production `phpcompatibility` adapter is a real PHPCompatibility implementation: it runs a caller-selected, already-installed PHP_CodeSniffer with the PHPCompatibility standard as an isolated child process and reports advisory evidence — never an automatic fix. A PHPStan deprecation adapter (M3-C) was deferred and a Rector dry-run adapter (M3-D) was dropped from this release line; see [Changelog](CHANGELOG.md) for why.
 
 > **v0.3.1 hardening:** rule schema `1.1.0` stores PHPCompatibility mappings as sorted lists,
